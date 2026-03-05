@@ -11,3 +11,4 @@ Guidance for benchmark harness implementation and interpretation.
 - No winner claims without claim-threshold gate pass across local + nightly + manual runs.
 - Correctness gate policy: **`ag` vs `rust-ag` parity divergence is a hard failure**; cross-tool (`rg`/`ugrep`) hash differences are advisory details and do not fail the gate by themselves.
 - Harness CLI contract: when correctness gate fails, `benchmarks/harness.py` benchmark modes must exit non-zero even if scenario cell execution itself reports zero errors.
+- Latest-run resolution contract: treat only canonical timestamp-form run directories as eligible `latest` targets, and reject symlink targets that do not resolve to canonical run directories under the benchmark output root.

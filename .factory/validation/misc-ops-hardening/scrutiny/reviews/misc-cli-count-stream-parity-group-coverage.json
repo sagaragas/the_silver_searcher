@@ -1,0 +1,45 @@
+{
+  "featureId": "misc-cli-count-stream-parity-group-coverage",
+  "reviewedAt": "2026-03-05T18:41:26Z",
+  "commitId": "04364e4230a35ffaa7d2b3953d0b5d96cefcb6b0",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The commit correctly adds a new cli-count-stream scenario group and run_matrix executes it, but the implementation does not satisfy the feature description claim that VAL-CLI-001..003 can be validated via run_matrix artifacts alone.",
+    "issues": [
+      {
+        "file": "scripts/bench/build_scenario_manifest.py",
+        "line": 301,
+        "severity": "blocking",
+        "description": "`cli-count-stream` only adds multi-file scenarios (`count-matches`, `cli-default-multi-file`, `cli-nofilename`) and does not add a single-file filename-prefix scenario, but VAL-CLI-002 requires both single-file and multi-file prefix semantics."
+      },
+      {
+        "file": "scripts/bench/build_scenario_manifest.py",
+        "line": 296,
+        "severity": "blocking",
+        "description": "No stdin/stream scenario was added for `cli-count-stream`, yet VAL-CLI-001 and VAL-CLI-003 explicitly include stream behavior. Validation contract still requires stream evidence, so run_matrix artifacts from this group cannot fully replace ad-hoc transcript checks."
+      },
+      {
+        "file": ".factory/library/user-testing.md",
+        "line": 26,
+        "severity": "non_blocking",
+        "description": "The updated guidance states VAL-CLI-001..003 can be validated via `--group cli-count-stream` artifacts, which overstates coverage while stream semantics remain outside this group."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "`rewrite-worker` mandates strict failing-test-first workflow, but this tooling/manifest task had no realistic red-test step before manifest edits. The worker flagged this mismatch in handoff feedback, indicating the skill procedure should explicitly cover manifest-only parity-group additions.",
+      "evidence": "handoff.skillFeedback.suggestedChanges for session 511302a7-1144-4d0a-ab28-4b688e6c2ae6; .factory/skills/rewrite-worker/SKILL.md step 3"
+    },
+    {
+      "area": "knowledge",
+      "observation": "Shared testing guidance now implies full VAL-CLI-001..003 coverage via run_matrix group artifacts, but validation-contract still requires stdin stream semantics that run_matrix group scenarios do not encode.",
+      "evidence": "/Users/ragas/.factory/missions/d1c51473-4105-4ffd-8739-51d144ec03b4/validation-contract.md lines 63-73 vs scripts/bench/build_scenario_manifest.py lines 296-317 and .factory/library/user-testing.md line 26"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Feature is partially implemented: cli-count-stream group exists and runs, but it does not fully cover VAL-CLI-001..003 requirements (single-file and stream dimensions), so the review fails on completeness against the stated feature description."
+}

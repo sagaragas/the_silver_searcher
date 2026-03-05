@@ -1,0 +1,33 @@
+{
+  "featureId": "misc-refresh-benchmark-run-manifest-hashes",
+  "reviewedAt": "2026-03-05T18:41:31Z",
+  "commitId": "507682e",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Feature intent is met: commit 507682e adds the expected regression test entry point, and handoff evidence plus on-disk run artifacts show refreshed manifest hashes matching current manifests. No blocking defects found in the implementation diff.",
+    "issues": [
+      {
+        "file": "benchmarks/tests/test_manifest_integrity.py",
+        "line": 811,
+        "severity": "non_blocking",
+        "description": "The new test duplicates existing coverage already present at benchmarks/tests/test_manifest_pinning.py:175 (`test_verify_on_disk_hashes_match`), which introduces redundant maintenance points for the same behavior."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "benchmark-worker skill scope appears stale: it says to use the skill only for milestone `benchmark-harness`, but this feature in `misc-ops-hardening` also used it successfully.",
+      "evidence": ".factory/skills/benchmark-worker/SKILL.md:12 says 'Use for features in milestone `benchmark-harness`'; reviewed feature entry `misc-refresh-benchmark-run-manifest-hashes` is in milestone `misc-ops-hardening` (features.json:1565-1584)."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Mission verification guidance points to a test path in test_manifest_integrity.py even though equivalent on-disk hash coverage already existed in test_manifest_pinning.py, which encouraged duplicate tests.",
+      "evidence": "features.json:1577-1580 references `benchmarks/tests/test_manifest_integrity.py::test_verify_on_disk_hashes_match`; pre-change baseline already had `test_verify_on_disk_hashes_match` in benchmarks/tests/test_manifest_pinning.py:175 (confirmed via `git show 507682e^:benchmarks/tests/test_manifest_pinning.py`)."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed feature misc-refresh-benchmark-run-manifest-hashes using the handoff, transcript skeleton, and commit diff for 507682e. Implementation is correct for the stated goal with no blocking issues; one non-blocking duplication and two shared-state observations are recorded."
+}
