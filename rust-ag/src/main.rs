@@ -110,17 +110,28 @@ fn main() {
         }
     }
 
+    // Validate -G / --file-search-regex up front. Baseline ag treats an
+    // invalid file-search regex identically to an invalid content regex:
+    // stderr diagnostic + exit 2.
+    if let Some(ref file_re_str) = opts.file_search_regex {
+        if let Err(e) = Regex::new(file_re_str) {
+            eprintln!("ERR: Bad regex! {e}");
+            eprintln!("If you meant to search for a literal string, run ag with -Q");
+            process::exit(2);
+        }
+    }
+
     // File mode: walk to collect files, applying -G filter.
     let mut files = walk::walk_paths(&opts);
 
     // Apply -G / --file-search-regex filter.
     if let Some(ref file_re_str) = opts.file_search_regex {
-        if let Ok(file_re) = Regex::new(file_re_str) {
-            files.retain(|p| {
-                let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                file_re.is_match(name)
-            });
-        }
+        // Safety: regex was already validated above.
+        let file_re = Regex::new(file_re_str).unwrap();
+        files.retain(|p| {
+            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            file_re.is_match(name)
+        });
     }
 
     let multi_file = files.len() > 1 || opts.paths.iter().any(|p| std::path::Path::new(p).is_dir());
@@ -314,11 +325,14 @@ struct ContextConfig<'a> {
 /// and prints them with the appropriate separators (`:` for matches, `-` for
 /// context, `--` between non-contiguous groups).
 fn emit_context_output(cfg: &ContextConfig<'_>) {
-    // Read file content to get all lines.
-    let content = match std::fs::read_to_string(cfg.file_path) {
-        Ok(c) => c,
+    // Read file content to get all lines using byte-tolerant processing.
+    // Non-UTF8 files are handled via lossy conversion (matching how
+    // search.rs already processes non-UTF8 files for normal output).
+    let raw = match std::fs::read(cfg.file_path) {
+        Ok(data) => data,
         Err(_) => return,
     };
+    let content = String::from_utf8_lossy(&raw).into_owned();
     // ag treats a trailing newline as creating an additional empty line.
     // Rust's `lines()` omits the trailing empty string, so we manually
     // split to match ag's line counting.

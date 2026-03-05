@@ -508,3 +508,169 @@ fn val_cli_007_help_short_flag() {
     assert!(stdout.contains("Usage"), "-h should show help: {stdout}");
     assert_eq!(exit, 0);
 }
+
+// ============================================================
+// Invalid -G / --file-search-regex: baseline-compatible diagnostics
+// ============================================================
+
+#[test]
+fn val_cli_006_invalid_file_search_regex_exit_2() {
+    // Baseline ag: invalid -G regex exits 2 (same as invalid content regex).
+    let dir = setup_filter_fixture();
+    let (_stdout, _stderr, exit) = run_ag(&["-G", "[", "hello", dir.path().to_str().unwrap()]);
+    assert_eq!(
+        exit, 2,
+        "Invalid -G regex should exit 2 (matching baseline ag)"
+    );
+}
+
+#[test]
+fn val_cli_006_invalid_file_search_regex_stderr_diagnostic() {
+    // Baseline ag: stderr contains 'ERR: Bad regex!' message.
+    let dir = setup_filter_fixture();
+    let (_stdout, stderr, exit) = run_ag(&["-G", "[", "hello", dir.path().to_str().unwrap()]);
+    assert!(
+        stderr.contains("ERR:"),
+        "Invalid -G regex stderr should contain 'ERR:': {stderr}"
+    );
+    assert_eq!(exit, 2);
+}
+
+#[test]
+fn val_cli_006_invalid_file_search_regex_hint() {
+    // Baseline ag: stderr includes literal hint about -Q.
+    let dir = setup_filter_fixture();
+    let (_stdout, stderr, _exit) = run_ag(&["-G", "[", "hello", dir.path().to_str().unwrap()]);
+    assert!(
+        stderr.contains("-Q") || stderr.contains("literal"),
+        "Invalid -G regex stderr should hint about -Q/literal: {stderr}"
+    );
+}
+
+#[test]
+fn val_cli_006_invalid_file_search_regex_no_stdout() {
+    // Baseline ag: no stdout for invalid -G regex.
+    let dir = setup_filter_fixture();
+    let (stdout, _stderr, _exit) = run_ag(&["-G", "[", "hello", dir.path().to_str().unwrap()]);
+    assert!(
+        stdout.is_empty(),
+        "Invalid -G regex should produce no stdout: {stdout}"
+    );
+}
+
+#[test]
+fn val_cli_006_invalid_file_search_regex_long_flag() {
+    // Same behavior for --file-search-regex.
+    let dir = setup_filter_fixture();
+    let (_stdout, stderr, exit) = run_ag(&[
+        "--file-search-regex",
+        "[",
+        "hello",
+        dir.path().to_str().unwrap(),
+    ]);
+    assert_eq!(exit, 2, "Invalid --file-search-regex should exit 2");
+    assert!(
+        stderr.contains("ERR:"),
+        "Invalid --file-search-regex stderr should contain 'ERR:': {stderr}"
+    );
+}
+
+#[test]
+fn val_cli_006_invalid_file_search_regex_eq_syntax() {
+    // --file-search-regex=[ syntax.
+    let dir = setup_filter_fixture();
+    let (_stdout, stderr, exit) = run_ag(&[
+        "--file-search-regex=[",
+        "hello",
+        dir.path().to_str().unwrap(),
+    ]);
+    assert_eq!(exit, 2, "Invalid --file-search-regex=[ should exit 2");
+    assert!(
+        stderr.contains("ERR:"),
+        "Invalid --file-search-regex=[ stderr should contain 'ERR:': {stderr}"
+    );
+}
+
+// ============================================================
+// Non-UTF8 file context output: byte-tolerant rendering
+// ============================================================
+
+fn setup_non_utf8_context_fixture() -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    let base = dir.path();
+
+    // Create a file with non-UTF8 bytes mixed with valid text.
+    // Structure:
+    //   line 1: "hello"
+    //   line 2: "world"
+    //   line 3: <non-UTF8 bytes>
+    //   line 4: "before"
+    //   line 5: "hello again"
+    //   line 6: "after"
+    let mut content = Vec::new();
+    content.extend_from_slice(b"hello\nworld\n\xff\xfe\nbefore\nhello again\nafter\n");
+    std::fs::write(base.join("mixed.txt"), &content).unwrap();
+
+    dir
+}
+
+#[test]
+fn val_cli_004_context_non_utf8_file_produces_output() {
+    // Baseline ag produces context output for non-UTF8 files.
+    // rust-ag must not silently skip them.
+    let dir = setup_non_utf8_context_fixture();
+    let f = dir.path().join("mixed.txt");
+    let (stdout, _stderr, exit) = run_ag(&["--nocolor", "-C1", "hello", f.to_str().unwrap()]);
+    assert_eq!(exit, 0, "Should find matches in non-UTF8 file");
+    assert!(
+        !stdout.is_empty(),
+        "Context output should not be empty for non-UTF8 file"
+    );
+    // Should contain match lines
+    assert!(
+        stdout.contains("hello"),
+        "Context output should contain 'hello': {stdout}"
+    );
+}
+
+#[test]
+fn val_cli_004_context_non_utf8_file_has_context_lines() {
+    let dir = setup_non_utf8_context_fixture();
+    let f = dir.path().join("mixed.txt");
+    let (stdout, _stderr, exit) = run_ag(&["--nocolor", "-C1", "hello", f.to_str().unwrap()]);
+    assert_eq!(exit, 0);
+    let lines: Vec<&str> = stdout.lines().collect();
+    // With -C1 around "hello" at line 1 and "hello again" at line 5:
+    // Group 1: line 1 (match), line 2 (after)
+    // Group 2: line 4 (before), line 5 (match), line 6 (after)
+    assert!(
+        lines.len() >= 4,
+        "Should have at least 4 output lines (matches + context): got {lines:?}"
+    );
+}
+
+#[test]
+fn val_cli_004_context_non_utf8_file_after_context() {
+    let dir = setup_non_utf8_context_fixture();
+    let f = dir.path().join("mixed.txt");
+    let (stdout, _stderr, exit) = run_ag(&["--nocolor", "-A1", "hello", f.to_str().unwrap()]);
+    assert_eq!(exit, 0);
+    // Should show after-context lines
+    assert!(
+        stdout.contains("world") || stdout.contains("after"),
+        "After-context should include adjacent lines: {stdout}"
+    );
+}
+
+#[test]
+fn val_cli_004_context_non_utf8_file_before_context() {
+    let dir = setup_non_utf8_context_fixture();
+    let f = dir.path().join("mixed.txt");
+    let (stdout, _stderr, exit) = run_ag(&["--nocolor", "-B1", "hello", f.to_str().unwrap()]);
+    assert_eq!(exit, 0);
+    // "hello again" at line 5 should have "before" as context at line 4
+    assert!(
+        stdout.contains("before"),
+        "Before-context for 'hello again' should include 'before': {stdout}"
+    );
+}
