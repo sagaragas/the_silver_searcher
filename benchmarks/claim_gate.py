@@ -73,6 +73,176 @@ def _ci_overlap_fraction(
 
 
 # ---------------------------------------------------------------------------
+# Cross-run alignment evidence (VAL-CROSS-007)
+# ---------------------------------------------------------------------------
+
+# Required fields for evidence schema validation.
+_EVIDENCE_REQUIRED_FIELDS = [
+    "run_id", "run_type", "commit_sha", "manifest_hashes",
+    "parity_gate", "reproducibility_gate", "scenario_summaries",
+]
+
+
+def _validate_evidence_schema(evidence_item: dict[str, Any]) -> dict[str, Any]:
+    """Validate that a single run evidence dict has all required fields.
+
+    Returns a dict with 'result' ('pass'/'fail'), 'run_id', 'run_type',
+    and optional 'missing_fields'.
+    """
+    missing = [f for f in _EVIDENCE_REQUIRED_FIELDS if f not in evidence_item]
+    run_id = evidence_item.get("run_id", "unknown")
+    run_type = evidence_item.get("run_type", "unknown")
+    return {
+        "run_id": run_id,
+        "run_type": run_type,
+        "result": "pass" if not missing else "fail",
+        "missing_fields": missing,
+    }
+
+
+def _generate_local_vs_ci_comparison_report(
+    evidence: list[dict[str, Any]],
+    commit_check: dict[str, Any],
+    manifest_hash_check: dict[str, Any],
+    output_dir: Path,
+) -> dict[str, Any]:
+    """Generate a machine-readable local-vs-CI reproducibility comparison report.
+
+    Links local/nightly/manual runs for the same commit and manifests,
+    validates per-run schema, and writes the report as an artifact.
+
+    Returns the report dict.
+    """
+    # Build linked runs with run_type and run_id.
+    linked_runs = [
+        {"run_id": e["run_id"], "run_type": e["run_type"]}
+        for e in evidence
+    ]
+
+    # Per-run schema validity.
+    per_run_schema = [_validate_evidence_schema(e) for e in evidence]
+
+    # Commit match: reuse the existing commit check result.
+    commit_match = {
+        "result": commit_check["result"],
+        "unique_commits": commit_check["unique_commits"],
+    }
+
+    # Manifest match: reuse the existing manifest hash check result.
+    manifest_match = {
+        "result": manifest_hash_check["result"],
+        "reference_hashes": manifest_hash_check.get("reference_hashes", {}),
+        "mismatches": manifest_hash_check.get("mismatches", []),
+    }
+
+    # Schema validity overall.
+    schema_all_pass = all(s["result"] == "pass" for s in per_run_schema)
+
+    # Overall result: pass only if commit, manifest, and schema all pass.
+    overall = "pass" if (
+        commit_match["result"] == "pass"
+        and manifest_match["result"] == "pass"
+        and schema_all_pass
+    ) else "fail"
+
+    report: dict[str, Any] = {
+        "schema_version": 1,
+        "timestamp": _now_iso(),
+        "result": overall,
+        "linked_runs": linked_runs,
+        "commit_match": commit_match,
+        "manifest_match": manifest_match,
+        "per_run_schema_validity": per_run_schema,
+    }
+
+    _write_json(output_dir / "local_vs_ci_comparison_report.json", report)
+    return report
+
+
+def _generate_run_manifest_set_equality_diff_report(
+    evidence: list[dict[str, Any]],
+    output_dir: Path,
+) -> dict[str, Any]:
+    """Generate a run-manifest set-equality diff report.
+
+    Computes the union of all scenario IDs across evidence runs and checks
+    that each run covers the same set. Reports missing and extra scenarios
+    per run_type relative to the union.
+
+    Returns the report dict.
+    """
+    # Collect scenario sets per run_type.
+    per_run_type_scenarios: dict[str, list[str]] = {}
+    for e in evidence:
+        rt = e["run_type"]
+        sids = sorted({
+            s["scenario_id"] for s in e.get("scenario_summaries", [])
+        })
+        per_run_type_scenarios[rt] = sids
+
+    # Compute the union set.
+    all_scenario_ids: set[str] = set()
+    for sids in per_run_type_scenarios.values():
+        all_scenario_ids.update(sids)
+    union_set = sorted(all_scenario_ids)
+
+    # Compute per-run diffs against the union.
+    missing_scenarios: list[dict[str, Any]] = []
+    extra_scenarios: list[dict[str, Any]] = []
+
+    # For each run type, check if it has the full union set.
+    # "missing" = in union but not in this run.
+    # "extra" = in this run but not in other runs' intersection.
+    # For simplicity and clarity: compare each run against the union.
+    # If a scenario is in the union but NOT in a particular run, it's missing
+    # from that run. If scenario sets differ, there are missing entries.
+    for rt, sids in per_run_type_scenarios.items():
+        sid_set = set(sids)
+        missing_from_rt = sorted(all_scenario_ids - sid_set)
+        if missing_from_rt:
+            missing_scenarios.append({
+                "run_type": rt,
+                "missing": missing_from_rt,
+            })
+        # Extra: scenarios in this run but not in the intersection
+        # (i.e., not present in all runs).
+        if len(per_run_type_scenarios) > 1:
+            intersection = set(all_scenario_ids)
+            for other_sids in per_run_type_scenarios.values():
+                intersection &= set(other_sids)
+            extra_from_rt = sorted(sid_set - intersection)
+            if extra_from_rt:
+                extra_scenarios.append({
+                    "run_type": rt,
+                    "extra": extra_from_rt,
+                })
+
+    # Result: pass only if all runs have identical scenario sets.
+    all_equal = all(
+        set(sids) == all_scenario_ids
+        for sids in per_run_type_scenarios.values()
+    )
+    result = "pass" if all_equal else "fail"
+
+    report: dict[str, Any] = {
+        "schema_version": 1,
+        "timestamp": _now_iso(),
+        "result": result,
+        "union_scenarios": union_set,
+        "per_run_type_scenarios": {
+            rt: sids for rt, sids in sorted(per_run_type_scenarios.items())
+        },
+        "missing_scenarios": missing_scenarios,
+        "extra_scenarios": extra_scenarios,
+    }
+
+    _write_json(
+        output_dir / "run_manifest_set_equality_diff_report.json", report
+    )
+    return report
+
+
+# ---------------------------------------------------------------------------
 # Claim gate evaluation
 # ---------------------------------------------------------------------------
 
@@ -336,6 +506,22 @@ def evaluate_claim_gate(
             "pair_evaluations": pair_evaluations,
         })
 
+    # --- Cross-run alignment: set equality (VAL-CROSS-007) ---
+    set_equality_report = _generate_run_manifest_set_equality_diff_report(
+        evidence, output_dir,
+    )
+    set_equality_check = {
+        "result": set_equality_report["result"],
+        "union_scenarios": set_equality_report["union_scenarios"],
+        "missing_scenarios": set_equality_report["missing_scenarios"],
+        "extra_scenarios": set_equality_report["extra_scenarios"],
+    }
+
+    # --- Cross-run alignment: local-vs-CI comparison (VAL-CROSS-007) ---
+    _generate_local_vs_ci_comparison_report(
+        evidence, commit_check, manifest_hash_check, output_dir,
+    )
+
     # --- Overall gate ---
     checks_pass = all([
         run_type_check["result"] == "pass",
@@ -343,6 +529,7 @@ def evaluate_claim_gate(
         manifest_hash_check["result"] == "pass",
         parity_check["result"] == "pass",
         reproducibility_check["result"] == "pass",
+        set_equality_check["result"] == "pass",
     ])
     overall = "pass" if checks_pass else "fail"
 
@@ -365,6 +552,7 @@ def evaluate_claim_gate(
         "manifest_hash_check": manifest_hash_check,
         "parity_check": parity_check,
         "reproducibility_check": reproducibility_check,
+        "set_equality_check": set_equality_check,
         "scenario_claims": scenario_claims,
     }
 
@@ -516,6 +704,7 @@ def main() -> None:
     print(f"  Manifest hash check: {result['manifest_hash_check']['result'].upper()}")
     print(f"  Parity check: {result['parity_check']['result'].upper()}")
     print(f"  Reproducibility check: {result['reproducibility_check']['result'].upper()}")
+    print(f"  Set equality check: {result['set_equality_check']['result'].upper()}")
 
     if result["run_type_check"]["missing"]:
         print(f"  Missing run types: {result['run_type_check']['missing']}")
@@ -539,7 +728,10 @@ def main() -> None:
                     f"{pe['speedup_ratio']:.2f}x {status}"
                 )
 
-    print(f"\n  Artifact: {output_dir / 'claim_gate.json'}")
+    print(f"\n  Artifacts:")
+    print(f"    {output_dir / 'claim_gate.json'}")
+    print(f"    {output_dir / 'local_vs_ci_comparison_report.json'}")
+    print(f"    {output_dir / 'run_manifest_set_equality_diff_report.json'}")
 
     sys.exit(0 if result["gate"] == "pass" else 1)
 
