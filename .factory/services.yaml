@@ -6,6 +6,8 @@ commands:
   lint: if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings; else echo "No Rust workspace yet; skipping Rust lint"; fi
   parity_baseline_smoke: python3 scripts/parity/run_matrix.py --target baseline --group smoke
   parity_edge_cases_baseline: python3 scripts/parity/run_matrix.py --target baseline --group edge-cases
+  parity_core_ignore_recursion_rust: python3 scripts/parity/run_matrix.py --target rust --group core-ignore-recursion
+  parity_core_matching_rust: python3 scripts/parity/run_matrix.py --target rust --group core-matching
   parity_validate_latest: python3 scripts/parity/validate_outputs.py --run latest
   parity_validate_fixture_integrity: python3 scripts/parity/validate_fixture_integrity.py
   parity_build_fixture_manifest_verify: python3 scripts/parity/build_fixture_manifest.py --verify

@@ -1,0 +1,22 @@
+{
+  "featureId": "rust-core-binary-symlink-largefile-maxcount-fix",
+  "reviewedAt": "2026-03-05T11:54:01Z",
+  "commitId": "4df8c502e81c996e8f323dc1c74b966521054941",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The fix addresses the two originally reported parity gaps (binary -c/-l handling and invert-match max-count basis), but introduces a new blocking max-count edge-case regression in --nomultiline + -v when --max-count=0.",
+    "issues": [
+      {
+        "file": "rust-ag/src/search.rs",
+        "line": 351,
+        "severity": "blocking",
+        "description": "In search_text_line_by_line(), scan_end uses .nth(opts.max_count - 1), which underflows at --max-count=0. This causes a debug panic (`attempt to subtract with overflow`) and release-mode parity break. Repro: `cargo run -q -p rust-ag -- --nocolor --nomultiline -m0 -v NEEDLE tests/edge-cases/max-count/few-matches.txt` panics, while baseline `./ag --nocolor --nomultiline -m0 -v ...` exits 0 with only non-matching lines and no ERR diagnostic."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/rust-search-core/scrutiny/reviews/rust-core-binary-symlink-largefile-maxcount.json",
+  "summary": "Reviewed fix transcript skeleton plus both diffs (89d4bad and 4df8c50). Original failures are targeted, but the fix is not ready to pass due to a new blocking max-count=0 invert-match regression in line-by-line mode."
+}

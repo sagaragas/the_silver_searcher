@@ -1,0 +1,26 @@
+{
+  "featureId": "rust-core-case-multiline-word-boundary-fix",
+  "reviewedAt": "2026-03-05T11:54:34Z",
+  "commitId": "75f81f9dd8c99f56c81e5f524c3de449af008899",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix directly addresses the prior blocking defect: conflicting --nomultiline/--multiline ordering now resolves with baseline-compatible last-wins semantics via MultilineMode, and regression coverage was expanded for multiline precedence while existing core-matching parity coverage remains intact.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The rewrite-worker skill and AGENTS guidance both call for strict test-first flow, but in this fix session implementation edits landed before parity test additions.",
+      "evidence": "worker-transcripts.jsonl (session dbdf012c-2c45-4dad-a599-827925482340) shows Edit calls on rust-ag/src/opts.rs and rust-ag/src/search.rs before the later Edit call adding tests in rust-ag/tests/parity_core_matching.rs."
+    },
+    {
+      "area": "services",
+      "observation": "Rust parity matrix command used for this milestone is not represented in .factory/services.yaml, which may reduce discoverability of expected validation commands for future workers.",
+      "evidence": "Feature verification steps and handoff run `python3 scripts/parity/run_matrix.py --target rust --group core-matching`, while .factory/services.yaml currently lists only baseline parity smoke/edge-case commands."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/rust-search-core/scrutiny/reviews/rust-core-case-multiline-word-boundary.json",
+  "summary": "Pass: the fix commit resolves the exact multiline precedence failure identified in the prior review and adds focused parity tests/scenarios for conflicting multiline flag order, with no new blocking issues found in reviewed diffs."
+}
