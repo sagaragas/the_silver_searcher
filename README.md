@@ -1,217 +1,248 @@
-# The Silver Searcher
+# The Silver Searcher — Rust Rewrite & Performance Study
 
-A code searching tool similar to `ack`, with a focus on speed.
+A code-searching tool similar to `ack`, with a focus on speed.
+This repository contains the original C implementation of `ag` **and** an
+incremental Rust rewrite (`rust-ag`) with a reproducible benchmark harness and
+an evidence-linked technical performance memo.
 
-[![Build Status](https://travis-ci.org/ggreer/the_silver_searcher.svg?branch=master)](https://travis-ci.org/ggreer/the_silver_searcher)
+## Mission Context
 
-[![Floobits Status](https://floobits.com/ggreer/ag.svg)](https://floobits.com/ggreer/ag/redirect)
+This fork carries a structured rewrite of [ggreer/the_silver_searcher](https://github.com/ggreer/the_silver_searcher)
+into Rust, accompanied by:
 
-[![#ag on Freenode](https://img.shields.io/badge/Freenode-%23ag-brightgreen.svg)](https://webchat.freenode.net/?channels=ag)
+- **Parity tests** — golden-output fixtures that compare `rust-ag` against
+  baseline `ag` across stdout, stderr, and exit-code channels.
+- **Benchmark harness** — scenario-matrix benchmarks comparing the Rust rewrite
+  against `ag`, `rg` (ripgrep), and `ugrep` with interleaved runs, warmup
+  policy, environment metadata capture, and raw-sample retention.
+- **Publication package** — a long-form technical memo with claim-evidence
+  linkage, metric reconciliation, license inventory, and adversarial Q&A,
+  intended for publication at `ragas.dev/blogs`.
 
-Do you know C? Want to improve ag? [I invite you to pair with me](http://geoff.greer.fm/2014/10/13/help-me-get-to-ag-10/).
+Public fork: <https://github.com/sagaragas/the_silver_searcher>
 
+## Repository Layout
 
-## What's so great about Ag?
+```
+.
+├── src/                 # Original C source for ag
+├── rust-ag/             # Rust rewrite (Cargo workspace member)
+│   ├── src/             #   Rust source (main.rs, search, ignore, CLI)
+│   └── tests/           #   Rust integration / parity tests
+├── tests/               # Upstream cram-based ag tests
+├── scripts/
+│   ├── parity/          # Parity runner & validation scripts
+│   └── bench/           # Scenario-manifest builder
+├── benchmarks/          # Benchmark harness, validators, and output artifacts
+│   ├── harness.py       #   Main harness entry point
+│   ├── out/             #   Run artifacts (latest symlink)
+│   └── tests/           #   Harness unit tests
+├── publication/         # Memo, claim-evidence map, license inventory, gates
+├── Cargo.toml           # Workspace root (members: rust-ag)
+├── build.sh             # Original C build (autogen + configure + make)
+└── .factory/            # Mission infrastructure (services, library, init)
+```
 
-* It is an order of magnitude faster than `ack`.
-* It ignores file patterns from your `.gitignore` and `.hgignore`.
-* If there are files in your source repo you don't want to search, just add their patterns to a `.ignore` file. (\*cough\* `*.min.js` \*cough\*)
-* The command name is 33% shorter than `ack`, and all keys are on the home row!
+## Prerequisites
 
-Ag is quite stable now. Most changes are new features, minor bug fixes, or performance improvements. It's much faster than Ack in my benchmarks:
+| Dependency | Purpose |
+|---|---|
+| Homebrew | macOS package manager (init script uses `brew`) |
+| `automake`, `autoconf`, `pkg-config` | C build toolchain for baseline `ag` |
+| `pcre`, `xz` | Libraries required by baseline `ag` |
+| Rust / Cargo | Rust rewrite build and test |
+| `ripgrep` (`rg`) | Benchmark comparator |
+| `ugrep` | Benchmark comparator |
+| Python 3 | Parity scripts, benchmark harness, publication gates |
+| `cram` (Python, in `.venv-ag-tests`) | Upstream ag test runner |
 
-    ack test_blah ~/code/  104.66s user 4.82s system 99% cpu 1:50.03 total
+All prerequisites are installed automatically by the init script (see below).
 
-    ag test_blah ~/code/  4.67s user 4.58s system 286% cpu 3.227 total
+## Setup
 
-Ack and Ag found the same results, but Ag was 34x faster (3.2 seconds vs 110 seconds). My `~/code` directory is about 8GB. Thanks to git/hg/ignore, Ag only searched 700MB of that.
+Run the one-time init script to install dependencies, create the Python venv,
+build baseline `ag`, and fetch Rust crates:
 
-There are also [graphs of performance across releases](http://geoff.greer.fm/ag/speed/).
+```sh
+.factory/init.sh
+```
 
-## How is it so fast?
+This is idempotent and safe to re-run.
 
-* Ag uses [Pthreads](https://en.wikipedia.org/wiki/POSIX_Threads) to take advantage of multiple CPU cores and search files in parallel.
-* Files are `mmap()`ed instead of read into a buffer.
-* Literal string searching uses [Boyer-Moore strstr](https://en.wikipedia.org/wiki/Boyer%E2%80%93Moore_string_search_algorithm).
-* Regex searching uses [PCRE's JIT compiler](http://sljit.sourceforge.net/pcre.html) (if Ag is built with PCRE >=8.21).
-* Ag calls `pcre_study()` before executing the same regex on every file.
-* Instead of calling `fnmatch()` on every pattern in your ignore files, non-regex patterns are loaded into arrays and binary searched.
+## Building
 
-I've written several blog posts showing how I've improved performance. These include how I [added pthreads](http://geoff.greer.fm/2012/09/07/the-silver-searcher-adding-pthreads/), [wrote my own `scandir()`](http://geoff.greer.fm/2012/09/03/profiling-ag-writing-my-own-scandir/), [benchmarked every revision to find performance regressions](http://geoff.greer.fm/2012/08/25/the-silver-searcher-benchmarking-revisions/), and profiled with [gprof](http://geoff.greer.fm/2012/02/08/profiling-with-gprof/) and [Valgrind](http://geoff.greer.fm/2012/01/23/making-programs-faster-profiling/).
+Build the original C `ag` binary and the Rust rewrite:
 
+```sh
+# Original C ag
+./build.sh
 
-## Installing
+# Rust rewrite (debug)
+cargo build --workspace
 
-### macOS
+# Rust rewrite (release, used by benchmarks)
+cargo build --workspace --release
+```
 
-    brew install the_silver_searcher
+## Running Tests
 
-or
+### All tests (baseline ag + Rust)
 
-    port install the_silver_searcher
+```sh
+PATH=".venv-ag-tests/bin:$PATH" make test   # upstream cram tests for C ag
+cargo test --workspace -- --test-threads=5   # Rust unit + integration tests
+```
 
+### Lint and type-check (Rust)
 
-### Linux
+```sh
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo check --workspace
+```
 
-* Ubuntu >= 13.10 (Saucy) or Debian >= 8 (Jessie)
+## Parity Validation
 
-        apt-get install silversearcher-ag
-* Fedora 21 and lower
+Parity scripts compare `rust-ag` output against baseline `ag` on golden
+fixtures across stdout, stderr, and exit code.
 
-        yum install the_silver_searcher
-* Fedora 22+
+```sh
+# Smoke parity (baseline)
+python3 scripts/parity/run_matrix.py --target baseline --group smoke
 
-        dnf install the_silver_searcher
-* RHEL7+
+# Core ignore/recursion parity (Rust)
+python3 scripts/parity/run_matrix.py --target rust --group core-ignore-recursion
 
-        yum install epel-release.noarch the_silver_searcher
-* Gentoo
+# Core matching parity (Rust)
+python3 scripts/parity/run_matrix.py --target rust --group core-matching
 
-        emerge -a sys-apps/the_silver_searcher
-* Arch
+# CLI count/stream parity (Rust)
+python3 scripts/parity/run_matrix.py --target rust --group cli-count-stream
 
-        pacman -S the_silver_searcher
+# Validate latest parity run
+python3 scripts/parity/validate_outputs.py --run latest
 
-* Slackware
+# Verify fixture and scenario manifest integrity
+python3 scripts/parity/validate_fixture_integrity.py
+python3 scripts/parity/build_fixture_manifest.py --verify
+python3 scripts/bench/build_scenario_manifest.py --verify
+```
 
-        sbopkg -i the_silver_searcher
+## Benchmark Harness
 
-* openSUSE
+The harness runs scenario-matrix benchmarks with interleaved execution,
+warmup, and raw-sample capture across four comparators.
 
-        zypper install the_silver_searcher
+```sh
+# Smoke benchmark (quick, no statistical claims)
+python3 benchmarks/harness.py smoke --comparators rust ag rg ugrep
 
-* CentOS
+# Measured benchmark (statistical samples)
+python3 benchmarks/harness.py measured --comparators rust ag rg ugrep \
+    --scenarios literal-simple --warmup 2 --samples 3 --timeout 30
 
-        yum install the_silver_searcher
+# Validate latest benchmark run
+python3 benchmarks/validate_manifest.py --run latest
+python3 benchmarks/validate_env_metadata.py --run latest
+python3 benchmarks/validate_sampling.py --run latest
+python3 benchmarks/manifest_pinning.py verify --run latest
 
-* NixOS/Nix/Nixpkgs
+# Correctness gate (ag vs rust-ag parity is a hard failure)
+python3 benchmarks/correctness_gate.py --run latest
 
-        nix-env -iA silver-searcher
+# Claim gate (threshold checks for performance claims)
+python3 benchmarks/claim_gate.py --run latest
 
-* SUSE Linux Enterprise: Follow [these simple instructions](https://software.opensuse.org/download.html?project=utilities&package=the_silver_searcher).
+# Benchmark unit tests
+python3 -m pytest benchmarks/tests/ -v
+```
 
+## Publication & Evidence Workflow
 
-### BSD
+The publication layer produces a long-form technical memo with claim-evidence
+linkage, metric reconciliation against benchmark artifacts, license disclosure,
+and style/quality gates.
 
-* FreeBSD
+```sh
+# Claim-evidence validation
+python3 publication/check_claims.py --memo publication/ragas_blog_memo.md
 
-        pkg install the_silver_searcher
-* OpenBSD/NetBSD
+# Metric reconciliation (memo values vs benchmark summary)
+python3 publication/reconcile_metrics.py --memo publication/ragas_blog_memo.md \
+    --summary benchmarks/out/latest/summary.json
 
-        pkg_add the_silver_searcher
+# Style and specificity gate
+python3 publication/style_gate.py --memo publication/ragas_blog_memo.md
 
-### Windows
+# License audit (requires publication/license_inventory.json)
+python3 publication/license_audit.py
 
-* Win32/64
+# Traceability check (memo commit ↔ parity/benchmark evidence)
+python3 publication/traceability_check.py --memo publication/ragas_blog_memo.md \
+    --run latest
 
-  Unofficial daily builds are [available](https://github.com/k-takata/the_silver_searcher-win32).
-  
-* winget
+# Metric table validation
+python3 publication/validate_metrics_tables.py --memo publication/ragas_blog_memo.md
 
-        winget install "The Silver Searcher"
-  
-  Notes:
-  - This installs a [release](https://github.com/JFLarvoire/the_silver_searcher/releases) of ag.exe optimized for Windows.
-  - winget is intended to become the default package manager client for Windows.  
-    As of June 2020, it's still in beta, and can be installed using instructions [there](https://github.com/microsoft/winget-cli).
-  - The setup script in the Ag's winget package installs ag.exe in the first directory that matches one of these criteria:
-     1. Over a previous instance of ag.exe *from the same [origin](https://github.com/JFLarvoire/the_silver_searcher)* found in the PATH
-     2. In the directory defined in environment variable bindir_%PROCESSOR_ARCHITECTURE%
-     3. In the directory defined in environment variable bindir
-     4. In the directory defined in environment variable windir
-  
-* Chocolatey
+# Publication test suite
+python3 -m pytest publication/tests/ -v
 
-        choco install ag
-* MSYS2
+# Package publication artifacts (checksums + manifest)
+python3 benchmarks/package_publication_artifacts.py --run latest
+python3 benchmarks/verify_checksums.py \
+    --manifest benchmarks/out/latest/publication/publication_manifest.json
+```
 
-        pacman -S mingw-w64-{i686,x86_64}-ag
-* Cygwin
+## Original C Build (Upstream Reference)
 
-  Run the relevant [`setup-*.exe`](https://cygwin.com/install.html), and select "the\_silver\_searcher" in the "Utils" category.
+<details>
+<summary>Upstream build and install instructions (for reference)</summary>
 
-## Building from source
-
-### Building master
+### Building from source
 
 1. Install dependencies (Automake, pkg-config, PCRE, LZMA):
-    * macOS:
 
-            brew install automake pkg-config pcre xz
-        or
+   **macOS:**
+   ```sh
+   brew install automake pkg-config pcre xz
+   ```
 
-            port install automake pkgconfig pcre xz
-    * Ubuntu/Debian:
+   **Ubuntu/Debian:**
+   ```sh
+   apt-get install -y automake pkg-config libpcre3-dev zlib1g-dev liblzma-dev
+   ```
 
-            apt-get install -y automake pkg-config libpcre3-dev zlib1g-dev liblzma-dev
-    * Fedora:
+   **Fedora:**
+   ```sh
+   yum -y install pkgconfig automake gcc zlib-devel pcre-devel xz-devel
+   ```
 
-            yum -y install pkgconfig automake gcc zlib-devel pcre-devel xz-devel
-    * CentOS:
+2. Run the build script:
+   ```sh
+   ./build.sh
+   ```
 
-            yum -y groupinstall "Development Tools"
-            yum -y install pcre-devel xz-devel zlib-devel
-    * openSUSE:
-
-            zypper source-install --build-deps-only the_silver_searcher
-
-    * Windows: It's complicated. See [this wiki page](https://github.com/ggreer/the_silver_searcher/wiki/Windows).
-2. Run the build script (which just runs aclocal, automake, etc):
-
-        ./build.sh
-
-   On Windows (inside an msys/MinGW shell):
-
-        make -f Makefile.w32
-3. Make install:
-
-        sudo make install
-
+3. Install:
+   ```sh
+   sudo make install
+   ```
 
 ### Building a release tarball
 
-GPG-signed releases are available [here](http://geoff.greer.fm/ag).
+GPG-signed releases are available at <http://geoff.greer.fm/ag>.
 
-Building release tarballs requires the same dependencies, except for automake and pkg-config. Once you've installed the dependencies, just run:
+```sh
+./configure
+make
+make install
+```
 
-    ./configure
-    make
-    make install
+</details>
 
-You may need to use `sudo` or run as root for the make install.
+## License
 
+Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-## Editor Integration
-
-### Vim
-
-You can use Ag with [ack.vim](https://github.com/mileszs/ack.vim) by adding the following line to your `.vimrc`:
-
-    let g:ackprg = 'ag --nogroup --nocolor --column'
-
-or:
-
-    let g:ackprg = 'ag --vimgrep'
-
-Which has the same effect but will report every match on the line.
-
-### Emacs
-
-You can use [ag.el][] as an Emacs front-end to Ag. See also: [helm-ag].
-
-[ag.el]: https://github.com/Wilfred/ag.el
-[helm-ag]: https://github.com/syohex/emacs-helm-ag
-
-### TextMate
-
-TextMate users can use Ag with [my fork](https://github.com/ggreer/AckMate) of the popular AckMate plugin, which lets you use both Ack and Ag for searching. If you already have AckMate you just want to replace Ack with Ag, move or delete `"~/Library/Application Support/TextMate/PlugIns/AckMate.tmplugin/Contents/Resources/ackmate_ack"` and run `ln -s /usr/local/bin/ag "~/Library/Application Support/TextMate/PlugIns/AckMate.tmplugin/Contents/Resources/ackmate_ack"`
-
-## Other stuff you might like
-
-* [Ack](https://github.com/petdance/ack3) - Better than grep. Without Ack, Ag would not exist.
-* [ack.vim](https://github.com/mileszs/ack.vim)
-* [Exuberant Ctags](http://ctags.sourceforge.net/) - Faster than Ag, but it builds an index beforehand. Good for *really* big codebases.
-* [Git-grep](http://git-scm.com/docs/git-grep) - As fast as Ag but only works on git repos.
-* [fzf](https://github.com/junegunn/fzf) - A command-line fuzzy finder 
-* [ripgrep](https://github.com/BurntSushi/ripgrep)
-* [Sack](https://github.com/sampson-chen/sack) - A utility that wraps Ack and Ag. It removes a lot of repetition from searching and opening matching files.
+The original Silver Searcher is copyright 2011–2016 Geoff Greer.
+The Rust rewrite (`rust-ag`) is licensed under Apache-2.0.
+Third-party attribution is documented in `publication/license_inventory.json`.
