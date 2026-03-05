@@ -598,17 +598,15 @@ def reconcile_speedup_table(
                 continue
 
             # Compare: memo states rounded ratio (e.g. 2.54) vs gate has
-            # full precision (e.g. 2.539). Tolerance for table is tighter
-            # since these are directly derived values.
+            # full precision (e.g. 2.539). Use the caller-provided tolerance
+            # so that reconciliation outcomes consistently reflect the
+            # configured threshold.
             diff = abs(memo_ratio - gate_ratio)
-            # Use a tighter tolerance for table ratios (they should be
-            # rounded versions of the exact gate values)
-            table_tol = 0.02  # Allow rounding to 2 decimal places
-            if diff > table_tol:
+            if diff > tolerance:
                 errors.append(
                     f"  Speedup table line {line_num}: {faster} vs {slower} "
                     f"{run_type}: memo={memo_ratio}×, gate={gate_ratio}×, "
-                    f"diff={diff:.4f} (tolerance={table_tol})"
+                    f"diff={diff:.4f} (tolerance={tolerance})"
                 )
                 evidence.append(
                     {
@@ -619,7 +617,7 @@ def reconcile_speedup_table(
                         "memo_ratio": memo_ratio,
                         "gate_ratio": gate_ratio,
                         "diff": round(diff, 4),
-                        "tolerance": table_tol,
+                        "tolerance": tolerance,
                         "result": "fail",
                     }
                 )
@@ -634,7 +632,7 @@ def reconcile_speedup_table(
                         "memo_ratio": memo_ratio,
                         "gate_ratio": gate_ratio,
                         "diff": round(diff, 4),
-                        "tolerance": table_tol,
+                        "tolerance": tolerance,
                         "result": "pass",
                     }
                 )
@@ -862,6 +860,10 @@ def main() -> int:
         "schema_version": 2,
         "memo_file": str(memo_path),
         "runs_checked": runs_checked,
+        "effective_tolerances": {
+            "table_tolerance_ms": args.tolerance,
+            "speedup_tolerance_ratio": args.speedup_tolerance,
+        },
         "table_values_found": len(memo_table_values),
         "speedup_claims_found": len(memo_speedups),
         "speedup_table_rows_found": len(memo_speedup_table),
@@ -879,6 +881,7 @@ def main() -> int:
                 "total_checks": len(speedup_table_evidence),
                 "validated_pass": table_validated,
                 "validated_fail": table_failed,
+                "tolerance": args.speedup_tolerance,
                 "evidence": speedup_table_evidence,
             },
             "result": "pass" if not speedup_narrative_errors and not speedup_table_errors else "fail",

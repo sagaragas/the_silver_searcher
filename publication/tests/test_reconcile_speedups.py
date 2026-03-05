@@ -472,6 +472,65 @@ class TestReconcileSpeedupTable:
         errors, evidence, ok_count = reconcile_speedup_table([], None)
         assert len(errors) == 0
 
+    def test_tolerance_controls_pass_fail(self):
+        """Table-claim pass/fail outcomes change consistently with configured
+        tolerance thresholds — proving caller-provided tolerance is used."""
+        # Gate has local_ratio=2.539; memo says 2.54 => diff=0.001
+        gate = _make_claim_gate([
+            _make_pair_eval("rg", "ag", 2.539, 2.4547, 2.4834),
+        ])
+        table_values = [
+            {
+                "faster": "rg",
+                "slower": "ag",
+                "local_ratio": 2.54,
+                "nightly_ratio": 2.45,
+                "manual_ratio": 2.48,
+                "ci_overlap": 0.0,
+                "line_num": 10,
+            }
+        ]
+        # With generous tolerance (0.15), all should pass
+        errors, evidence, ok_count = reconcile_speedup_table(
+            table_values, gate, tolerance=0.15
+        )
+        assert len(errors) == 0
+        assert ok_count == 3
+        assert all(e["result"] == "pass" for e in evidence)
+        assert all(e["tolerance"] == 0.15 for e in evidence)
+
+        # With extremely tight tolerance (0.0001), small rounding diffs
+        # between memo (2.54) and gate (2.539) will now cause failures
+        errors_tight, evidence_tight, ok_tight = reconcile_speedup_table(
+            table_values, gate, tolerance=0.0001
+        )
+        assert len(errors_tight) > 0
+        fail_evs = [e for e in evidence_tight if e["result"] == "fail"]
+        assert len(fail_evs) > 0
+        assert all(e["tolerance"] == 0.0001 for e in evidence_tight)
+
+    def test_evidence_records_tolerance(self):
+        """Each evidence entry in reconciliation output records the effective
+        tolerance used for that check."""
+        gate = _make_claim_gate([
+            _make_pair_eval("rg", "ag", 2.539, 2.4547, 2.4834),
+        ])
+        table_values = [
+            {
+                "faster": "rg",
+                "slower": "ag",
+                "local_ratio": 2.54,
+                "nightly_ratio": 2.45,
+                "manual_ratio": 2.48,
+                "ci_overlap": 0.0,
+                "line_num": 10,
+            }
+        ]
+        _, evidence, _ = reconcile_speedup_table(table_values, gate, tolerance=0.05)
+        for entry in evidence:
+            assert "tolerance" in entry, "Evidence must record effective tolerance"
+            assert entry["tolerance"] == 0.05
+
     def test_multiple_pairs(self):
         """Multiple pairs should all be validated."""
         gate = _make_claim_gate([
@@ -645,6 +704,94 @@ class TestReportPersistence:
         sc = report["speedup_claim_reconciliation"]
         assert "narrative_claims" in sc
         assert "evidence" in sc["narrative_claims"]
+
+    def test_report_records_effective_tolerances(self, repo_data_available):
+        """reconciliation_report.json records the effective tolerance values
+        used for both table-value and speedup-claim validation."""
+        import subprocess
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "publication" / "reconcile_metrics.py"),
+                "--memo",
+                str(REPO_ROOT / "publication" / "ragas_blog_memo.md"),
+                "--summary",
+                str(REPO_ROOT / "benchmarks" / "out" / "latest" / "summary.json"),
+                "--tolerance",
+                "0.03",
+                "--speedup-tolerance",
+                "0.20",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+        )
+        report_path = REPO_ROOT / "publication" / "reconciliation_report.json"
+        assert report_path.exists()
+        report = json.loads(report_path.read_text())
+        assert "effective_tolerances" in report
+        assert report["effective_tolerances"]["table_tolerance_ms"] == 0.03
+        assert report["effective_tolerances"]["speedup_tolerance_ratio"] == 0.20
+        # table_claims section should also record tolerance
+        sc = report.get("speedup_claim_reconciliation", {})
+        if "table_claims" in sc:
+            assert sc["table_claims"]["tolerance"] == 0.20
+
+    def test_table_claim_tolerance_changes_outcome(self, repo_data_available):
+        """Demonstrates that tightening speedup-tolerance changes
+        table-claim pass/fail outcomes — proving the caller-provided
+        tolerance flows through to reconcile_speedup_table."""
+        import subprocess
+
+        # Run with generous tolerance
+        result_relaxed = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "publication" / "reconcile_metrics.py"),
+                "--memo",
+                str(REPO_ROOT / "publication" / "ragas_blog_memo.md"),
+                "--summary",
+                str(REPO_ROOT / "benchmarks" / "out" / "latest" / "summary.json"),
+                "--speedup-tolerance",
+                "0.15",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+        )
+        report_path = REPO_ROOT / "publication" / "reconciliation_report.json"
+        report_relaxed = json.loads(report_path.read_text())
+
+        # Run with extremely tight tolerance
+        result_tight = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "publication" / "reconcile_metrics.py"),
+                "--memo",
+                str(REPO_ROOT / "publication" / "ragas_blog_memo.md"),
+                "--summary",
+                str(REPO_ROOT / "benchmarks" / "out" / "latest" / "summary.json"),
+                "--speedup-tolerance",
+                "0.0001",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+        )
+        report_tight = json.loads(report_path.read_text())
+
+        # With relaxed tolerance, table claims should (mostly) pass
+        tc_relaxed = report_relaxed["speedup_claim_reconciliation"]["table_claims"]
+        # With tight tolerance, table claims should have more failures
+        tc_tight = report_tight["speedup_claim_reconciliation"]["table_claims"]
+
+        # The tight run should have strictly more failures than the relaxed run
+        assert tc_tight["validated_fail"] > tc_relaxed["validated_fail"], (
+            f"Tightening tolerance should increase failures: "
+            f"relaxed_fail={tc_relaxed['validated_fail']}, "
+            f"tight_fail={tc_tight['validated_fail']}"
+        )
 
     def test_fail_report_includes_speedup_failure_evidence(self, repo_data_available):
         """Failed reconciliation reports should include explicit speedup-claim

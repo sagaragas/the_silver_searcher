@@ -2,6 +2,10 @@
   "schema_version": 2,
   "memo_file": "publication/ragas_blog_memo.md",
   "runs_checked": 3,
+  "effective_tolerances": {
+    "table_tolerance_ms": 0.02,
+    "speedup_tolerance_ratio": 0.15
+  },
   "table_values_found": 12,
   "speedup_claims_found": 13,
   "speedup_table_rows_found": 6,
@@ -176,6 +180,7 @@
       "total_checks": 18,
       "validated_pass": 18,
       "validated_fail": 0,
+      "tolerance": 0.15,
       "evidence": [
         {
           "line_num": 265,
@@ -185,7 +190,7 @@
           "memo_ratio": 2.54,
           "gate_ratio": 2.539,
           "diff": 0.001,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -196,7 +201,7 @@
           "memo_ratio": 2.45,
           "gate_ratio": 2.4547,
           "diff": 0.0047,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -207,7 +212,7 @@
           "memo_ratio": 2.48,
           "gate_ratio": 2.4834,
           "diff": 0.0034,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -218,7 +223,7 @@
           "memo_ratio": 2.03,
           "gate_ratio": 2.0272,
           "diff": 0.0028,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -229,7 +234,7 @@
           "memo_ratio": 1.96,
           "gate_ratio": 1.9596,
           "diff": 0.0004,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -240,7 +245,7 @@
           "memo_ratio": 1.96,
           "gate_ratio": 1.9624,
           "diff": 0.0024,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -251,7 +256,7 @@
           "memo_ratio": 4.89,
           "gate_ratio": 4.8873,
           "diff": 0.0027,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -262,7 +267,7 @@
           "memo_ratio": 4.76,
           "gate_ratio": 4.7605,
           "diff": 0.0005,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -273,7 +278,7 @@
           "memo_ratio": 4.95,
           "gate_ratio": 4.9458,
           "diff": 0.0042,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -284,7 +289,7 @@
           "memo_ratio": 1.25,
           "gate_ratio": 1.2525,
           "diff": 0.0025,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -295,7 +300,7 @@
           "memo_ratio": 1.25,
           "gate_ratio": 1.2527,
           "diff": 0.0027,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -306,7 +311,7 @@
           "memo_ratio": 1.27,
           "gate_ratio": 1.2655,
           "diff": 0.0045,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -317,7 +322,7 @@
           "memo_ratio": 1.92,
           "gate_ratio": 1.9249,
           "diff": 0.0049,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -328,7 +333,7 @@
           "memo_ratio": 1.94,
           "gate_ratio": 1.9393,
           "diff": 0.0007,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -339,7 +344,7 @@
           "memo_ratio": 1.99,
           "gate_ratio": 1.9916,
           "diff": 0.0016,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -350,7 +355,7 @@
           "memo_ratio": 2.41,
           "gate_ratio": 2.4108,
           "diff": 0.0008,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -361,7 +366,7 @@
           "memo_ratio": 2.43,
           "gate_ratio": 2.4294,
           "diff": 0.0006,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         },
         {
@@ -372,7 +377,7 @@
           "memo_ratio": 2.52,
           "gate_ratio": 2.5202,
           "diff": 0.0002,
-          "tolerance": 0.02,
+          "tolerance": 0.15,
           "result": "pass"
         }
       ]
