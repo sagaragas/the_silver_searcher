@@ -24,6 +24,7 @@ Testing surface information for validators and workers.
 - One-device/symlink edge cases may be platform-dependent and require explicit skip notes.
 - Version output may vary by compile-time features; normalize format where required by contract.
 - `scripts/parity/run_matrix.py` currently has CLI groups `cli-formatting` and `cli-exit-errors` only; there is no `cli-count-stream` group, so `VAL-CLI-001..003` require direct baseline-vs-rust CLI transcripts.
+- Baseline `ag` disables stdin stream mode when `--parallel` is enabled; stream parity checks should omit `--parallel` while keeping deterministic flags (`--nocolor --workers=1 --noaffinity`).
 
 ## Evidence Capture Requirements
 
