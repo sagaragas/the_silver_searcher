@@ -1,39 +1,33 @@
 {
   "featureId": "benchmark-harness-manifests-correctness-env",
-  "reviewedAt": "2026-03-05T16:47:18Z",
-  "commitId": "285b87b",
+  "reviewedAt": "2026-03-05T17:03:44Z",
+  "commitId": "1e2527f6bc0a2e467d75e73a4444fcc006a81f2d",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
-  "status": "fail",
+  "status": "pass",
   "codeReview": {
-    "summary": "Manifest pinning (VAL-BENCH-003) and environment metadata capture (VAL-BENCH-005) are implemented with solid focused tests, but VAL-BENCH-004 is not fully enforced in the harness because correctness-gate failure does not currently fail smoke/run commands. Confidence: high.",
+    "summary": "The fix addresses the prior blocking failure for VAL-BENCH-004: correctness-gate failures are now propagated into the run manifest and enforced by CLI exit handling for smoke/run/measured paths, including the zero-cell-errors scenario. Manifest pinning and environment metadata behavior remain intact in the reviewed diff.",
     "issues": [
-      {
-        "file": "benchmarks/harness.py",
-        "line": 721,
-        "severity": "blocking",
-        "description": "The harness computes correctness gate status (`gate_status = gate_result[\"gate\"].upper()` at line 601) but smoke/run exit logic only fails on `cell_totals.errors` (lines 721 and 750). A failing correctness gate can therefore still return success, so benchmark performance flow is not hard-blocked by correctness failures as required by the feature's expected behavior for VAL-BENCH-004."
-      },
       {
         "file": "benchmarks/correctness_gate.py",
         "line": 263,
         "severity": "non_blocking",
-        "description": "Failure-detail printing checks `hash_divergence`, but scenario detail entries are written under `parity_divergence` (line 154), so parity hash divergence details are suppressed in CLI failure output."
+        "description": "Failure-detail printing still checks `hash_divergence`, but scenario details are emitted as `parity_divergence` and `cross_tool_hashes`, so detailed divergence output is suppressed in CLI failure summaries."
       }
     ]
   },
   "sharedStateObservations": [
     {
       "area": "skills",
-      "observation": "The benchmark-worker skill does not explicitly state that VAL-BENCH-004 requires hard enforcement (non-zero/fail-state propagation) when correctness gating fails, which likely contributed to gate status being recorded but not enforced in harness exit behavior.",
-      "evidence": ".factory/skills/benchmark-worker/SKILL.md Work Procedure references gate tests and artifact generation but not fail-state propagation; commit 285b87b harness code computes `gate_status` without using it in smoke/run exit conditions."
+      "observation": "The benchmark-worker skill procedure still does not explicitly call out VAL-BENCH-004 fail-state propagation to CLI exit codes as a required acceptance check.",
+      "evidence": ".factory/skills/benchmark-worker/SKILL.md lists gate/artifact work but not explicit smoke/run non-zero enforcement on correctness-gate failure; the prior blocking failure was exactly missing exit propagation."
     },
     {
       "area": "knowledge",
-      "observation": "Shared benchmarking knowledge does not capture the parity-pair rule (ag/rust-ag hard gate, cross-tool divergence advisory) that was discovered during implementation.",
-      "evidence": "handoff.skillFeedback.suggestedChanges calls this out; .factory/library/benchmarking.md currently lists controls/outputs but omits parity-pair correctness semantics."
+      "observation": "Shared benchmarking library notes still omit parity-pair gate semantics (ag/rust-ag hard gate vs cross-tool divergence advisory).",
+      "evidence": ".factory/library/benchmarking.md includes comparator set and artifact controls, but not parity-pair correctness behavior reflected in benchmarks/correctness_gate.py and prior review findings."
     }
   ],
-  "addressesFailureFrom": null,
-  "summary": "I reviewed feature metadata, handoff, transcript skeleton, skill guidance, and commit 285b87b diffs. The feature has good coverage for manifest pinning and environment metadata, but I marked it failed due to missing hard propagation of correctness-gate failure in harness smoke/run paths; one additional non-blocking CLI reporting key mismatch was found."
+  "addressesFailureFrom": "/Users/ragas/code/missions/the_silver_searcher/.factory/validation/benchmark-harness/scrutiny/reviews/benchmark-harness-manifests-correctness-env.json",
+  "summary": "Reviewed fix session 6a29807f-99c6-4edb-b619-be060c95897e, handoff commit 1e2527f6bc0a2e467d75e73a4444fcc006a81f2d, transcript skeleton, and git diff. The prior blocking issue (correctness-gate fail not propagating to smoke/run exit status) is resolved; feature now passes with only a pre-existing non-blocking correctness-gate CLI detail-key mismatch noted."
 }

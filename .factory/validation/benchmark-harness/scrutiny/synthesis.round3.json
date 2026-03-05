@@ -1,0 +1,61 @@
+{
+  "milestone": "benchmark-harness",
+  "round": 3,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "PATH=\"/Users/ragas/code/missions/the_silver_searcher/.venv-ag-tests/bin:$PATH\" make -C \"/Users/ragas/code/missions/the_silver_searcher\" test && cargo test --workspace --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --test-threads=5",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "cargo check --workspace --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\"",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "cargo fmt --all --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --check && cargo clippy --workspace --all-targets --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- -D warnings",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 8,
+    "passed": 7,
+    "failed": 1,
+    "failedFeatures": [
+      "benchmark-harness-manifests-correctness-env"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "benchmark-harness-manifests-correctness-env",
+      "severity": "blocking",
+      "description": "Correctness gate result is computed in harness flows but not used to fail smoke/run command exit status. A failing correctness gate can still return success, so VAL-BENCH-004 is not hard-enforced end-to-end."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "benchmark-worker skill",
+      "suggestion": "Require explicit fail-state propagation tests for correctness-gate failures (smoke/run CLI must exit non-zero when correctness gate fails), not just gate artifact generation.",
+      "evidence": "Review of benchmark-harness-manifests-correctness-env found correctness-gate status recorded but not propagated to harness smoke/run failure status.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Comparator completeness policy should be made explicit in worker guidance.",
+      "reason": "already-addressed by the accepted scenario-matrix-equivalence-fix and prior scrutiny guidance"
+    },
+    {
+      "observation": "Sampling/claim-gate strictness recommendations from legacy sampling feature review.",
+      "reason": "superseded by completed fixes benchmark-harness-sampling-stats-claim-gates-sampling-policy-fix and benchmark-harness-sampling-stats-claim-gates-claim-consistency-fix"
+    },
+    {
+      "observation": "Publication bundle checksum/integrity recommendation from base feature review.",
+      "reason": "superseded by completed fix benchmark-publication-artifact-bundle-integrity-fix"
+    }
+  ],
+  "previousRound": ".factory/validation/benchmark-harness/scrutiny/synthesis.round2.json"
+}
