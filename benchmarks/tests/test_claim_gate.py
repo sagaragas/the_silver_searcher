@@ -318,6 +318,258 @@ class TestClaimGateArtifact:
         assert "threshold_config" in data
 
 
+class TestClaimGateManifestHashConsistency:
+    """Claims require identical manifest hashes across all run types."""
+
+    def test_consistent_manifest_hashes_pass(self, tmp_path):
+        from claim_gate import evaluate_claim_gate
+
+        hashes = {"scenarios": "hash-s", "queries": "hash-q", "corpus": "hash-c"}
+        evidence = [
+            _make_run_evidence("local-run-1", "local", manifest_hashes=hashes),
+            _make_run_evidence("nightly-run-1", "nightly", manifest_hashes=hashes),
+            _make_run_evidence("manual-run-1", "manual", manifest_hashes=hashes),
+        ]
+        result = evaluate_claim_gate(evidence, tmp_path)
+        assert result["manifest_hash_check"]["result"] == "pass"
+
+    def test_mixed_manifest_hashes_fail(self, tmp_path):
+        """Claim gate fails when manifest hashes differ across run types."""
+        from claim_gate import evaluate_claim_gate
+
+        evidence = [
+            _make_run_evidence(
+                "local-run-1", "local",
+                manifest_hashes={"scenarios": "hash-s", "queries": "hash-q", "corpus": "hash-c"},
+            ),
+            _make_run_evidence(
+                "nightly-run-1", "nightly",
+                manifest_hashes={"scenarios": "DIFFERENT", "queries": "hash-q", "corpus": "hash-c"},
+            ),
+            _make_run_evidence(
+                "manual-run-1", "manual",
+                manifest_hashes={"scenarios": "hash-s", "queries": "hash-q", "corpus": "hash-c"},
+            ),
+        ]
+        result = evaluate_claim_gate(evidence, tmp_path)
+        assert result["manifest_hash_check"]["result"] == "fail"
+        assert result["gate"] == "fail"
+
+    def test_all_manifest_keys_differ_fail(self, tmp_path):
+        """Claim gate fails when all manifest hash keys differ."""
+        from claim_gate import evaluate_claim_gate
+
+        evidence = [
+            _make_run_evidence(
+                "local-run-1", "local",
+                manifest_hashes={"scenarios": "a", "queries": "b", "corpus": "c"},
+            ),
+            _make_run_evidence(
+                "nightly-run-1", "nightly",
+                manifest_hashes={"scenarios": "x", "queries": "y", "corpus": "z"},
+            ),
+            _make_run_evidence(
+                "manual-run-1", "manual",
+                manifest_hashes={"scenarios": "a", "queries": "b", "corpus": "c"},
+            ),
+        ]
+        result = evaluate_claim_gate(evidence, tmp_path)
+        assert result["manifest_hash_check"]["result"] == "fail"
+        assert result["gate"] == "fail"
+
+    def test_single_run_manifest_hash_passes(self, tmp_path):
+        """Single run evidence trivially passes manifest consistency (no cross-check)."""
+        from claim_gate import evaluate_claim_gate
+
+        evidence = [
+            _make_run_evidence("local-run-1", "local"),
+        ]
+        result = evaluate_claim_gate(evidence, tmp_path)
+        # Single run: manifest hashes are trivially consistent
+        assert result["manifest_hash_check"]["result"] == "pass"
+
+    def test_artifact_records_manifest_hash_check(self, tmp_path):
+        """Claim gate artifact includes manifest_hash_check section."""
+        from claim_gate import evaluate_claim_gate
+
+        evidence = _make_full_evidence()
+        evaluate_claim_gate(evidence, tmp_path)
+        data = json.loads((tmp_path / "claim_gate.json").read_text())
+        assert "manifest_hash_check" in data
+        assert data["manifest_hash_check"]["result"] == "pass"
+
+
+class TestClaimGatePerRunTypeThreshold:
+    """Claim threshold must pass for each required run type."""
+
+    def test_all_run_types_pass_threshold(self, tmp_path):
+        """When all run types show clear speedup, per-run-type check passes."""
+        from claim_gate import evaluate_claim_gate
+
+        evidence = _make_full_evidence()
+        result = evaluate_claim_gate(evidence, tmp_path)
+        # All run types have the same clear stats; per-run-type should pass
+        claims = result.get("scenario_claims", [])
+        assert len(claims) > 0
+        for c in claims:
+            if c.get("evaluable"):
+                for pe in c.get("pair_evaluations", []):
+                    if pe["claim_allowed"]:
+                        assert pe.get("per_run_type_pass") is True
+
+    def test_local_passes_but_nightly_fails_blocks_claim(self, tmp_path):
+        """Claim is rejected when local passes threshold but nightly fails."""
+        from claim_gate import evaluate_claim_gate
+
+        # Local: rust-ag clearly faster (0.030 vs 0.050)
+        local_summaries = [
+            {
+                "scenario_id": "literal-simple",
+                "comparator_stats": {
+                    "ag": {
+                        "median_s": 0.050, "iqr_s": 0.005,
+                        "ci_lower_s": 0.045, "ci_upper_s": 0.055,
+                        "ci_level": 0.95, "measured_count": 5,
+                    },
+                    "rust-ag": {
+                        "median_s": 0.030, "iqr_s": 0.003,
+                        "ci_lower_s": 0.027, "ci_upper_s": 0.033,
+                        "ci_level": 0.95, "measured_count": 5,
+                    },
+                },
+            },
+        ]
+        # Nightly: rust-ag is actually SLOWER (direction disagreement)
+        nightly_summaries = [
+            {
+                "scenario_id": "literal-simple",
+                "comparator_stats": {
+                    "ag": {
+                        "median_s": 0.030, "iqr_s": 0.003,
+                        "ci_lower_s": 0.027, "ci_upper_s": 0.033,
+                        "ci_level": 0.95, "measured_count": 5,
+                    },
+                    "rust-ag": {
+                        "median_s": 0.050, "iqr_s": 0.005,
+                        "ci_lower_s": 0.045, "ci_upper_s": 0.055,
+                        "ci_level": 0.95, "measured_count": 5,
+                    },
+                },
+            },
+        ]
+        # Manual: same as local (passes)
+        manual_summaries = local_summaries
+
+        evidence = [
+            _make_run_evidence(
+                "local-run-1", "local",
+                scenario_summaries=local_summaries,
+            ),
+            _make_run_evidence(
+                "nightly-run-1", "nightly",
+                scenario_summaries=nightly_summaries,
+            ),
+            _make_run_evidence(
+                "manual-run-1", "manual",
+                scenario_summaries=manual_summaries,
+            ),
+        ]
+        result = evaluate_claim_gate(evidence, tmp_path)
+        claims = result.get("scenario_claims", [])
+        assert len(claims) == 1
+        sc = claims[0]
+        assert sc["evaluable"]
+        # The rust-ag > ag claim should be blocked due to nightly disagreement
+        for pe in sc.get("pair_evaluations", []):
+            if (pe["faster"] == "rust-ag" and pe["slower"] == "ag") or \
+               (pe["faster"] == "ag" and pe["slower"] == "rust-ag"):
+                assert not pe["claim_allowed"], \
+                    "Claim should be blocked when nightly disagrees with local"
+
+    def test_partial_threshold_pass_blocks_claim(self, tmp_path):
+        """Claim is blocked when threshold passes for local but not nightly (overlap)."""
+        from claim_gate import evaluate_claim_gate
+
+        # Local: clear separation
+        local_summaries = [
+            {
+                "scenario_id": "literal-simple",
+                "comparator_stats": {
+                    "ag": {
+                        "median_s": 0.050, "iqr_s": 0.005,
+                        "ci_lower_s": 0.045, "ci_upper_s": 0.055,
+                        "ci_level": 0.95, "measured_count": 5,
+                    },
+                    "rust-ag": {
+                        "median_s": 0.030, "iqr_s": 0.003,
+                        "ci_lower_s": 0.027, "ci_upper_s": 0.033,
+                        "ci_level": 0.95, "measured_count": 5,
+                    },
+                },
+            },
+        ]
+        # Nightly: rust-ag is faster but CIs overlap heavily (below threshold)
+        nightly_summaries = [
+            {
+                "scenario_id": "literal-simple",
+                "comparator_stats": {
+                    "ag": {
+                        "median_s": 0.050, "iqr_s": 0.020,
+                        "ci_lower_s": 0.030, "ci_upper_s": 0.070,
+                        "ci_level": 0.95, "measured_count": 5,
+                    },
+                    "rust-ag": {
+                        "median_s": 0.048, "iqr_s": 0.020,
+                        "ci_lower_s": 0.028, "ci_upper_s": 0.068,
+                        "ci_level": 0.95, "measured_count": 5,
+                    },
+                },
+            },
+        ]
+        # Manual: same as local
+        manual_summaries = local_summaries
+
+        evidence = [
+            _make_run_evidence(
+                "local-run-1", "local",
+                scenario_summaries=local_summaries,
+            ),
+            _make_run_evidence(
+                "nightly-run-1", "nightly",
+                scenario_summaries=nightly_summaries,
+            ),
+            _make_run_evidence(
+                "manual-run-1", "manual",
+                scenario_summaries=manual_summaries,
+            ),
+        ]
+        result = evaluate_claim_gate(evidence, tmp_path)
+        claims = result.get("scenario_claims", [])
+        assert len(claims) == 1
+        sc = claims[0]
+        assert sc["evaluable"]
+        for pe in sc.get("pair_evaluations", []):
+            if pe["faster"] in ("ag", "rust-ag") and pe["slower"] in ("ag", "rust-ag"):
+                assert not pe["claim_allowed"], \
+                    "Claim should be blocked when nightly threshold check fails"
+                assert pe.get("per_run_type_pass") is False
+
+    def test_per_run_type_details_in_artifact(self, tmp_path):
+        """Claim gate artifact includes per_run_type_results detail."""
+        from claim_gate import evaluate_claim_gate
+
+        evidence = _make_full_evidence()
+        evaluate_claim_gate(evidence, tmp_path)
+        data = json.loads((tmp_path / "claim_gate.json").read_text())
+        claims = data.get("scenario_claims", [])
+        assert len(claims) > 0
+        for c in claims:
+            if c.get("evaluable"):
+                for pe in c.get("pair_evaluations", []):
+                    assert "per_run_type_results" in pe, \
+                        "Each pair evaluation must include per_run_type_results"
+
+
 class TestClaimGateOverallGate:
     """Overall claim gate pass/fail."""
 
@@ -333,6 +585,27 @@ class TestClaimGateOverallGate:
 
         evidence = [
             _make_run_evidence("local-run-1", "local"),
+        ]
+        result = evaluate_claim_gate(evidence, tmp_path)
+        assert result["gate"] == "fail"
+
+    def test_mixed_manifest_fails_gate(self, tmp_path):
+        """Mixed manifests cause overall gate failure."""
+        from claim_gate import evaluate_claim_gate
+
+        evidence = [
+            _make_run_evidence(
+                "local-run-1", "local",
+                manifest_hashes={"scenarios": "hash-s", "queries": "hash-q", "corpus": "hash-c"},
+            ),
+            _make_run_evidence(
+                "nightly-run-1", "nightly",
+                manifest_hashes={"scenarios": "DIFFERENT", "queries": "hash-q", "corpus": "hash-c"},
+            ),
+            _make_run_evidence(
+                "manual-run-1", "manual",
+                manifest_hashes={"scenarios": "hash-s", "queries": "hash-q", "corpus": "hash-c"},
+            ),
         ]
         result = evaluate_claim_gate(evidence, tmp_path)
         assert result["gate"] == "fail"

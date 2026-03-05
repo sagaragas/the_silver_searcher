@@ -124,6 +124,35 @@ def evaluate_claim_gate(
         "unique_commits": sorted(commit_shas),
     }
 
+    # --- Manifest hash consistency check ---
+    manifest_hash_sets: list[dict[str, str]] = [
+        e.get("manifest_hashes", {}) for e in evidence
+    ]
+    if len(manifest_hash_sets) <= 1:
+        manifest_hash_consistent = True
+        manifest_hash_mismatches: list[str] = []
+    else:
+        reference = manifest_hash_sets[0]
+        manifest_hash_mismatches = []
+        for idx, mh in enumerate(manifest_hash_sets[1:], start=1):
+            if mh != reference:
+                differing_keys = sorted(
+                    k for k in set(reference) | set(mh)
+                    if reference.get(k) != mh.get(k)
+                )
+                manifest_hash_mismatches.append(
+                    f"run[{idx}] ({evidence[idx]['run_id']}): "
+                    f"differs on keys {differing_keys}"
+                )
+        manifest_hash_consistent = len(manifest_hash_mismatches) == 0
+
+    manifest_hash_check = {
+        "result": "pass" if manifest_hash_consistent else "fail",
+        "reference_run_id": evidence[0]["run_id"] if evidence else None,
+        "reference_hashes": manifest_hash_sets[0] if manifest_hash_sets else {},
+        "mismatches": manifest_hash_mismatches,
+    }
+
     # --- Parity gate check ---
     parity_results = [e.get("parity_gate", "unknown") for e in evidence]
     parity_all_pass = all(p == "pass" for p in parity_results)
@@ -173,7 +202,7 @@ def evaluate_claim_gate(
             continue
 
         # Evaluate pairwise comparator claims.
-        # Use the local run as the primary evidence source.
+        # Use the local run as the primary evidence source for direction.
         primary_stats = run_type_stats.get("local", {})
         comparators = sorted(primary_stats.keys())
 
@@ -189,7 +218,7 @@ def evaluate_claim_gate(
                 if med_a <= 0 or med_b <= 0:
                     continue
 
-                # Determine faster/slower.
+                # Determine faster/slower from primary (local) run.
                 if med_a < med_b:
                     faster, slower = comp_a, comp_b
                     ratio = med_b / med_a
@@ -206,7 +235,7 @@ def evaluate_claim_gate(
                     ci_slower[0], ci_slower[1],
                 )
 
-                # Check if the claim meets thresholds.
+                # Check if the claim meets thresholds on primary run.
                 speedup_ok = ratio >= min_speedup
                 overlap_ok = overlap <= max_overlap
 
@@ -224,7 +253,69 @@ def evaluate_claim_gate(
                                     cross_run_agree = False
                                     break
 
-                claim_allowed = speedup_ok and overlap_ok and cross_run_agree
+                # Per-run-type threshold evaluation: each required run type
+                # must independently pass speedup and CI overlap thresholds.
+                per_run_type_results: dict[str, dict[str, Any]] = {}
+                per_run_type_all_pass = True
+                for rt in sorted(required_types):
+                    rt_stats_map = run_type_stats.get(rt, {})
+                    if faster not in rt_stats_map or slower not in rt_stats_map:
+                        per_run_type_results[rt] = {
+                            "result": "skip",
+                            "reason": "comparator missing",
+                        }
+                        per_run_type_all_pass = False
+                        continue
+
+                    rt_faster_stats = rt_stats_map[faster]
+                    rt_slower_stats = rt_stats_map[slower]
+
+                    rt_faster_med = rt_faster_stats["median_s"]
+                    rt_slower_med = rt_slower_stats["median_s"]
+
+                    if rt_faster_med <= 0 or rt_slower_med <= 0:
+                        per_run_type_results[rt] = {
+                            "result": "skip",
+                            "reason": "zero or negative median",
+                        }
+                        per_run_type_all_pass = False
+                        continue
+
+                    rt_ratio = rt_slower_med / rt_faster_med
+                    rt_speedup_ok = rt_ratio >= min_speedup
+
+                    rt_ci_faster = (
+                        rt_faster_stats["ci_lower_s"],
+                        rt_faster_stats["ci_upper_s"],
+                    )
+                    rt_ci_slower = (
+                        rt_slower_stats["ci_lower_s"],
+                        rt_slower_stats["ci_upper_s"],
+                    )
+                    rt_overlap = _ci_overlap_fraction(
+                        rt_ci_faster[0], rt_ci_faster[1],
+                        rt_ci_slower[0], rt_ci_slower[1],
+                    )
+                    rt_overlap_ok = rt_overlap <= max_overlap
+
+                    rt_pass = rt_speedup_ok and rt_overlap_ok
+                    if not rt_pass:
+                        per_run_type_all_pass = False
+
+                    per_run_type_results[rt] = {
+                        "result": "pass" if rt_pass else "fail",
+                        "speedup_ratio": round(rt_ratio, 4),
+                        "ci_overlap_fraction": round(rt_overlap, 4),
+                        "speedup_threshold_met": rt_speedup_ok,
+                        "overlap_threshold_met": rt_overlap_ok,
+                    }
+
+                claim_allowed = (
+                    speedup_ok
+                    and overlap_ok
+                    and cross_run_agree
+                    and per_run_type_all_pass
+                )
 
                 pair_evaluations.append({
                     "faster": faster,
@@ -234,6 +325,8 @@ def evaluate_claim_gate(
                     "speedup_threshold_met": speedup_ok,
                     "overlap_threshold_met": overlap_ok,
                     "cross_run_agreement": cross_run_agree,
+                    "per_run_type_pass": per_run_type_all_pass,
+                    "per_run_type_results": per_run_type_results,
                     "claim_allowed": claim_allowed,
                 })
 
@@ -247,6 +340,7 @@ def evaluate_claim_gate(
     checks_pass = all([
         run_type_check["result"] == "pass",
         commit_check["result"] == "pass",
+        manifest_hash_check["result"] == "pass",
         parity_check["result"] == "pass",
         reproducibility_check["result"] == "pass",
     ])
@@ -268,6 +362,7 @@ def evaluate_claim_gate(
         },
         "run_type_check": run_type_check,
         "commit_check": commit_check,
+        "manifest_hash_check": manifest_hash_check,
         "parity_check": parity_check,
         "reproducibility_check": reproducibility_check,
         "scenario_claims": scenario_claims,
@@ -418,11 +513,17 @@ def main() -> None:
     print(f"  Linked runs: {result['linked_run_ids']}")
     print(f"  Run type check: {result['run_type_check']['result'].upper()}")
     print(f"  Commit check: {result['commit_check']['result'].upper()}")
+    print(f"  Manifest hash check: {result['manifest_hash_check']['result'].upper()}")
     print(f"  Parity check: {result['parity_check']['result'].upper()}")
     print(f"  Reproducibility check: {result['reproducibility_check']['result'].upper()}")
 
     if result["run_type_check"]["missing"]:
         print(f"  Missing run types: {result['run_type_check']['missing']}")
+
+    if result["manifest_hash_check"]["mismatches"]:
+        print("  Manifest hash mismatches:")
+        for m in result["manifest_hash_check"]["mismatches"]:
+            print(f"    {m}")
 
     if result["scenario_claims"]:
         print(f"\n  Scenario claims ({len(result['scenario_claims'])}):")
