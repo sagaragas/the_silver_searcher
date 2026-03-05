@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "description": "Benchmark scenario-command matrix for all comparators",
+  "comparators": [
+    "ag",
+    "rust-ag",
+    "rg",
+    "ugrep"
+  ],
+  "corpus_manifest_hash": "59a804f244ddfe4a2a3d5932fb85f2e2cbf166da6cd30bb1a138e9183984144a",
+  "query_manifest_hash": "b577900178a2feadb07da6bb6923f49c834c69fa4d1d325450cdfd0a2684a23b",
+  "manifest_hash": "356b418aed618820218202ccbbdc6d6994d0eeaa4aa36c9e8873e4e2a7a9d6b8",
+  "scenario_count": 12,
+  "scenarios": [
+    {
+      "id": "literal-simple",
+      "description": "Simple literal search across repo",
+      "query_id": "q-literal-simple",
+      "corpus": ".",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "literal-word",
+      "description": "Common word literal search",
+      "query_id": "q-literal-word",
+      "corpus": ".",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "literal-rare",
+      "description": "Rare literal (few matches, measures traversal)",
+      "query_id": "q-literal-rare",
+      "corpus": ".",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "literal-nomatch",
+      "description": "Literal with zero matches (pure traversal overhead)",
+      "query_id": "q-nomatch",
+      "corpus": ".",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "regex-simple",
+      "description": "Simple alternation regex search",
+      "query_id": "q-regex-simple",
+      "corpus": ".",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "regex-class",
+      "description": "Character-class identifier pattern",
+      "query_id": "q-regex-class",
+      "corpus": ".",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "regex-complex",
+      "description": "All-caps underscore identifiers",
+      "query_id": "q-regex-complex",
+      "corpus": ".",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "literal-nocase",
+      "description": "Case-insensitive literal search",
+      "query_id": "q-literal-nocase",
+      "corpus": ".",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -i {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -i {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never -i {pattern} {corpus}",
+        "ugrep": "ugrep --color=never -i {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "context-before-after",
+      "description": "Search with context lines (-B2 -A2)",
+      "query_id": "q-literal-simple",
+      "corpus": ".",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -B2 -A2 {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -B2 -A2 {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never -B2 -A2 {pattern} {corpus}",
+        "ugrep": "ugrep --color=never -B2 -A2 {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "count-matches",
+      "description": "Count matching lines (--count)",
+      "query_id": "q-literal-word",
+      "corpus": ".",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --count {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --count {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never --count {pattern} {corpus}",
+        "ugrep": "ugrep --color=never --count {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "files-with-matches",
+      "description": "List files with matches (-l)",
+      "query_id": "q-literal-word",
+      "corpus": ".",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -l {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -l {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never -l {pattern} {corpus}",
+        "ugrep": "ugrep --color=never -l {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "literal-src-only",
+      "description": "Literal search restricted to src/ directory",
+      "query_id": "q-literal-word",
+      "corpus": "src",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    }
+  ]
+}
