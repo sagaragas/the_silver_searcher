@@ -562,6 +562,80 @@ def evaluate_claim_gate(
 
 
 # ---------------------------------------------------------------------------
+# Cross-run evidence linking
+# ---------------------------------------------------------------------------
+
+
+def _find_linked_runs(
+    seed_dir: Path,
+    runs_base_dir: Path,
+) -> list[dict[str, Any]]:
+    """Find and link one run per required run_type matching the seed run's
+    commit_sha and manifest_hashes.
+
+    Scans all subdirectories of *runs_base_dir* that contain a
+    ``run_manifest.json``, selects candidates whose ``commit_sha`` and
+    ``manifest_hashes`` match the seed run, and returns exactly one evidence
+    dict per ``run_type`` (the most-recent directory name wins when there
+    are duplicates).
+
+    Args:
+        seed_dir: The seed benchmark run directory.
+        runs_base_dir: Parent directory containing all run subdirectories.
+
+    Returns:
+        List of evidence dicts (one per matched run_type).
+    """
+    seed_manifest_path = seed_dir / "run_manifest.json"
+    if not seed_manifest_path.exists():
+        return []
+
+    seed_manifest = _load_json(seed_manifest_path)
+    seed_commit = seed_manifest.get("commit_sha", "unknown")
+    seed_hashes = seed_manifest.get("manifest_hashes", {})
+
+    # Collect all candidate runs from the base directory.
+    # Each candidate must have a run_manifest.json with matching
+    # commit_sha and manifest_hashes.
+    candidates: dict[str, list[tuple[str, Path]]] = {}  # run_type -> [(dir_name, dir_path)]
+
+    for entry in sorted(runs_base_dir.iterdir()):
+        if not entry.is_dir():
+            continue
+        if entry.name == "latest":
+            continue
+        manifest_path = entry / "run_manifest.json"
+        if not manifest_path.exists():
+            continue
+        try:
+            manifest = _load_json(manifest_path)
+        except (json.JSONDecodeError, OSError):
+            continue
+
+        candidate_commit = manifest.get("commit_sha", "unknown")
+        candidate_hashes = manifest.get("manifest_hashes", {})
+        candidate_run_type = manifest.get("run_type", "unknown")
+
+        if candidate_commit != seed_commit:
+            continue
+        if candidate_hashes != seed_hashes:
+            continue
+
+        if candidate_run_type not in candidates:
+            candidates[candidate_run_type] = []
+        candidates[candidate_run_type].append((entry.name, entry))
+
+    # For each run_type, pick the most recent run (latest directory name).
+    evidence: list[dict[str, Any]] = []
+    for run_type in sorted(candidates.keys()):
+        entries = sorted(candidates[run_type], key=lambda x: x[0], reverse=True)
+        best_dir = entries[0][1]
+        evidence.append(load_run_evidence(best_dir))
+
+    return evidence
+
+
+# ---------------------------------------------------------------------------
 # Evidence loading from run directories
 # ---------------------------------------------------------------------------
 
@@ -677,14 +751,24 @@ def main() -> None:
             if subdir.is_dir() and (subdir / "run_manifest.json").exists():
                 evidence.append(load_run_evidence(subdir))
     else:
-        # Single run mode: load as local evidence.
+        # Seed-run mode: resolve the seed run directory and link matching
+        # runs across run types (local/nightly/manual) for the same commit
+        # and manifest hashes.
         if not args.run and not args.run_dir:
             args.run = "latest"
         run_dir = resolve_run_dir(args.run, args.run_dir)
         if not run_dir.exists():
             print(f"ERROR: Run directory not found: {run_dir}", file=sys.stderr)
             sys.exit(2)
-        evidence.append(load_run_evidence(run_dir))
+
+        # Determine the parent directory containing all run subdirectories.
+        runs_base_dir = run_dir.parent if run_dir.parent != run_dir else BENCHMARKS_OUT
+        evidence = _find_linked_runs(run_dir, runs_base_dir)
+
+        # Fallback: if linking found nothing (e.g. broken manifest), load
+        # the seed run alone so we still produce an artifact.
+        if not evidence:
+            evidence = [load_run_evidence(run_dir)]
 
     # Determine output directory.
     if args.evidence_dir:

@@ -985,3 +985,174 @@ class TestClaimGateCrossRunAlignmentIntegration:
         # Artifacts still generated
         assert (tmp_path / "local_vs_ci_comparison_report.json").exists()
         assert (tmp_path / "run_manifest_set_equality_diff_report.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# Cross-run evidence linking (_find_linked_runs)
+# ---------------------------------------------------------------------------
+
+
+def _create_run_dir(
+    base: Path,
+    run_id: str,
+    run_type: str,
+    commit_sha: str = "abc123",
+    manifest_hashes: dict | None = None,
+) -> Path:
+    """Create a synthetic benchmark run directory with a run_manifest.json."""
+    if manifest_hashes is None:
+        manifest_hashes = {
+            "scenarios": "hash-s",
+            "queries": "hash-q",
+            "corpus": "hash-c",
+        }
+    run_dir = base / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    manifest = {
+        "schema_version": 2,
+        "run_id": run_id,
+        "run_type": run_type,
+        "commit_sha": commit_sha,
+        "manifest_hashes": manifest_hashes,
+    }
+    (run_dir / "run_manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n"
+    )
+    return run_dir
+
+
+class TestFindLinkedRuns:
+    """Tests for _find_linked_runs cross-run evidence selection."""
+
+    def test_finds_all_three_run_types(self, tmp_path):
+        """Links exactly one run per required run_type matching commit + manifests."""
+        from claim_gate import _find_linked_runs
+
+        _create_run_dir(tmp_path, "run-local", "local")
+        _create_run_dir(tmp_path, "run-nightly", "nightly")
+        _create_run_dir(tmp_path, "run-manual", "manual")
+
+        seed_dir = tmp_path / "run-local"
+        linked = _find_linked_runs(seed_dir, tmp_path)
+        run_types = {e["run_type"] for e in linked}
+        assert run_types == {"local", "nightly", "manual"}
+        assert len(linked) == 3
+
+    def test_selects_exactly_one_per_run_type(self, tmp_path):
+        """When multiple runs of the same type exist, selects exactly one (most recent)."""
+        from claim_gate import _find_linked_runs
+
+        _create_run_dir(tmp_path, "20260305T100000Z", "local")
+        _create_run_dir(tmp_path, "20260305T110000Z", "local")
+        _create_run_dir(tmp_path, "20260305T120000Z", "nightly")
+        _create_run_dir(tmp_path, "20260305T130000Z", "manual")
+
+        seed_dir = tmp_path / "20260305T110000Z"
+        linked = _find_linked_runs(seed_dir, tmp_path)
+        run_types = [e["run_type"] for e in linked]
+        assert sorted(run_types) == ["local", "manual", "nightly"]
+        # The local run should be the more recent one (the seed)
+        local_entries = [e for e in linked if e["run_type"] == "local"]
+        assert len(local_entries) == 1
+        assert local_entries[0]["run_id"] == "20260305T110000Z"
+
+    def test_filters_by_commit_sha(self, tmp_path):
+        """Only links runs with matching commit_sha."""
+        from claim_gate import _find_linked_runs
+
+        _create_run_dir(tmp_path, "run-local", "local", commit_sha="abc123")
+        _create_run_dir(tmp_path, "run-nightly", "nightly", commit_sha="abc123")
+        _create_run_dir(tmp_path, "run-manual", "manual", commit_sha="DIFFERENT")
+
+        seed_dir = tmp_path / "run-local"
+        linked = _find_linked_runs(seed_dir, tmp_path)
+        run_types = {e["run_type"] for e in linked}
+        # manual has different commit, so only local + nightly
+        assert "manual" not in run_types
+        assert "local" in run_types
+        assert "nightly" in run_types
+
+    def test_filters_by_manifest_hashes(self, tmp_path):
+        """Only links runs with matching manifest_hashes."""
+        from claim_gate import _find_linked_runs
+
+        hashes_a = {"scenarios": "a", "queries": "b", "corpus": "c"}
+        hashes_b = {"scenarios": "x", "queries": "b", "corpus": "c"}
+
+        _create_run_dir(tmp_path, "run-local", "local", manifest_hashes=hashes_a)
+        _create_run_dir(tmp_path, "run-nightly", "nightly", manifest_hashes=hashes_a)
+        _create_run_dir(tmp_path, "run-manual", "manual", manifest_hashes=hashes_b)
+
+        seed_dir = tmp_path / "run-local"
+        linked = _find_linked_runs(seed_dir, tmp_path)
+        run_types = {e["run_type"] for e in linked}
+        # manual has different hashes, so excluded
+        assert "manual" not in run_types
+
+    def test_returns_only_seed_when_no_matches(self, tmp_path):
+        """When no other runs match, returns only the seed run evidence."""
+        from claim_gate import _find_linked_runs
+
+        _create_run_dir(tmp_path, "run-local", "local", commit_sha="abc123")
+        _create_run_dir(tmp_path, "run-nightly", "nightly", commit_sha="DIFF")
+        _create_run_dir(tmp_path, "run-manual", "manual", commit_sha="OTHER")
+
+        seed_dir = tmp_path / "run-local"
+        linked = _find_linked_runs(seed_dir, tmp_path)
+        assert len(linked) == 1
+        assert linked[0]["run_type"] == "local"
+
+    def test_skips_directories_without_manifest(self, tmp_path):
+        """Directories without run_manifest.json are silently skipped."""
+        from claim_gate import _find_linked_runs
+
+        _create_run_dir(tmp_path, "run-local", "local")
+        _create_run_dir(tmp_path, "run-nightly", "nightly")
+        # Create empty directory (no manifest)
+        (tmp_path / "no-manifest-dir").mkdir()
+
+        seed_dir = tmp_path / "run-local"
+        linked = _find_linked_runs(seed_dir, tmp_path)
+        # Should not crash; should find the two valid runs
+        run_ids = {e["run_id"] for e in linked}
+        assert "no-manifest-dir" not in run_ids
+
+    def test_prefers_most_recent_run_per_type(self, tmp_path):
+        """When multiple matching runs of same type exist, picks the most recent."""
+        from claim_gate import _find_linked_runs
+
+        # Older local run
+        _create_run_dir(tmp_path, "20260305T100000Z", "local")
+        # Newer local run (seed)
+        _create_run_dir(tmp_path, "20260305T120000Z", "local")
+        _create_run_dir(tmp_path, "20260305T110000Z", "nightly")
+        _create_run_dir(tmp_path, "20260305T130000Z", "manual")
+
+        seed_dir = tmp_path / "20260305T120000Z"
+        linked = _find_linked_runs(seed_dir, tmp_path)
+        local_entries = [e for e in linked if e["run_type"] == "local"]
+        assert len(local_entries) == 1
+        # Should pick the most recent (seed itself or later)
+        assert local_entries[0]["run_id"] == "20260305T120000Z"
+
+
+class TestClaimGateCLILinksMultipleRuns:
+    """Integration: claim_gate.py --run <id> links runs from run output dir."""
+
+    def test_main_links_three_run_types(self, tmp_path):
+        """When invoked with --run, links matching runs across run_types."""
+        from claim_gate import load_run_evidence, _find_linked_runs, evaluate_claim_gate
+
+        # Create three runs with same commit/manifests
+        _create_run_dir(tmp_path, "run-local", "local")
+        _create_run_dir(tmp_path, "run-nightly", "nightly")
+        _create_run_dir(tmp_path, "run-manual", "manual")
+
+        seed_dir = tmp_path / "run-local"
+        linked = _find_linked_runs(seed_dir, tmp_path)
+        assert len(linked) == 3
+
+        # Evaluate on the linked evidence
+        result = evaluate_claim_gate(linked, tmp_path)
+        assert result["run_type_check"]["result"] == "pass"
+        assert len(result["linked_run_ids"]) == 3
