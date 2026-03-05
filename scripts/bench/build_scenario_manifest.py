@@ -225,11 +225,7 @@ def _scenario(
         bf = base_flags[comp]
         ef = flags.get(comp, flags.get("all", ""))
         binary = comp if comp != "rust-ag" else "rust-ag"
-        if stdin_data is not None:
-            # Stream scenarios: pattern only, no corpus path.
-            commands[comp] = f"{binary} {bf} {ef} {{pattern}}".strip()
-        else:
-            commands[comp] = f"{binary} {bf} {ef} {{pattern}} {{corpus}}".strip()
+        commands[comp] = f"{binary} {bf} {ef} {{pattern}} {{corpus}}".strip()
         # Collapse multiple spaces.
         commands[comp] = " ".join(commands[comp].split())
 
@@ -373,7 +369,6 @@ SCENARIOS: list[dict[str, Any]] = [
         "q-stream-hello",
         stdin_data="hello world\nhello there\ngoodbye\nhello hello hello\n",
         groups=["cli-count-stream"],
-        comparators=["ag", "rust-ag"],
     ),
     _scenario(
         "cli-stream-count",
@@ -382,10 +377,11 @@ SCENARIOS: list[dict[str, Any]] = [
         flags={
             "ag": "-c",
             "rust-ag": "-c",
+            "rg": "--count",
+            "ugrep": "--count",
         },
         stdin_data="hello world\nhello there\ngoodbye\nhello hello hello\n",
         groups=["cli-count-stream"],
-        comparators=["ag", "rust-ag"],
     ),
     _scenario(
         "cli-stream-numbers",
@@ -394,10 +390,11 @@ SCENARIOS: list[dict[str, Any]] = [
         flags={
             "ag": "--numbers",
             "rust-ag": "--numbers",
+            "rg": "-n",
+            "ugrep": "-n",
         },
         stdin_data="hello world\nhello there\ngoodbye\nhello hello hello\n",
         groups=["cli-count-stream"],
-        comparators=["ag", "rust-ag"],
     ),
     # --- Filename-only scenarios ---
     _scenario(

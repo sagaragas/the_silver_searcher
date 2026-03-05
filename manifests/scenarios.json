@@ -9,7 +9,7 @@
   ],
   "corpus_manifest_hash": "67d60b0c17cdd4883793223df7ca3b0e7445cc6d19de602d086c8aaf5190ccda",
   "query_manifest_hash": "eae091869faf4b710242d5490b484f9ee239e35b83849f296b3f9bbe2d44a275",
-  "manifest_hash": "b36676fbd952d18f7702d3c16e7cb07320178b243b3fe02ac4dc81d8dafc8c04",
+  "manifest_hash": "9295a0a838573381798dbb7e3bd6348d781247a7c85ea8172fe0977d161d4362",
   "scenario_count": 38,
   "scenarios": [
     {
@@ -209,8 +209,10 @@
       "query_id": "q-stream-hello",
       "corpus": ".",
       "commands": {
-        "ag": "ag --nocolor --workers=1 --noaffinity {pattern}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --noaffinity {pattern}"
+        "ag": "ag --nocolor --workers=1 --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
       },
       "groups": [
         "cli-count-stream"
@@ -223,8 +225,10 @@
       "query_id": "q-stream-hello",
       "corpus": ".",
       "commands": {
-        "ag": "ag --nocolor --workers=1 --noaffinity -c {pattern}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --noaffinity -c {pattern}"
+        "ag": "ag --nocolor --workers=1 --noaffinity -c {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --noaffinity -c {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never --count {pattern} {corpus}",
+        "ugrep": "ugrep --color=never --count {pattern} {corpus}"
       },
       "groups": [
         "cli-count-stream"
@@ -237,8 +241,10 @@
       "query_id": "q-stream-hello",
       "corpus": ".",
       "commands": {
-        "ag": "ag --nocolor --workers=1 --noaffinity --numbers {pattern}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --noaffinity --numbers {pattern}"
+        "ag": "ag --nocolor --workers=1 --noaffinity --numbers {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --noaffinity --numbers {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never -n {pattern} {corpus}",
+        "ugrep": "ugrep --color=never -n {pattern} {corpus}"
       },
       "groups": [
         "cli-count-stream"
