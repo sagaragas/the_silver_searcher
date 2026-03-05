@@ -1,0 +1,5 @@
+{
+  "cross_device_available": false,
+  "platform": "Darwin",
+  "notes": "Cross-device symlink not created. Requires Linux with /dev/shm on a separate device."
+}

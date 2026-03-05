@@ -38,6 +38,7 @@ EXPECTED_CATEGORIES = [
     "hidden-files",
     "binary-files",
     "symlink-traversal",
+    "one-device",
     "large-file",
     "zero-length-regex",
     "max-count",
@@ -49,6 +50,7 @@ MIN_FILE_COUNTS = {
     "hidden-files": 3,
     "binary-files": 1,
     "symlink-traversal": 1,
+    "one-device": 3,  # local-file.txt, subdir/nested.txt, one-device-marker.json
     "large-file": 2,
     "zero-length-regex": 2,
     "max-count": 3,
@@ -376,23 +378,144 @@ def validate_binary_fixtures(result: IntegrityResult, verbose: bool) -> None:
 
 
 def validate_large_file(result: IntegrityResult, verbose: bool) -> None:
-    """Validate large-file fixture sizing."""
+    """Validate large-file fixture sizing and determinism.
+
+    Checks:
+      - large.txt exists and is >= 1 MB.
+      - large.txt.sha256 sidecar exists (determinism assertion).
+      - If both exist, the recorded checksum matches actual content.
+    """
     large_dir = EDGE_CASES_DIR / "large-file"
     if not large_dir.is_dir():
+        result.check("large_file_dir_exists", False, "large-file/ directory missing")
         return
 
     large_file = large_dir / "large.txt"
-    if large_file.is_file():
-        size = large_file.stat().st_size
-        # Should be at least 1MB.
-        result.check(
-            "large_file_size",
-            size >= 1_000_000,
-            f"Size: {size} bytes ({size / 1_000_000:.1f} MB)",
-        )
+    sha_file = large_dir / "large.txt.sha256"
 
-    if verbose and large_file.is_file():
-        print(f"  Large file: {large_file.stat().st_size} bytes")
+    result.check(
+        "large_file_exists",
+        large_file.is_file(),
+        "large-file/large.txt must be present",
+    )
+    if not large_file.is_file():
+        return
+
+    size = large_file.stat().st_size
+    result.check(
+        "large_file_size",
+        size >= 1_000_000,
+        f"Size: {size} bytes ({size / 1_000_000:.1f} MB)",
+    )
+
+    result.check(
+        "large_file_sha256_sidecar_exists",
+        sha_file.is_file(),
+        "large-file/large.txt.sha256 sidecar must be present for determinism check",
+    )
+    if sha_file.is_file():
+        import hashlib
+
+        expected_hash = sha_file.read_text(encoding="utf-8").split()[0]
+        actual_hash = hashlib.sha256(large_file.read_bytes()).hexdigest()
+        result.check(
+            "large_file_checksum_match",
+            actual_hash == expected_hash,
+            f"Expected {expected_hash[:16]}…, got {actual_hash[:16]}…",
+        )
+        if verbose:
+            print(f"  Large file: {size} bytes, sha256={actual_hash[:16]}…")
+    elif verbose:
+        print(f"  Large file: {size} bytes (no checksum sidecar)")
+
+
+def validate_one_device_fixtures(result: IntegrityResult, verbose: bool) -> None:
+    """Validate one-device traversal fixture integrity.
+
+    Checks:
+      - one-device/ directory exists with local fixture files.
+      - one-device-marker.json is present and well-formed.
+      - If marker claims cross-device is available, the symlink exists.
+      - Platform applicability metadata is consistent.
+    """
+    one_device_dir = EDGE_CASES_DIR / "one-device"
+    result.check(
+        "one_device_dir_exists",
+        one_device_dir.is_dir(),
+        "one-device/ fixture directory must be present",
+    )
+    if not one_device_dir.is_dir():
+        return
+
+    # Local fixture files must always be present regardless of platform.
+    local_file = one_device_dir / "local-file.txt"
+    result.check(
+        "one_device_local_file",
+        local_file.is_file(),
+        "one-device/local-file.txt must always exist",
+    )
+
+    nested_file = one_device_dir / "subdir" / "nested.txt"
+    result.check(
+        "one_device_nested_file",
+        nested_file.is_file(),
+        "one-device/subdir/nested.txt must always exist",
+    )
+
+    # Marker JSON.
+    marker_path = one_device_dir / "one-device-marker.json"
+    result.check(
+        "one_device_marker_exists",
+        marker_path.is_file(),
+        "one-device/one-device-marker.json must be present",
+    )
+    if not marker_path.is_file():
+        return
+
+    try:
+        with open(marker_path, "r", encoding="utf-8") as f:
+            marker = json.load(f)
+        result.check("one_device_marker_valid_json", True)
+    except (json.JSONDecodeError, OSError) as e:
+        result.check("one_device_marker_valid_json", False, str(e))
+        return
+
+    cross_avail = marker.get("cross_device_available", False)
+    plat = marker.get("platform", "?")
+
+    result.check(
+        "one_device_marker_has_platform",
+        "platform" in marker,
+        "Marker must include 'platform' field",
+    )
+    result.check(
+        "one_device_marker_has_notes",
+        bool(marker.get("notes")),
+        "Marker must include 'notes' field",
+    )
+
+    # If cross-device is claimed available, verify the symlink.
+    if cross_avail:
+        link = one_device_dir / "cross-device-link"
+        result.check(
+            "one_device_cross_device_link",
+            link.is_symlink(),
+            "cross-device-link symlink must exist when cross_device_available is true",
+        )
+        if link.is_symlink():
+            # The target directory should exist (it's on tmpfs).
+            target_exists = link.resolve().is_dir() if link.exists() else False
+            result.check(
+                "one_device_cross_device_target",
+                target_exists,
+                "cross-device-link target directory must be accessible",
+            )
+
+    if verbose:
+        print(
+            f"  One-device fixtures: platform={plat}, "
+            f"cross_device_available={cross_avail}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -454,6 +577,11 @@ def main() -> None:
     if args.verbose:
         print("\nStage 7: Large-file fixture")
     validate_large_file(result, args.verbose)
+
+    # Stage 8: One-device fixture.
+    if args.verbose:
+        print("\nStage 8: One-device fixture")
+    validate_one_device_fixtures(result, args.verbose)
 
     # Output results.
     if args.json:

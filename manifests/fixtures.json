@@ -4,8 +4,8 @@
   "fixture_dirs": [
     "tests"
   ],
-  "manifest_hash": "52c67fe42415b95534a3e6d5719a8ac853c5b8cb86a1af79ed917eabc016635c",
-  "file_count": 211,
+  "manifest_hash": "bd860c5106266de593a4d484b6c9295e53bf0df7d691a7e6b25d4007ab79005d",
+  "file_count": 236,
   "files": [
     {
       "path": "tests/adjacent_matches.t",
@@ -513,6 +513,11 @@
       "sha256": "4ee727f70e7aba585be04fc092c4fd6706b159de57c0dbdc47644b2af09ff4f0"
     },
     {
+      "path": "tests/edge-cases/large-file/large.txt.sha256",
+      "size": 76,
+      "sha256": "17c0e777cf813f7d21e677fa756c30a628734558abd02710bfea48c21135a995"
+    },
+    {
       "path": "tests/edge-cases/large-file/normal.txt",
       "size": 22,
       "sha256": "b64a8d2b0d2fe9763a110ef566f3e5e88cc0796fc6dde8df0ec355c3c4902757"
@@ -628,14 +633,134 @@
       "sha256": "b88dd860b64ae2094e06973538acbca25dc7683b7c96806e9642c46a01c4e7b5"
     },
     {
+      "path": "tests/edge-cases/one-device/.git/HEAD",
+      "size": 21,
+      "sha256": "28d25bf82af4c0e2b72f50959b2beb859e3e60b9630a5e8c603dad4ddb2b6e80"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/config",
+      "size": 137,
+      "sha256": "cae33efdb02cf774435c1ff9cb16bcc1014606908530c6e1dc727615fe3e8cda"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/description",
+      "size": 73,
+      "sha256": "85ab6c163d43a17ea9cf7788308bca1466f1b0a8d1cc92e26e9bf63da4062aee"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/hooks/applypatch-msg.sample",
+      "size": 478,
+      "sha256": "0223497a0b8b033aa58a3a521b8629869386cf7ab0e2f101963d328aa62193f7"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/hooks/commit-msg.sample",
+      "size": 896,
+      "sha256": "1f74d5e9292979b573ebd59741d46cb93ff391acdd083d340b94370753d92437"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/hooks/fsmonitor-watchman.sample",
+      "size": 4726,
+      "sha256": "e0549964e93897b519bd8e333c037e51fff0f88ba13e086a331592bf801fa1d0"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/hooks/post-update.sample",
+      "size": 189,
+      "sha256": "81765af2daef323061dcbc5e61fc16481cb74b3bac9ad8a174b186523586f6c5"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/hooks/pre-applypatch.sample",
+      "size": 424,
+      "sha256": "e15c5b469ea3e0a695bea6f2c82bcf8e62821074939ddd85b77e0007ff165475"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/hooks/pre-commit.sample",
+      "size": 1649,
+      "sha256": "57185b7b9f05239d7ab52db045f5b89eb31348d7b2177eab214f5eb872e1971b"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/hooks/pre-merge-commit.sample",
+      "size": 416,
+      "sha256": "d3825a70337940ebbd0a5c072984e13245920cdf8898bd225c8d27a6dfc9cb53"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/hooks/pre-push.sample",
+      "size": 1374,
+      "sha256": "ecce9c7e04d3f5dd9d8ada81753dd1d549a9634b26770042b58dda00217d086a"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/hooks/pre-rebase.sample",
+      "size": 4898,
+      "sha256": "4febce867790052338076f4e66cc47efb14879d18097d1d61c8261859eaaa7b3"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/hooks/pre-receive.sample",
+      "size": 544,
+      "sha256": "a4c3d2b9c7bb3fd8d1441c31bd4ee71a595d66b44fcf49ddb310252320169989"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/hooks/prepare-commit-msg.sample",
+      "size": 1492,
+      "sha256": "e9ddcaa4189fddd25ed97fc8c789eca7b6ca16390b2392ae3276f0c8e1aa4619"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/hooks/push-to-checkout.sample",
+      "size": 2783,
+      "sha256": "a53d0741798b287c6dd7afa64aee473f305e65d3f49463bb9d7408ec3b12bf5f"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/hooks/sendemail-validate.sample",
+      "size": 2308,
+      "sha256": "44ebfc923dc5466bc009602f0ecf067b9c65459abfe8868ddc49b78e6ced7a92"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/hooks/update.sample",
+      "size": 3650,
+      "sha256": "8d5f2fa83e103cf08b57eaa67521df9194f45cbdbcb37da52ad586097a14d106"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.git/info/exclude",
+      "size": 240,
+      "sha256": "6671fe83b7a07c8932ee89164d1f2793b2318058eb8b98dc5c06ee0a5a3b0ec1"
+    },
+    {
+      "path": "tests/edge-cases/one-device/.gitignore",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tests/edge-cases/one-device/local-file.txt",
+      "size": 31,
+      "sha256": "731a1967f24a7db5d9dab814bd3ac0da92d8e8de65dcb9c2eecc76546cb86eb8"
+    },
+    {
+      "path": "tests/edge-cases/one-device/one-device-marker.json",
+      "size": 161,
+      "sha256": "805579f00b24043c6c3e99875388091ef0b215b8db245f1d86a7e6092e7df5c7"
+    },
+    {
+      "path": "tests/edge-cases/one-device/subdir/nested.txt",
+      "size": 28,
+      "sha256": "28e862b6d8b1552a32bebe7d57858713f71c37f470de81e64995b944997e72b0"
+    },
+    {
       "path": "tests/edge-cases/platform_metadata.json",
       "size": 1580,
       "sha256": "ec79ad53e227b089cf856964723f1198e6aef48a1932dbd9f63c640100a22e77"
     },
     {
+      "path": "tests/edge-cases/quoted args/another file.txt",
+      "size": 113,
+      "sha256": "e6137be99b62d082243a811fe1dc65ffebf261709605750e2a5acf3d3309b239"
+    },
+    {
+      "path": "tests/edge-cases/quoted args/sample.txt",
+      "size": 177,
+      "sha256": "9110a51ebcd73607f775beb4ff4ba30b85792f791fe7f3137af2417d83722ef9"
+    },
+    {
       "path": "tests/edge-cases/setup_fixtures.py",
-      "size": 15718,
-      "sha256": "93841d53ee79ad8b1beaf4fcd12ff48c4feb3d87717677360d229ff268a897f2"
+      "size": 22868,
+      "sha256": "d6fc426fe17d2ea0f22a43c360f28d29a70cbd0a1a6361386a15628123d6d80a"
     },
     {
       "path": "tests/edge-cases/symlink-traversal/.git/HEAD",

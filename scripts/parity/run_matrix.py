@@ -416,7 +416,18 @@ def run_matrix(
             if skip_condition == "symlinks_unsupported":
                 should_skip = platform.system() == "Windows"
             elif skip_condition == "one_device_unavailable":
-                should_skip = not os.path.exists("/dev/shm")
+                # Check the fixture marker for the authoritative answer.
+                marker_path = REPO_ROOT / "tests" / "edge-cases" / "one-device" / "one-device-marker.json"
+                if marker_path.is_file():
+                    try:
+                        with open(marker_path, "r", encoding="utf-8") as _mf:
+                            _marker = json.load(_mf)
+                        should_skip = not _marker.get("cross_device_available", False)
+                    except (json.JSONDecodeError, OSError):
+                        should_skip = True
+                else:
+                    # No marker → fixture not set up; skip.
+                    should_skip = True
             if should_skip:
                 skip_reason = platform_skip.get("reason", "Platform condition not met")
                 print(f"  SKIP: {sid} — {skip_reason}")
