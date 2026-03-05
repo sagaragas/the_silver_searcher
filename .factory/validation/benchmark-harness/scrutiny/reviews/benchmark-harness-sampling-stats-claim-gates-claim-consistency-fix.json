@@ -1,0 +1,15 @@
+{
+  "featureId": "benchmark-harness-sampling-stats-claim-gates-claim-consistency-fix",
+  "reviewedAt": "2026-03-05T16:25:51Z",
+  "commitId": "50dfaeb",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix directly addresses the prior claim-gate consistency failures: it now enforces manifest-hash equality across evidence runs and requires threshold checks to pass per required run type (local/nightly/manual), with targeted tests covering mixed-manifest and partial-threshold failure cases.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/benchmark-harness/scrutiny/reviews/benchmark-harness-sampling-stats-claim-gates.json",
+  "summary": "Reviewed the fix transcript skeleton, prior failed review, and both diffs (84fb53a0161aff53b7a128fb60fe766c249d7e16 and 50dfaeb). The new implementation in benchmarks/claim_gate.py closes the two claim-consistency blockers from the prior failure, and new tests in benchmarks/tests/test_claim_gate.py validate those paths. Marking this fix review PASS."
+}

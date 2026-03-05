@@ -1,0 +1,15 @@
+{
+  "featureId": "benchmark-harness-sampling-stats-claim-gates-sampling-policy-fix",
+  "reviewedAt": "2026-03-05T16:26:18Z",
+  "commitId": "4d3b779",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix commit directly addresses the two sampling-policy blockers from the prior failed review: order-bias validation now enforces declared schedule semantics and seed/entry integrity, and measured CLI now exits non-zero when sampling validation fails. Added tests cover schedule-type mismatch, null seed, empty entries, overall gate propagation, and compliant sampling pass behavior.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/benchmark-harness/scrutiny/reviews/benchmark-harness-sampling-stats-claim-gates.json",
+  "summary": "Reviewed prior failure report, fix handoff/transcript skeleton, and both feature diffs (84fb53a0161aff53b7a128fb60fe766c249d7e16 and 4d3b779). The sampling-policy fix is adequate for its scope: VAL-BENCH-010 enforcement is tightened in benchmarks/validate_sampling.py and measured CLI failure propagation is implemented in benchmarks/harness.py, with behavior validated by added tests and recorded command evidence."
+}

@@ -1,0 +1,40 @@
+{
+  "featureId": "benchmark-harness-scenario-matrix-equivalence-fix",
+  "reviewedAt": "2026-03-05T16:27:28Z",
+  "commitId": "c779a1db0f51f89ef0e835269a65b5204951c0d7",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The fix adds required-cell checks for scenario-defined comparators and negative tests for missing/skipped/error cells, but it does not resolve the original failure that required full per-scenario comparator matrix enforcement across ag/rust-ag/rg/ugrep.",
+    "issues": [
+      {
+        "file": "benchmarks/validate_manifest.py",
+        "line": 159,
+        "severity": "blocking",
+        "description": "Required cells are computed as scenario command keys intersected with run comparators. If a scenario omits rg/ugrep command templates, those missing comparator cells are never treated as required, so validation still passes incomplete per-scenario matrices."
+      },
+      {
+        "file": "benchmarks/harness.py",
+        "line": 617,
+        "severity": "blocking",
+        "description": "Harness enforcement mirrors the same subset logic (also at line 994), while comparator/template absences are still represented as skipped 'No command template' cells (lines 536 and 877). This preserves the prior failure mode for omitted comparator templates."
+      },
+      {
+        "file": "benchmarks/tests/test_manifest_integrity.py",
+        "line": 537,
+        "severity": "blocking",
+        "description": "The fix codifies partial-scenario acceptance via test_validate_manifest_passes_for_partial_scenario (including explicit 'No rg/ugrep commands — they are NOT required' and assert-ok behavior), which conflicts with the original review failure and VAL-BENCH-001 full-matrix semantics."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Comparator completeness semantics remain ambiguous in shared state. Library guidance says comparator set is fixed to ag/rust-ag/rg/ugrep, while fix logic/tests define requiredness as scenario-local comparator subsets.",
+      "evidence": ".factory/library/benchmarking.md (fixed comparator set) vs benchmarks/validate_manifest.py:159 and benchmarks/tests/test_manifest_integrity.py:537-587 (partial scenarios explicitly permitted)."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/benchmark-harness/scrutiny/reviews/benchmark-harness-scenario-matrix-equivalence.json",
+  "summary": "Review failed: the fix improves handling of missing/skipped/error cells for scenario-declared comparators but does not fully address the original blocking issue of enforcing full per-scenario comparator-matrix completeness."
+}

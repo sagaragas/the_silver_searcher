@@ -1,100 +1,58 @@
 {
   "milestone": "benchmark-harness",
-  "round": 1,
+  "round": 2,
   "status": "fail",
   "validatorsRun": {
     "test": {
       "passed": true,
-      "command": "PATH=\".venv-ag-tests/bin:$PATH\" make test && cargo test --workspace -- --test-threads=5",
+      "command": "PATH=\"/Users/ragas/code/missions/the_silver_searcher/.venv-ag-tests/bin:$PATH\" make -C \"/Users/ragas/code/missions/the_silver_searcher\" test && cargo test --workspace --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --test-threads=5",
       "exitCode": 0
     },
     "typecheck": {
       "passed": true,
-      "command": "cargo check --workspace",
+      "command": "cargo check --workspace --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\"",
       "exitCode": 0
     },
     "lint": {
       "passed": true,
-      "command": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings",
+      "command": "cargo fmt --all --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --check && cargo clippy --workspace --all-targets --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- -D warnings",
       "exitCode": 0
     }
   },
   "reviewsSummary": {
     "total": 4,
-    "passed": 1,
-    "failed": 3,
+    "passed": 3,
+    "failed": 1,
     "failedFeatures": [
-      "benchmark-harness-scenario-matrix-equivalence",
-      "benchmark-harness-sampling-stats-claim-gates",
-      "benchmark-publication-artifact-bundle"
+      "benchmark-harness-scenario-matrix-equivalence-fix"
     ]
   },
   "blockingIssues": [
     {
-      "featureId": "benchmark-harness-scenario-matrix-equivalence",
+      "featureId": "benchmark-harness-scenario-matrix-equivalence-fix",
       "severity": "blocking",
-      "description": "Harness execution marks missing comparator command templates as skipped instead of failing matrix completeness, allowing incomplete scenario/comparator coverage to pass."
+      "description": "Required cells are computed as scenario command keys intersected with run comparators. If a scenario omits rg/ugrep command templates, those missing comparator cells are never treated as required, so validation still passes incomplete per-scenario matrices."
     },
     {
-      "featureId": "benchmark-harness-scenario-matrix-equivalence",
+      "featureId": "benchmark-harness-scenario-matrix-equivalence-fix",
       "severity": "blocking",
-      "description": "Manifest validation does not enforce required comparator coverage per scenario and can report pass with missing rg/ugrep cells."
+      "description": "Harness enforcement mirrors the same subset logic (also at line 994), while comparator/template absences are still represented as skipped 'No command template' cells (lines 536 and 877). This preserves the prior failure mode for omitted comparator templates."
     },
     {
-      "featureId": "benchmark-harness-sampling-stats-claim-gates",
+      "featureId": "benchmark-harness-scenario-matrix-equivalence-fix",
       "severity": "blocking",
-      "description": "Claim gate does not enforce manifest-hash consistency across local/nightly/manual evidence sets, so mixed-manifest evidence can pass."
-    },
-    {
-      "featureId": "benchmark-harness-sampling-stats-claim-gates",
-      "severity": "blocking",
-      "description": "Threshold evaluation is effectively local-run-only and does not require threshold pass for nightly/manual runs, violating VAL-BENCH-012 requirements."
-    },
-    {
-      "featureId": "benchmark-harness-sampling-stats-claim-gates",
-      "severity": "blocking",
-      "description": "Sampling validator treats any present execution schedule as sufficient without enforcing declared interleaving/randomization semantics or seed integrity."
-    },
-    {
-      "featureId": "benchmark-harness-sampling-stats-claim-gates",
-      "severity": "blocking",
-      "description": "Measured harness command can exit success even when sampling validation fails, weakening policy gate enforcement."
-    },
-    {
-      "featureId": "benchmark-publication-artifact-bundle",
-      "severity": "blocking",
-      "description": "Publication packaging only warns on missing required raw artifacts and continues, allowing incomplete bundles to be reported successful."
-    },
-    {
-      "featureId": "benchmark-publication-artifact-bundle",
-      "severity": "blocking",
-      "description": "Checksum verifier does not enforce checksum-map coverage against manifest artifacts/required artifacts, allowing checksum-entry removal tampering to pass verification."
+      "description": "The fix codifies partial-scenario acceptance via test_validate_manifest_passes_for_partial_scenario (including explicit 'No rg/ugrep commands — they are NOT required' and assert-ok behavior), which conflicts with the original review failure and VAL-BENCH-001 full-matrix semantics."
     }
   ],
   "appliedUpdates": [],
   "suggestedGuidanceUpdates": [
     {
       "target": "benchmark-worker skill",
-      "suggestion": "Document correctness-gate expectations explicitly: ag vs rust-ag parity is a hard gate, while rg/ugrep divergence handling is defined and auditable (hard-fail vs advisory) to avoid inconsistent implementation assumptions.",
-      "evidence": "Feature benchmark-harness-manifests-correctness-env review reported this rule was implemented but not clearly specified in .factory/skills/benchmark-worker/SKILL.md.",
-      "isSystemic": true
-    },
-    {
-      "target": "benchmark-worker skill",
-      "suggestion": "Require negative-path tests for publication gating controls (missing REQUIRED_RAW_ARTIFACTS and tampered/partial checksum maps) as part of publication artifact bundle acceptance criteria.",
-      "evidence": "Feature benchmark-publication-artifact-bundle review found blocking gaps that current skill step 7 language did not force to be tested.",
+      "suggestion": "Make comparator completeness policy explicit: each benchmark scenario must define and execute the full required comparator set (ag, rust-ag, rg, ugrep), and missing comparator templates/cells are always blocking failures.",
+      "evidence": "Fix review benchmark-harness-scenario-matrix-equivalence-fix found implementation/tests permitting partial scenario comparator subsets, conflicting with VAL-BENCH-001 and existing library comparator-set language.",
       "isSystemic": true
     }
   ],
-  "rejectedObservations": [
-    {
-      "observation": "Update .factory/library/benchmarking.md to resolve whether partial comparator sets are acceptable in scenarios.",
-      "reason": "ambiguous; this is currently in conflict with VAL-BENCH-001 and should be resolved by code/validation semantics first."
-    },
-    {
-      "observation": "Immediately update shared benchmarking knowledge with parity-pair correctness nuance.",
-      "reason": "deferred; guidance should be aligned by orchestrator with benchmark-worker skill updates to avoid policy/document drift."
-    }
-  ],
-  "previousRound": null
+  "rejectedObservations": [],
+  "previousRound": ".factory/validation/benchmark-harness/scrutiny/synthesis.round1.json"
 }
