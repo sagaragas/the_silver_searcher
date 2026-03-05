@@ -84,28 +84,40 @@ def extract_memo_manifest_hashes(memo_text: str) -> dict:
 
 def resolve_parity_summary(
     claim_map: dict, repo_root: Path
-) -> tuple[dict, str | None]:
-    """Resolve parity summary from claim_evidence_map parity_run_ids or latest.
+) -> tuple[dict, str | None, list[str]]:
+    """Resolve parity summary strictly from claim_evidence_map parity_run_ids.
 
-    Returns (summary_dict, source_label).
+    Returns (summary_dict, source_label, resolution_errors).
+
+    Hard-fails (via resolution_errors) when parity_run_ids are missing,
+    empty, or cannot be resolved to an existing artifact directory.
+    Does NOT fall back to parity-artifacts/latest.
     """
-    parity_run_ids = claim_map.get("parity_run_ids") or {}
+    errors: list[str] = []
+    parity_run_ids = claim_map.get("parity_run_ids")
     parity_dir = repo_root / "parity-artifacts"
 
-    # Try claim_evidence_map parity_run_ids first
+    if not parity_run_ids:
+        errors.append(
+            "claim_evidence_map has no parity_run_ids; "
+            "parity provenance cannot be established (no latest fallback)"
+        )
+        return {}, None, errors
+
+    # Try each declared parity_run_id
     for run_type, run_id in parity_run_ids.items():
         summary_path = parity_dir / run_id / "summary.json"
         if summary_path.exists():
-            return load_json(summary_path), f"parity_{run_type}_{run_id}"
+            return load_json(summary_path), f"parity_{run_type}_{run_id}", []
 
-    # Fall back to latest
-    latest = parity_dir / "latest"
-    if latest.exists():
-        summary = load_json(latest / "summary.json")
-        if summary:
-            return summary, "parity_latest"
-
-    return {}, None
+    # All declared parity_run_ids failed to resolve
+    unresolved = {rt: rid for rt, rid in parity_run_ids.items()}
+    errors.append(
+        f"All claim_evidence_map parity_run_ids are unresolved "
+        f"(no matching artifact directories): {json.dumps(unresolved)}. "
+        f"No latest fallback is permitted."
+    )
+    return {}, None, errors
 
 
 def check_commit_lineage(
@@ -291,9 +303,11 @@ def check_clean_checkout_reproducibility(
     reproducibility for the cited publication commit.
 
     This goes beyond file-presence checks by requiring evidence that a
-    smoke reproducibility run was actually *executed* against the cited
-    commit. The evidence must be a JSON artifact recording the execution
-    outcome.
+    smoke reproducibility run was actually *executed* in an isolated
+    checkout/worktree at the cited commit.  The evidence must be a JSON
+    artifact recording provenance fields proving:
+      requested_commit_sha == checked_out_commit_sha == memo commit
+    and the execution context.
     """
     errors = []
 
@@ -310,8 +324,26 @@ def check_clean_checkout_reproducibility(
 
     evidence = load_json(evidence_path)
 
-    # Validate evidence structure
-    required_keys = ["executed", "commit_sha", "result", "checks"]
+    # --- Schema version gate ---
+    schema_version = evidence.get("schema_version", 1)
+    if schema_version < 2:
+        errors.append(
+            f"Clean-checkout reproducibility evidence has schema_version "
+            f"{schema_version}; version >= 2 is required (must include "
+            f"provenance fields: requested_commit_sha, checked_out_commit_sha, "
+            f"execution_context)"
+        )
+        return errors
+
+    # --- Validate required structure ---
+    required_keys = [
+        "executed",
+        "execution_context",
+        "requested_commit_sha",
+        "checked_out_commit_sha",
+        "result",
+        "checks",
+    ]
     for key in required_keys:
         if key not in evidence:
             errors.append(
@@ -324,22 +356,46 @@ def check_clean_checkout_reproducibility(
             "smoke run must actually execute, not just check file presence"
         )
 
-    # Verify commit SHA matches memo
-    evidence_sha = evidence.get("commit_sha")
-    if memo_commit and evidence_sha and evidence_sha != memo_commit:
+    # --- Execution context must be isolated ---
+    exec_ctx = evidence.get("execution_context")
+    if exec_ctx != "isolated_worktree":
         errors.append(
-            f"Clean-checkout reproducibility commit ({evidence_sha}) != "
-            f"memo commit ({memo_commit})"
+            f"Clean-checkout execution_context is '{exec_ctx}'; "
+            f"expected 'isolated_worktree' — smoke checks must run "
+            f"inside an isolated checkout, not the caller working tree"
         )
 
-    # Verify result is pass
+    # --- Provenance: requested == checked_out == memo ---
+    requested_sha = evidence.get("requested_commit_sha")
+    checked_out_sha = evidence.get("checked_out_commit_sha")
+
+    if requested_sha and checked_out_sha:
+        if requested_sha != checked_out_sha:
+            errors.append(
+                f"Provenance mismatch: requested_commit_sha ({requested_sha}) "
+                f"!= checked_out_commit_sha ({checked_out_sha})"
+            )
+
+    if memo_commit and requested_sha and memo_commit != requested_sha:
+        errors.append(
+            f"Provenance mismatch: memo commit ({memo_commit}) "
+            f"!= requested_commit_sha ({requested_sha})"
+        )
+
+    if memo_commit and checked_out_sha and memo_commit != checked_out_sha:
+        errors.append(
+            f"Provenance mismatch: memo commit ({memo_commit}) "
+            f"!= checked_out_commit_sha ({checked_out_sha})"
+        )
+
+    # --- Verify overall result is pass ---
     result = evidence.get("result")
     if result != "pass":
         errors.append(
             f"Clean-checkout reproducibility result is '{result}', expected 'pass'"
         )
 
-    # Verify individual checks
+    # --- Verify individual checks ---
     checks = evidence.get("checks", [])
     if not checks:
         errors.append(
@@ -348,7 +404,8 @@ def check_clean_checkout_reproducibility(
     for check in checks:
         check_name = check.get("name", "unknown")
         check_result = check.get("result")
-        if check_result != "pass":
+        # "skip" is acceptable (e.g., baseline_ag_runs when C binary unavailable)
+        if check_result not in ("pass", "skip"):
             detail = check.get("detail", "")
             errors.append(
                 f"Clean-checkout check '{check_name}' failed: {detail}"
@@ -417,10 +474,10 @@ def build_publication_checklist(
     repro_exec_errors: list[str],
     legal_errors: list[str],
 ) -> dict:
-    """Build a structured publication checklist with lineage and
-    clean-checkout reproducibility as separate checks."""
+    """Build a structured publication checklist with explicit pass/fail
+    outcomes for lineage and executed clean-checkout reproducibility."""
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "checks": [
             {
                 "id": "VAL-CROSS-001",
@@ -436,7 +493,7 @@ def build_publication_checklist(
             },
             {
                 "id": "VAL-CROSS-004-exec",
-                "name": "Clean-checkout smoke reproducibility execution",
+                "name": "Executed clean-checkout smoke reproducibility (isolated worktree with provenance)",
                 "result": "pass" if not repro_exec_errors else "fail",
                 "errors": repro_exec_errors,
             },
@@ -448,7 +505,7 @@ def build_publication_checklist(
             },
             {
                 "id": "VAL-CROSS-008",
-                "name": "Public publication commit is traceable to measured evidence",
+                "name": "Public publication commit is traceable to measured evidence (parity + benchmark + memo lineage)",
                 "result": "pass" if not lineage_errors else "fail",
                 "errors": lineage_errors,
             },
@@ -482,8 +539,11 @@ def main() -> int:
     # Load artifacts
     claim_map = load_json(repo_root / "publication" / "claim_evidence_map.json")
 
-    # Resolve parity summary (prefer claim_evidence_map parity_run_ids)
-    parity_summary, parity_source = resolve_parity_summary(claim_map, repo_root)
+    # Resolve parity summary strictly from claim_evidence_map parity_run_ids
+    # (no latest fallback — unresolved IDs are hard failures)
+    parity_summary, parity_source, parity_resolution_errors = (
+        resolve_parity_summary(claim_map, repo_root)
+    )
 
     # Load all measured benchmark run manifests
     benchmark_manifests = []
@@ -516,7 +576,9 @@ def main() -> int:
     print("=" * 60)
 
     # 1. Commit lineage: strict parity/benchmark/memo equality (VAL-CROSS-001 + VAL-CROSS-008)
-    lineage_errors = check_commit_lineage(
+    #    Parity resolution errors are prepended — unresolved parity_run_ids
+    #    are hard failures with no latest fallback.
+    lineage_errors = list(parity_resolution_errors) + check_commit_lineage(
         memo_commit, claim_map, benchmark_manifests, parity_summary, parity_source
     )
     print(f"\n[{'PASS' if not lineage_errors else 'FAIL'}] Commit lineage (VAL-CROSS-001/008)")

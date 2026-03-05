@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "checks": [
     {
       "id": "VAL-CROSS-001",
@@ -15,7 +15,7 @@
     },
     {
       "id": "VAL-CROSS-004-exec",
-      "name": "Clean-checkout smoke reproducibility execution",
+      "name": "Executed clean-checkout smoke reproducibility (isolated worktree with provenance)",
       "result": "pass",
       "errors": []
     },
@@ -27,7 +27,7 @@
     },
     {
       "id": "VAL-CROSS-008",
-      "name": "Public publication commit is traceable to measured evidence",
+      "name": "Public publication commit is traceable to measured evidence (parity + benchmark + memo lineage)",
       "result": "pass",
       "errors": []
     }

@@ -1,14 +1,27 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "executed": true,
-  "timestamp": "2026-03-05T20:14:31.066127+00:00",
-  "commit_sha": "44759b4b07252dbf8e471a71ee21e0e6539ce236",
+  "execution_context": "isolated_worktree",
+  "worktree_path": "/var/folders/9s/gdy76tpx1mg5nl7p8r1xj_vc0000gn/T/ag-clean-checkout-ytdw1lly-44759b4b0725",
+  "timestamp": "2026-03-05T20:32:07.533850+00:00",
+  "requested_commit_sha": "44759b4b07252dbf8e471a71ee21e0e6539ce236",
+  "checked_out_commit_sha": "44759b4b07252dbf8e471a71ee21e0e6539ce236",
   "result": "pass",
   "checks": [
     {
       "name": "commit_accessible",
       "result": "pass",
       "detail": "git cat-file -t 44759b4b0725... -> exit 0"
+    },
+    {
+      "name": "create_worktree",
+      "result": "pass",
+      "detail": "git worktree add --detach /var/folders/9s/gdy76tpx1mg5nl7p8r1xj_vc0000gn/T/ag-clean-checkout-ytdw1lly-44759b4b0725 44759b4b0725... -> exit 0"
+    },
+    {
+      "name": "worktree_head_matches",
+      "result": "pass",
+      "detail": "worktree HEAD=44759b4b0725... == requested=44759b4b0725..."
     },
     {
       "name": "manifests_present",
@@ -23,12 +36,12 @@
     {
       "name": "rust_ag_runs",
       "result": "pass",
-      "detail": "rust-ag --nocolor --workers=1 foo . -> exit 0, 209 output lines"
+      "detail": "rust-ag --nocolor --workers=1 foo . -> exit 0, 198 output lines"
     },
     {
       "name": "baseline_ag_runs",
       "result": "pass",
-      "detail": "ag --nocolor --workers=1 foo . -> exit 0, 209 output lines"
+      "detail": "ag --nocolor --workers=1 foo . -> exit 0, 198 output lines"
     },
     {
       "name": "benchmark_harness_smoke",
