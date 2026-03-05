@@ -279,12 +279,45 @@ def validate_sampling(
     schedule = run_manifest.get("execution_schedule")
     order_bias_result: dict[str, Any] = {}
     if schedule:
-        order_bias_result = {
-            "result": "pass",
-            "schedule_type": schedule.get("schedule", "unknown"),
-            "seed": schedule.get("seed"),
-            "entry_count": len(schedule.get("entries", [])),
-        }
+        sched_type = schedule.get("schedule", "unknown")
+        sched_seed = schedule.get("seed")
+        sched_entries = schedule.get("entries", [])
+        declared_type = order_config.get("schedule", "interleaved_random")
+
+        # Enforce declared schedule type.
+        if sched_type != declared_type:
+            order_bias_result = {
+                "result": "fail",
+                "schedule_type": sched_type,
+                "seed": sched_seed,
+                "entry_count": len(sched_entries),
+                "reason": f"schedule_type_mismatch: expected '{declared_type}', got '{sched_type}'",
+            }
+        # Enforce seed integrity (must be non-null for reproducibility).
+        elif sched_seed is None:
+            order_bias_result = {
+                "result": "fail",
+                "schedule_type": sched_type,
+                "seed": sched_seed,
+                "entry_count": len(sched_entries),
+                "reason": "seed is null; reproducibility requires a non-null seed",
+            }
+        # Enforce non-empty schedule entries.
+        elif len(sched_entries) == 0:
+            order_bias_result = {
+                "result": "fail",
+                "schedule_type": sched_type,
+                "seed": sched_seed,
+                "entry_count": 0,
+                "reason": "entries list is empty; schedule has no execution records",
+            }
+        else:
+            order_bias_result = {
+                "result": "pass",
+                "schedule_type": sched_type,
+                "seed": sched_seed,
+                "entry_count": len(sched_entries),
+            }
     else:
         order_bias_result = {
             "result": "fail",

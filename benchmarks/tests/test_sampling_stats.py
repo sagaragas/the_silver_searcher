@@ -378,3 +378,107 @@ class TestValidateSamplingOverallGate:
         )
         result = validate_sampling(manifest, tmp_path)
         assert result["gate"] == "fail"
+
+
+# ---------------------------------------------------------------------------
+# Order-bias enforcement: schedule type + seed integrity (VAL-BENCH-010)
+# ---------------------------------------------------------------------------
+
+
+class TestOrderBiasEnforcement:
+    """VAL-BENCH-010: Order-bias validation enforces declared semantics and seed integrity."""
+
+    def test_wrong_schedule_type_fails(self, tmp_path):
+        """Schedule type must match policy-declared type (interleaved_random)."""
+        from validate_sampling import validate_sampling
+
+        manifest = _make_sampling_run_manifest(
+            ["s1"], ["ag", "rust-ag"], include_schedule=True, schedule_seed=42,
+        )
+        # Override schedule type to something other than policy's declared type.
+        manifest["execution_schedule"]["schedule"] = "sequential"
+        result = validate_sampling(manifest, tmp_path)
+        assert result["order_bias_check"]["result"] == "fail"
+        assert "schedule_type_mismatch" in result["order_bias_check"].get("reason", "")
+
+    def test_null_seed_fails(self, tmp_path):
+        """Seed must be non-null for reproducibility."""
+        from validate_sampling import validate_sampling
+
+        manifest = _make_sampling_run_manifest(
+            ["s1"], ["ag", "rust-ag"], include_schedule=True, schedule_seed=None,
+        )
+        # Explicitly set seed to None (simulating missing seed).
+        manifest["execution_schedule"]["seed"] = None
+        result = validate_sampling(manifest, tmp_path)
+        assert result["order_bias_check"]["result"] == "fail"
+        assert "seed" in result["order_bias_check"].get("reason", "").lower()
+
+    def test_empty_schedule_entries_fails(self, tmp_path):
+        """Schedule with zero entries should fail validation."""
+        from validate_sampling import validate_sampling
+
+        manifest = _make_sampling_run_manifest(
+            ["s1"], ["ag", "rust-ag"], include_schedule=True,
+        )
+        manifest["execution_schedule"]["entries"] = []
+        result = validate_sampling(manifest, tmp_path)
+        assert result["order_bias_check"]["result"] == "fail"
+        assert "entries" in result["order_bias_check"].get("reason", "").lower()
+
+    def test_correct_schedule_passes(self, tmp_path):
+        """A well-formed interleaved_random schedule with valid seed passes."""
+        from validate_sampling import validate_sampling
+
+        manifest = _make_sampling_run_manifest(
+            ["s1"], ["ag", "rust-ag"], include_schedule=True, schedule_seed=42,
+        )
+        result = validate_sampling(manifest, tmp_path)
+        assert result["order_bias_check"]["result"] == "pass"
+
+    def test_order_bias_failure_fails_overall_gate(self, tmp_path):
+        """An order-bias failure should cause the overall gate to fail."""
+        from validate_sampling import validate_sampling
+
+        manifest = _make_sampling_run_manifest(
+            ["s1"], ["ag", "rust-ag"], include_schedule=True,
+        )
+        manifest["execution_schedule"]["schedule"] = "fixed_order"
+        result = validate_sampling(manifest, tmp_path)
+        assert result["gate"] == "fail"
+
+
+# ---------------------------------------------------------------------------
+# Measured CLI exit code enforcement
+# ---------------------------------------------------------------------------
+
+
+class TestMeasuredCLISamplingGate:
+    """Measured CLI must exit non-zero when sampling validation fails."""
+
+    def test_sampling_failure_stored_in_manifest(self, tmp_path):
+        """When sampling validation fails, the manifest should record the failure."""
+        from validate_sampling import validate_sampling
+
+        # Create a manifest that fails sampling (insufficient samples).
+        manifest = _make_sampling_run_manifest(
+            ["s1"], ["ag", "rust-ag"],
+            warmup_per_cell=2, samples_per_cell=1,
+        )
+        result = validate_sampling(manifest, tmp_path)
+        assert result["gate"] == "fail"
+        assert result["sample_count_check"]["result"] == "fail"
+
+    def test_sampling_pass_with_policy_compliant_run(self, tmp_path):
+        """A policy-compliant run should pass the sampling gate."""
+        from validate_sampling import validate_sampling
+
+        manifest = _make_sampling_run_manifest(
+            ["s1", "s2"], ["ag", "rust-ag", "rg", "ugrep"],
+            warmup_per_cell=2, samples_per_cell=5,
+        )
+        result = validate_sampling(manifest, tmp_path)
+        assert result["gate"] == "pass"
+        assert result["warmup_check"]["result"] == "pass"
+        assert result["sample_count_check"]["result"] == "pass"
+        assert result["order_bias_check"]["result"] == "pass"

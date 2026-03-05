@@ -967,10 +967,19 @@ def run_measured(
         gate_status = "SKIPPED"
 
     # Sampling validation.
+    sampling_gate_failed = False
     try:
         from validate_sampling import validate_sampling
         sampling_result = validate_sampling(run_manifest, output_dir)
         sampling_status = sampling_result["gate"].upper()
+        if sampling_result["gate"] != "pass":
+            sampling_gate_failed = True
+            run_manifest["sampling_gate_failure"] = {
+                "gate": sampling_result["gate"],
+                "warmup_check": sampling_result["warmup_check"]["result"],
+                "sample_count_check": sampling_result["sample_count_check"]["result"],
+                "order_bias_check": sampling_result["order_bias_check"]["result"],
+            }
     except ImportError:
         sampling_status = "SKIPPED"
 
@@ -1002,6 +1011,13 @@ def run_measured(
     print(f"  Cells: {executed_cells} executed, {skipped_cells} skipped, {error_cells} errors")
     print(f"  Correctness gate: {gate_status}")
     print(f"  Sampling validation: {sampling_status}")
+
+    if sampling_gate_failed:
+        print(f"\n  FATAL: Sampling validation gate FAILED")
+        failure_info = run_manifest.get("sampling_gate_failure", {})
+        for check_name in ("warmup_check", "sample_count_check", "order_bias_check"):
+            check_result = failure_info.get(check_name, "unknown")
+            print(f"    {check_name}: {check_result}")
 
     if required_failures:
         print(f"\n  FATAL: Required comparator cells incomplete:")
@@ -1207,6 +1223,8 @@ def main() -> None:
             run_type=args.run_type,
         )
         if manifest.get("required_comparator_failures"):
+            sys.exit(1)
+        if manifest.get("sampling_gate_failure"):
             sys.exit(1)
         if manifest["cell_totals"]["errors"] > 0:
             sys.exit(1)
