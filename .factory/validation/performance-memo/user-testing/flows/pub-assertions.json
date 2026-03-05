@@ -1,0 +1,132 @@
+{
+  "milestone": "performance-memo",
+  "groupId": "pub-assertions",
+  "assignedAssertions": [
+    "VAL-PUB-001",
+    "VAL-PUB-002",
+    "VAL-PUB-003",
+    "VAL-PUB-004",
+    "VAL-PUB-005",
+    "VAL-PUB-006",
+    "VAL-PUB-007",
+    "VAL-PUB-008"
+  ],
+  "credentials": {
+    "account": "cli-pub-validator-1@example.test",
+    "namespace": "pub-flow-ns-1"
+  },
+  "testedAt": "2026-03-05T20:44:48.233081+00:00",
+  "results": [
+    {
+      "id": "VAL-PUB-001",
+      "status": "pass",
+      "reason": "Memo methods content is reproducible and includes scope, environment, manifest hashes, statistical approach, and runnable reproduction commands.",
+      "evidence": [
+        {
+          "command": "python3 - <<'PY' ... (VAL-PUB-001 reproducibility-methods checks over publication/ragas_blog_memo.md)",
+          "exitCode": 0,
+          "observation": "Checks printed methods_section=True, environment_table=True, manifest_hash_table=True, statistical_approach=True, repro_commands=True; script ended with 'VAL-PUB-001 reproducibility-methods checks passed'."
+        }
+      ]
+    },
+    {
+      "id": "VAL-PUB-002",
+      "status": "pass",
+      "reason": "Claim-evidence linkage gate passed with full bidirectional mapping and numeric-claim coverage.",
+      "evidence": [
+        {
+          "command": "python3 /Users/ragas/code/missions/the_silver_searcher/publication/check_claims.py --memo /Users/ragas/code/missions/the_silver_searcher/publication/ragas_blog_memo.md",
+          "exitCode": 0,
+          "observation": "Claim validation: 4/4 checks passed; Memo claim IDs: 31; Map claim IDs: 31; Numeric claim lines found: 51; All claim-evidence checks passed."
+        }
+      ]
+    },
+    {
+      "id": "VAL-PUB-003",
+      "status": "pass",
+      "reason": "Metrics tables include required uncertainty, samples, comparator context, and validation table structures.",
+      "evidence": [
+        {
+          "command": "python3 /Users/ragas/code/missions/the_silver_searcher/publication/validate_metrics_tables.py --memo /Users/ragas/code/missions/the_silver_searcher/publication/ragas_blog_memo.md",
+          "exitCode": 0,
+          "observation": "Found 14 tables; all checks passed for performance detail, speedup comparison, sampling validation, raw sample data, environment metadata, and comparator version tables."
+        }
+      ]
+    },
+    {
+      "id": "VAL-PUB-004",
+      "status": "pass",
+      "reason": "Memo explicitly reports regressions/failures with concrete negative findings and linked evidence references.",
+      "evidence": [
+        {
+          "command": "python3 - <<'PY' ... (VAL-PUB-004 regressions/failures section checks over publication/ragas_blog_memo.md)",
+          "exitCode": 0,
+          "observation": "section_ok=True; subsection_count=3; has_slower_claim=True; has_gate_fail=True; has_evidence_refs=True; script ended with 'VAL-PUB-004 regressions/failures disclosure checks passed'."
+        }
+      ]
+    },
+    {
+      "id": "VAL-PUB-005",
+      "status": "pass",
+      "reason": "Memo contains explicit limitations/trade-off coverage with concrete scope boundaries and impact statements.",
+      "evidence": [
+        {
+          "command": "python3 - <<'PY' ... (VAL-PUB-005 limitations/trade-offs checks over publication/ragas_blog_memo.md)",
+          "exitCode": 0,
+          "observation": "section_ok=True; limitation_subsections=5; impact_statements=5; scope_boundary_mentions=True; script ended with 'VAL-PUB-005 limitations/trade-offs checks passed'."
+        }
+      ]
+    },
+    {
+      "id": "VAL-PUB-006",
+      "status": "pass",
+      "reason": "License audit confirms inventory/schema integrity, runtime coverage, comparator listing, permissive licenses, and memo attribution.",
+      "evidence": [
+        {
+          "command": "python3 /Users/ragas/code/missions/the_silver_searcher/publication/license_audit.py",
+          "exitCode": 0,
+          "observation": "License audit: 7/7 checks passed (inventory, schema, runtime dep coverage, attribution files, comparators, permissive licenses, memo attribution)."
+        }
+      ]
+    },
+    {
+      "id": "VAL-PUB-007",
+      "status": "pass",
+      "reason": "Publication quality gates reject unsupported numeric prose and enforce specificity/section completeness; all gate checks passed.",
+      "evidence": [
+        {
+          "command": "python3 /Users/ragas/code/missions/the_silver_searcher/publication/style_gate.py --memo /Users/ragas/code/missions/the_silver_searcher/publication/ragas_blog_memo.md",
+          "exitCode": 0,
+          "observation": "Style gate 4/4 passed: numeric claim gate, specificity gate, required sections, and claim-reference index checks all passed."
+        },
+        {
+          "command": "python3 /Users/ragas/code/missions/the_silver_searcher/publication/check_claims.py --memo /Users/ragas/code/missions/the_silver_searcher/publication/ragas_blog_memo.md",
+          "exitCode": 0,
+          "observation": "Numeric claim coverage check passed with no unlinked numeric claims reported."
+        }
+      ]
+    },
+    {
+      "id": "VAL-PUB-008",
+      "status": "pass",
+      "reason": "Adversarial reviewer Q&A section is present with evidence mapping for every question block.",
+      "evidence": [
+        {
+          "command": "python3 - <<'PY' ... (VAL-PUB-008 adversarial Q&A checks over publication/ragas_blog_memo.md)",
+          "exitCode": 0,
+          "observation": "section_ok=True; question_count=6; question_blocks_with_evidence_or_unknown=6; script ended with 'VAL-PUB-008 adversarial reviewer readiness checks passed'."
+        }
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "Execute",
+    "Read",
+    "LS",
+    "Grep",
+    "Glob"
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 8 assigned publication assertions (VAL-PUB-001..008) via CLI validation scripts and deterministic memo-content checks; all 8 assertions passed with exit-code-backed evidence."
+}
