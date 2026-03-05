@@ -8,9 +8,9 @@
     "ugrep"
   ],
   "corpus_manifest_hash": "cd3ba2038fcb887179488c33809326c1ef25922b0ea1be470bdcca8b39b35006",
-  "query_manifest_hash": "b577900178a2feadb07da6bb6923f49c834c69fa4d1d325450cdfd0a2684a23b",
-  "manifest_hash": "c7cb108c0a00a1e56811929b3992ac18cacdcbf4e3aefa8f510c088d66c9239e",
-  "scenario_count": 12,
+  "query_manifest_hash": "644958b7d4abfa6291abbd1585003208a04f1e890db83d81f1d02ae7c573b71d",
+  "manifest_hash": "2c398eeba90f5cc181911320c81980e4fafc7e565f355394e26c020471f02e2d",
+  "scenario_count": 20,
   "scenarios": [
     {
       "id": "literal-simple",
@@ -154,6 +154,110 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rg": "rg --no-heading --color=never {pattern} {corpus}",
         "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-ignore-source",
+      "description": "Search in ignore-source fixture to verify ignore semantics",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/ignore-source",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-hidden-files",
+      "description": "Search with --hidden flag in hidden-files fixture",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/hidden-files",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --hidden {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --hidden {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never --hidden {pattern} {corpus}",
+        "ugrep": "ugrep --color=never --hidden {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-binary-files",
+      "description": "Search in binary-files fixture to verify binary detection",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/binary-files",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-symlink-traversal",
+      "description": "Search following symlinks in symlink-traversal fixture",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/symlink-traversal",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -f {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -f {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never -L {pattern} {corpus}",
+        "ugrep": "ugrep --color=never -L {pattern} {corpus}"
+      },
+      "platform_skip": {
+        "condition": "platform.system() == 'Windows'",
+        "reason": "Symlink creation requires elevated privileges on Windows"
+      }
+    },
+    {
+      "id": "edge-one-device",
+      "description": "Search with one-device restriction in one-device fixture",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/one-device",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --one-device {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --one-device {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      },
+      "platform_skip": {
+        "condition": "not cross_device_available",
+        "reason": "Cross-device mount point not available on this platform"
+      }
+    },
+    {
+      "id": "edge-large-file",
+      "description": "Search in large-file fixture to verify large-file handling",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/large-file",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-zero-length-regex",
+      "description": "Zero-length regex search to verify safe handling",
+      "query_id": "q-edge-zero-len",
+      "corpus": "tests/edge-cases/zero-length-regex",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-max-count",
+      "description": "Search with --max-count in max-count fixture",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/max-count",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --max-count=3 {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --max-count=3 {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never --max-count=3 {pattern} {corpus}",
+        "ugrep": "ugrep --color=never --max-count=3 {pattern} {corpus}"
       }
     }
   ]

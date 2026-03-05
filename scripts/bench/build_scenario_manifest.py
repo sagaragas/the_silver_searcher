@@ -112,6 +112,18 @@ QUERIES: list[dict[str, Any]] = [
         "pattern": "ZZZZNOTFOUNDZZZ",
         "description": "Pattern with zero matches (measures traversal overhead)",
     },
+    {
+        "id": "q-edge-needle",
+        "type": "literal",
+        "pattern": "NEEDLE",
+        "description": "Literal used in edge-case fixtures",
+    },
+    {
+        "id": "q-edge-zero-len",
+        "type": "regex",
+        "pattern": "",
+        "description": "Zero-length regex for edge-case safety testing",
+    },
 ]
 
 # ---------------------------------------------------------------------------
@@ -257,6 +269,91 @@ SCENARIOS: list[dict[str, Any]] = [
         "Literal search restricted to src/ directory",
         "q-literal-word",
         corpus="src",
+    ),
+    # --- Edge-case scenarios ---
+    _scenario(
+        "edge-ignore-source",
+        "Search in ignore-source fixture to verify ignore semantics",
+        "q-edge-needle",
+        corpus="tests/edge-cases/ignore-source",
+    ),
+    _scenario(
+        "edge-hidden-files",
+        "Search with --hidden flag in hidden-files fixture",
+        "q-edge-needle",
+        flags={
+            "ag": "--hidden",
+            "rust-ag": "--hidden",
+            "rg": "--hidden",
+            "ugrep": "--hidden",
+        },
+        corpus="tests/edge-cases/hidden-files",
+    ),
+    _scenario(
+        "edge-binary-files",
+        "Search in binary-files fixture to verify binary detection",
+        "q-edge-needle",
+        corpus="tests/edge-cases/binary-files",
+    ),
+    _scenario(
+        "edge-symlink-traversal",
+        "Search following symlinks in symlink-traversal fixture",
+        "q-edge-needle",
+        flags={
+            "ag": "-f",
+            "rust-ag": "-f",
+            "rg": "-L",
+            "ugrep": "-L",
+        },
+        corpus="tests/edge-cases/symlink-traversal",
+        extra={
+            "platform_skip": {
+                "condition": "platform.system() == 'Windows'",
+                "reason": "Symlink creation requires elevated privileges on Windows",
+            },
+        },
+    ),
+    _scenario(
+        "edge-one-device",
+        "Search with one-device restriction in one-device fixture",
+        "q-edge-needle",
+        flags={
+            "ag": "--one-device",
+            "rust-ag": "--one-device",
+            "rg": "",
+            "ugrep": "",
+        },
+        corpus="tests/edge-cases/one-device",
+        extra={
+            "platform_skip": {
+                "condition": "not cross_device_available",
+                "reason": "Cross-device mount point not available on this platform",
+            },
+        },
+    ),
+    _scenario(
+        "edge-large-file",
+        "Search in large-file fixture to verify large-file handling",
+        "q-edge-needle",
+        corpus="tests/edge-cases/large-file",
+    ),
+    _scenario(
+        "edge-zero-length-regex",
+        "Zero-length regex search to verify safe handling",
+        "q-edge-zero-len",
+        corpus="tests/edge-cases/zero-length-regex",
+    ),
+    _scenario(
+        "edge-max-count",
+        "Search with --max-count in max-count fixture",
+        "q-edge-needle",
+        flags={
+            "ag": "--max-count=3",
+            "rust-ag": "--max-count=3",
+            "rg": "--max-count=3",
+            "ugrep": "--max-count=3",
+        },
+        corpus="tests/edge-cases/max-count",
     ),
 ]
 
