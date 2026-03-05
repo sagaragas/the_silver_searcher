@@ -65,11 +65,10 @@ pub fn search_file(path: &Path, re: &Regex, opts: &Opts) -> FileSearchResult {
         };
     }
 
-    // Binary check: detect null bytes in the first 512 bytes.
-    let check_len = content.len().min(512);
-    let has_null = content[..check_len].contains(&0);
+    // Binary check: replicate baseline ag's is_binary() heuristics.
+    let is_binary = is_binary_buf(&content);
 
-    if has_null {
+    if is_binary {
         if !opts.search_binary && !opts.unrestricted {
             // Skip binary files entirely when not in binary-search mode.
             return FileSearchResult {
@@ -704,4 +703,72 @@ fn count_regex_occurrences(text: &str, re: &Regex) -> usize {
         }
     }
     count
+}
+
+/// Check whether a buffer looks like binary content, replicating baseline ag's
+/// `is_binary()` heuristics from `src/util.c`.
+///
+/// The checks, in order:
+///   1. Empty → not binary
+///   2. UTF-8 BOM (EF BB BF) → not binary
+///   3. `%PDF-` header → binary
+///   4. Null byte in first 512 bytes → binary
+///   5. >10% suspicious (non-ASCII, non-UTF-8) bytes in first 512 → binary
+pub fn is_binary_buf(buf: &[u8]) -> bool {
+    if buf.is_empty() {
+        return false;
+    }
+
+    // UTF-8 BOM → not binary.
+    if buf.len() >= 3 && buf[0] == 0xEF && buf[1] == 0xBB && buf[2] == 0xBF {
+        return false;
+    }
+
+    // PDF header → binary.
+    if buf.len() >= 5 && &buf[..5] == b"%PDF-" {
+        return true;
+    }
+
+    let total_bytes = buf.len().min(512);
+    let mut suspicious_bytes: usize = 0;
+
+    let mut i = 0;
+    while i < total_bytes {
+        if buf[i] == 0 {
+            // Null byte → binary.
+            return true;
+        }
+
+        // Check for suspicious bytes: non-printable, non-standard-ASCII.
+        // ag checks: (byte < 7 || byte > 14) && (byte < 32 || byte > 127)
+        if (buf[i] < 7 || buf[i] > 14) && (buf[i] < 32 || buf[i] > 127) {
+            // Try to decode as valid UTF-8 multi-byte sequence.
+            if buf[i] > 193 && buf[i] < 224 && i + 1 < total_bytes {
+                // 2-byte UTF-8 sequence.
+                if buf[i + 1] > 127 && buf[i + 1] < 192 {
+                    i += 2; // Skip continuation byte.
+                    continue;
+                }
+            } else if buf[i] > 223 && buf[i] < 240 && i + 2 < total_bytes {
+                // 3-byte UTF-8 sequence.
+                if buf[i + 1] > 127 && buf[i + 1] < 192 && buf[i + 2] > 127 && buf[i + 2] < 192 {
+                    i += 3; // Skip continuation bytes.
+                    continue;
+                }
+            }
+            suspicious_bytes += 1;
+            // After 32 bytes, check ratio.
+            if i >= 32 && (suspicious_bytes * 100) / total_bytes > 10 {
+                return true;
+            }
+        }
+        i += 1;
+    }
+
+    // Final ratio check after processing all bytes.
+    if total_bytes >= 32 && (suspicious_bytes * 100) / total_bytes > 10 {
+        return true;
+    }
+
+    false
 }

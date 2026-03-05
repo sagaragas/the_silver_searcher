@@ -172,17 +172,15 @@ fn walk_dir(
     engine.pop_directory();
 }
 
-/// Simple binary file detection.
+/// Binary file detection for walker-level filtering.
 ///
-/// Reads the first few KB and checks for null bytes,
-/// matching `ag`'s behavior of skipping binary files by default.
+/// Uses the shared `is_binary_buf` function that replicates baseline ag's
+/// `is_binary()` heuristics (null bytes, PDF header, suspicious byte ratio).
 fn is_likely_binary(path: &Path) -> bool {
     let data = match fs::read(path) {
         Ok(d) => d,
         Err(_) => return false,
     };
 
-    // Check first 512 bytes for null bytes.
-    let check_len = data.len().min(512);
-    data[..check_len].contains(&0)
+    crate::search::is_binary_buf(&data)
 }
