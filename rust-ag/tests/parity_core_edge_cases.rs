@@ -763,6 +763,91 @@ fn val_core_014_max_count_invert_directory() {
 // ---------------------------------------------------------------------------
 
 #[test]
+fn val_core_014_max_count_zero_invert_nomultiline_high_match_all_match() {
+    // --nomultiline -m0 -v on a 12050-line all-match file.
+    // ag treats -m0 as truly unlimited: scans all 12050 positive matches,
+    // inverts to 0 output lines, exit 1, no stderr diagnostic.
+    // This catches the bug where -m0 was capped at 10000 (DEFAULT_MAX_COUNT),
+    // causing 2050 spurious inverted lines + "Too many matches" diagnostic.
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--nomultiline",
+            "-m0",
+            "-v",
+            "NEEDLE",
+            "all-match-12050.txt",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_014_max_count_zero_nomultiline_high_match_positive() {
+    // --nomultiline -m0 on a 12050-line all-match file (no -v).
+    // ag outputs all 12050 lines with no diagnostic.
+    // This catches the bug where -m0 was capped at 10000, truncating
+    // output to 10000 lines + emitting a spurious "Too many matches".
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--nomultiline",
+            "-m0",
+            "NEEDLE",
+            "all-match-12050.txt",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_014_max_count_zero_multiline_high_match_positive() {
+    // Multiline mode -m0 on a 12050-line all-match file (no -v).
+    // ag outputs all 12050 lines with no diagnostic.
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "-m0",
+            "NEEDLE",
+            "all-match-12050.txt",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_014_max_count_zero_multiline_high_match_invert() {
+    // Multiline mode -m0 -v on a 12050-line all-match file.
+    // ag outputs 0 lines, exit 1, no diagnostic.
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "-m0",
+            "-v",
+            "NEEDLE",
+            "all-match-12050.txt",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
 fn val_core_014_max_count_zero_nomultiline_positive() {
     // --nomultiline -m0 without -v: ag treats 0 as unlimited, all matches shown.
     let fixture = repo_root().join("tests/edge-cases/max-count");

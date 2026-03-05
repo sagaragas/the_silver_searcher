@@ -31,3 +31,4 @@ Architectural decisions and patterns for this mission.
 ## Baseline Semantics Notes
 
 - `ag` treats `--max-count=0` as effectively unlimited because truncation in `src/search.c` is gated on `opts.max_matches_per_file > 0`, even though help text mentions a default max-count of 10,000.
+- In rust-ag, `-m0`/`--max-count=0` is mapped to `usize::MAX` (truly unlimited). The default when no `-m` flag is given remains 10,000.

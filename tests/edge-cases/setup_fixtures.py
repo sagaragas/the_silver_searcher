@@ -396,9 +396,10 @@ def build_max_count(base: Path) -> None:
 
     Directory structure:
       max-count/
-        few-matches.txt    -> 3 matching lines
-        many-matches.txt   -> 20 matching lines
-        mixed.txt          -> alternating match/no-match lines
+        few-matches.txt        -> 3 matching lines
+        many-matches.txt       -> 20 matching lines
+        mixed.txt              -> alternating match/no-match lines
+        all-match-12050.txt    -> 12050 matching lines (tests true unlimited -m0)
     """
     _rmtree_safe(base)
     _ensure_dir(base)
@@ -417,6 +418,14 @@ def build_max_count(base: Path) -> None:
         mixed_lines += f"NEEDLE match {i}\n"
         mixed_lines += f"filler line {i}\n"
     _write(base / "mixed.txt", mixed_lines)
+
+    # 12050-line file where every line matches NEEDLE.  Used to verify that
+    # -m0 / --max-count=0 is truly unlimited (>10 000 matches) rather than
+    # capped at the default 10 000.
+    all_match_lines = ""
+    for i in range(12050):
+        all_match_lines += f"NEEDLE line {i}\n"
+    _write(base / "all-match-12050.txt", all_match_lines)
 
     _write(base / ".gitignore", "")
 
@@ -585,7 +594,7 @@ REQUIRED_MARKERS: dict[str, list[str]] = {
     "one-device": ["local-file.txt", "one-device-marker.json"],
     "large-file": ["normal.txt", "large.txt", "large.txt.sha256"],
     "zero-length-regex": ["single-line.txt", "multi-line.txt"],
-    "max-count": ["few-matches.txt", "many-matches.txt", "mixed.txt"],
+    "max-count": ["few-matches.txt", "many-matches.txt", "mixed.txt", "all-match-12050.txt"],
 }
 
 

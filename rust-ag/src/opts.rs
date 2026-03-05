@@ -250,8 +250,8 @@ impl Default for Opts {
 
 impl Opts {
     /// Default max-count cap (matches ag's internal limit for per-file
-    /// match scanning). ag treats `--max-count=0` as "no limit", so
-    /// we normalise 0 to this value after parsing.
+    /// match scanning when no `--max-count` / `-m` flag is given).
+    #[allow(dead_code)]
     const DEFAULT_MAX_COUNT: usize = 10_000;
 
     /// Parse command-line arguments into options.
@@ -640,9 +640,10 @@ impl Opts {
 
         // ag treats --max-count=0 / -m0 as "no limit" (its internal default
         // is 0 meaning unlimited, guarded by `> 0` checks in search.c).
-        // Normalise to the default cap so downstream code never sees 0.
+        // Map to usize::MAX so downstream comparisons (total >= max_count)
+        // are effectively never true, giving truly unlimited behavior.
         if opts.max_count == 0 {
-            opts.max_count = Self::DEFAULT_MAX_COUNT;
+            opts.max_count = usize::MAX;
         }
 
         Ok(opts)
