@@ -124,6 +124,12 @@ QUERIES: list[dict[str, Any]] = [
         "pattern": "",
         "description": "Zero-length regex for edge-case safety testing",
     },
+    {
+        "id": "q-exit-nomatch",
+        "type": "literal",
+        "pattern": "XYZZY_NEVER_FOUND_12345",
+        "description": "Literal that produces zero matches for exit-code testing",
+    },
 ]
 
 # ---------------------------------------------------------------------------
@@ -406,6 +412,74 @@ SCENARIOS: list[dict[str, Any]] = [
         },
         corpus="tests/edge-cases/max-count",
         groups=["core-edge-cases", "edge-cases"],
+    ),
+    # --- CLI formatting scenarios ---
+    _scenario(
+        "cli-filename-filter-g",
+        "List files matching filename pattern (-g)",
+        "q-literal-simple",
+        flags={
+            "ag": '-g "\\.rs$"',
+            "rust-ag": '-g "\\.rs$"',
+        },
+        comparators=["ag", "rust-ag"],
+        groups=["cli-formatting"],
+    ),
+    _scenario(
+        "cli-file-search-regex-G",
+        "Filter files by regex then search content (-G)",
+        "q-literal-word",
+        flags={
+            "ag": '-G "\\.rs$"',
+            "rust-ag": '-G "\\.rs$"',
+        },
+        comparators=["ag", "rust-ag"],
+        groups=["cli-formatting"],
+    ),
+    _scenario(
+        "cli-context-symmetric",
+        "Search with symmetric context (-C2)",
+        "q-literal-simple",
+        flags={
+            "ag": "-C2",
+            "rust-ag": "-C2",
+        },
+        comparators=["ag", "rust-ag"],
+        groups=["cli-formatting"],
+    ),
+    # --- CLI exit-code and error scenarios ---
+    _scenario(
+        "cli-exit-nomatch",
+        "No-match search to verify exit code 1",
+        "q-exit-nomatch",
+        comparators=["ag", "rust-ag"],
+        groups=["cli-exit-errors"],
+    ),
+    _scenario(
+        "cli-exit-match",
+        "Match-found search to verify exit code 0",
+        "q-literal-word",
+        comparators=["ag", "rust-ag"],
+        groups=["cli-exit-errors"],
+    ),
+    _scenario(
+        "cli-exit-nonexistent-path",
+        "Nonexistent path to verify exit code 1 and error diagnostics",
+        "q-literal-word",
+        corpus="/nonexistent_parity_test_path_12345",
+        comparators=["ag", "rust-ag"],
+        groups=["cli-exit-errors"],
+    ),
+    _scenario(
+        "cli-exit-invert-match",
+        "Invert match to verify exit code 0 when inverted matches exist",
+        "q-exit-nomatch",
+        flags={
+            "ag": "-v",
+            "rust-ag": "-v",
+        },
+        comparators=["ag", "rust-ag"],
+        groups=["cli-exit-errors"],
     ),
 ]
 

@@ -58,10 +58,12 @@ fn help_flag_exits_zero() {
 fn no_args_exits_with_error() {
     let output = rust_ag_bin().output().expect("failed to execute rust-ag");
 
+    // ag exits 1 (not 2) when invoked with no arguments, printing
+    // usage/help to stdout.  Match that baseline behavior.
     assert_eq!(
         output.status.code(),
-        Some(2),
-        "Expected exit code 2 when no arguments given"
+        Some(1),
+        "Expected exit code 1 when no arguments given (matching ag baseline)"
     );
 }
 

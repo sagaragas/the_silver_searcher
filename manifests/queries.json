@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "description": "Query / pattern manifest for benchmark scenarios",
-  "manifest_hash": "644958b7d4abfa6291abbd1585003208a04f1e890db83d81f1d02ae7c573b71d",
-  "query_count": 11,
+  "manifest_hash": "e902cb24fa4004e22228e6df5d2a45c276b35fdf3d3e75e2977fde33ff35d96c",
+  "query_count": 12,
   "queries": [
     {
       "id": "q-literal-simple",
@@ -69,6 +69,12 @@
       "type": "regex",
       "pattern": "",
       "description": "Zero-length regex for edge-case safety testing"
+    },
+    {
+      "id": "q-exit-nomatch",
+      "type": "literal",
+      "pattern": "XYZZY_NEVER_FOUND_12345",
+      "description": "Literal that produces zero matches for exit-code testing"
     }
   ]
 }

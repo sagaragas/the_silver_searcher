@@ -494,7 +494,7 @@ pub fn build_regex(opts: &Opts) -> Result<Regex, String> {
         .multi_line(true) // ^ and $ match at line boundaries
         .dot_matches_new_line(false) // . does NOT match \n (matches ag/PCRE)
         .build()
-        .map_err(|e| format!("Invalid regex pattern: {e}"))?;
+        .map_err(|e| format!("Bad regex! {e}"))?;
 
     Ok(re)
 }

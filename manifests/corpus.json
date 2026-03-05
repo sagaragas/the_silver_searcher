@@ -5,8 +5,8 @@
     "tests",
     "src"
   ],
-  "manifest_hash": "21cb23b3e3fd04a063f8db2fbfcf8121778a2919d7fa5f3cff0c8b1cac502fbc",
-  "file_count": 118,
+  "manifest_hash": "1201aa4e4b009b92f7a2361f76a7c22bb3c8e072acbfb952ff6cbecaddd42ab6",
+  "file_count": 124,
   "files": [
     {
       "path": "src/decompress.c",
@@ -219,6 +219,31 @@
       "sha256": "d7918fd5da11aaa3356701c1ec081e108de9ecb24f52a0f7bb34c86881dff339"
     },
     {
+      "path": "tests/edge-cases/ignore-scope-leak/alpha/.gitignore",
+      "size": 9,
+      "sha256": "a2bdaac3d54d46bfebbc2a12317e114c000c6d732ab6a859e4082bb2230de548"
+    },
+    {
+      "path": "tests/edge-cases/ignore-scope-leak/alpha/visible.txt",
+      "size": 21,
+      "sha256": "88817b3b168f89ba0852cedd4162ec631a4e0cf3b454dce05c3ff4680dc40d88"
+    },
+    {
+      "path": "tests/edge-cases/ignore-scope-leak/beta/keep.txt",
+      "size": 17,
+      "sha256": "7d0e73246a1140d1cba592e0243d5e35e4dbbec04b28fb08c6e8efcb9c40e372"
+    },
+    {
+      "path": "tests/edge-cases/ignore-scope-leak/beta/visible.txt",
+      "size": 20,
+      "sha256": "18e74e4a6bf80902adac4acae8865790afa08a05714efddf65e898e1b64a52d2"
+    },
+    {
+      "path": "tests/edge-cases/ignore-scope-leak/root.txt",
+      "size": 12,
+      "sha256": "5f00faa0addaa40cc024797020d6280ad10d7a02d91cbf6c0ece34550db5d7d8"
+    },
+    {
       "path": "tests/edge-cases/ignore-source/.gitignore",
       "size": 16,
       "sha256": "0aa4c7230f383eb736a4a3636fcfe625a8d937ebb8eec548787e8b372258f9ef"
@@ -284,6 +309,11 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
+      "path": "tests/edge-cases/max-count/all-match-12050.txt",
+      "size": 205790,
+      "sha256": "2e8eda0c6dce3673a862ec0e7d714d8b2de662dc807e47e17243bc90492d2c58"
+    },
+    {
       "path": "tests/edge-cases/max-count/few-matches.txt",
       "size": 69,
       "sha256": "83b6dd0a23f752fb4e273fd6cb2f029e2b4a106137d80b7b3ed06122a59d9582"
@@ -330,8 +360,8 @@
     },
     {
       "path": "tests/edge-cases/platform_metadata.json",
-      "size": 1580,
-      "sha256": "ec79ad53e227b089cf856964723f1198e6aef48a1932dbd9f63c640100a22e77"
+      "size": 1739,
+      "sha256": "0a85daa9c4431b2dd8cf447e30609d65df865ef045087b4b4d5cf4c073b606a5"
     },
     {
       "path": "tests/edge-cases/quoted args/another file.txt",
@@ -345,8 +375,8 @@
     },
     {
       "path": "tests/edge-cases/setup_fixtures.py",
-      "size": 26751,
-      "sha256": "4d4ee78569969ee1b769387dadcda699a82ae7a62fcc6b8d57640013e44ac983"
+      "size": 28951,
+      "sha256": "77c256a962bb90c1b66b29014ea11e653fc22a32f059845e1ccd26e29ea25b15"
     },
     {
       "path": "tests/edge-cases/symlink-traversal/.gitignore",

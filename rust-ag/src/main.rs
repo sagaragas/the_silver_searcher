@@ -16,15 +16,20 @@ fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
 
     if args.is_empty() {
-        eprintln!("Usage: rust-ag [OPTIONS] PATTERN [PATH]");
-        process::exit(2);
+        // ag: no-args prints usage to stdout and exits 1.
+        print_help();
+        process::exit(1);
     }
 
     let opts = match opts::Opts::parse(&args) {
         Ok(o) => o,
         Err(e) => {
+            // ag: invalid-option errors exit 1 (not 2) and print the error
+            // to stderr plus usage/help to stdout. This is a distinct error
+            // class from regex errors (which exit 2).
             eprintln!("rust-ag: {e}");
-            process::exit(2);
+            print_help();
+            process::exit(1);
         }
     };
 
@@ -46,8 +51,9 @@ fn main() {
 
     // Need a pattern to search.
     if opts.pattern.is_none() {
-        eprintln!("Usage: rust-ag [OPTIONS] PATTERN [PATH]");
-        process::exit(2);
+        // ag: prints "ERR: What do you want to search for?" to stderr, exits 1.
+        eprintln!("ERR: What do you want to search for?");
+        process::exit(1);
     }
 
     // Detect stdin pipe mode: if stdin is a pipe/FIFO, ag initially sets
@@ -61,7 +67,10 @@ fn main() {
     let re = match search::build_regex(&opts) {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("rust-ag: {e}");
+            // ag: invalid regex prints diagnostic to stderr and exits 2.
+            // Format: "ERR: Bad regex! ..." followed by hint about -Q.
+            eprintln!("ERR: {e}");
+            eprintln!("If you meant to search for a literal string, run ag with -Q");
             process::exit(2);
         }
     };

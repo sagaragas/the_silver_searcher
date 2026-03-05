@@ -43,9 +43,10 @@ pub fn walk_paths(opts: &Opts) -> Vec<PathBuf> {
             );
             walk_dir(path, path, opts, &mut engine, 0, root_dev, &mut files);
         } else {
-            // Non-existent or special path — will be reported as an error
-            // by the caller.
-            eprintln!("ERR: unable to open {path_str}: No such file or directory");
+            // Non-existent or special path — emit error diagnostics matching
+            // ag's format: two ERR lines for nonexistent paths.
+            eprintln!("ERR: Error stat()ing: {path_str}");
+            eprintln!("ERR: Error opening directory {path_str}: No such file or directory");
         }
     }
 
