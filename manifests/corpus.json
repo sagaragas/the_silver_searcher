@@ -5,7 +5,7 @@
     "tests",
     "src"
   ],
-  "manifest_hash": "cd3ba2038fcb887179488c33809326c1ef25922b0ea1be470bdcca8b39b35006",
+  "manifest_hash": "d2b70aa3de31f0f8fa88e307d83a45a5eeac65d2b030226a8f152b17fa8467f3",
   "file_count": 112,
   "files": [
     {
@@ -325,8 +325,8 @@
     },
     {
       "path": "tests/edge-cases/setup_fixtures.py",
-      "size": 22868,
-      "sha256": "d6fc426fe17d2ea0f22a43c360f28d29a70cbd0a1a6361386a15628123d6d80a"
+      "size": 26751,
+      "sha256": "4d4ee78569969ee1b769387dadcda699a82ae7a62fcc6b8d57640013e44ac983"
     },
     {
       "path": "tests/edge-cases/symlink-traversal/.gitignore",

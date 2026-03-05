@@ -343,6 +343,133 @@ def compute_diff(baseline_text: str, target_text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Edge-case fixture preflight
+# ---------------------------------------------------------------------------
+
+
+def _resolve_needed_edge_categories(
+    scenario_ids: list[str] | None,
+    group: str | None,
+) -> list[str] | None:
+    """Determine which edge-case fixture categories the run will need.
+
+    Returns a list of category names (e.g. ``["ignore-source", "large-file"]``)
+    when the run touches edge-case scenarios, or ``None`` when no edge-case
+    scenarios are selected (so preflight can be skipped entirely).
+    """
+    # Map scenario IDs to the fixture category they reference.
+    # Corpus paths follow the pattern ``tests/edge-cases/<category>/…``.
+    _SCENARIO_TO_CATEGORY = {
+        "edge-ignore-source": "ignore-source",
+        "edge-hidden-files": "hidden-files",
+        "edge-binary-files": "binary-files",
+        "edge-symlink-traversal": "symlink-traversal",
+        "edge-one-device": "one-device",
+        "edge-large-file": "large-file",
+        "edge-zero-length-regex": "zero-length-regex",
+        "edge-max-count": "max-count",
+    }
+
+    if scenario_ids:
+        # Explicit scenario list — pick only matching categories.
+        cats = [
+            _SCENARIO_TO_CATEGORY[sid]
+            for sid in scenario_ids
+            if sid in _SCENARIO_TO_CATEGORY
+        ]
+        return cats if cats else None
+
+    if group == "edge-cases":
+        # Running the whole edge-cases group — need all categories.
+        return list(_SCENARIO_TO_CATEGORY.values())
+
+    if group == "all" or group is None:
+        # Running everything — need all edge categories.
+        return list(_SCENARIO_TO_CATEGORY.values())
+
+    # Other groups (e.g. "smoke") don't reference edge-case fixtures.
+    return None
+
+
+def _preflight_edge_fixtures(
+    targets: list[str],
+    scenario_ids: list[str] | None,
+    group: str | None,
+) -> None:
+    """Validate edge-case fixture readiness before execution.
+
+    Unlike the previous single-directory presence check, this function:
+
+    1. Determines which fixture categories the selected scenarios need.
+    2. Runs a lightweight structural preflight against required marker
+       files for each category (no checksums or content validation).
+    3. Auto-sets up any incomplete/missing categories via the fixture
+       builder — only the categories that actually need rebuilding are
+       regenerated, keeping the common case (everything present) fast.
+    4. After auto-setup, re-checks.  If categories are still incomplete
+       the run fails fast with a clear diagnostic.
+    """
+    edge_fixtures_dir = REPO_ROOT / "tests" / "edge-cases"
+    edge_setup_script = edge_fixtures_dir / "setup_fixtures.py"
+
+    if not edge_setup_script.is_file():
+        # No setup script means edge-case infrastructure isn't available.
+        return
+
+    needed = _resolve_needed_edge_categories(scenario_ids, group)
+    if not needed:
+        # No edge-case scenarios selected — nothing to preflight.
+        return
+
+    # Import preflight utilities from setup_fixtures.
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("setup_fixtures", edge_setup_script)
+    if spec is None or spec.loader is None:
+        # Fallback: run the script externally.
+        print("WARNING: Could not import setup_fixtures; running externally", file=sys.stderr)
+        subprocess.run(
+            [sys.executable, str(edge_setup_script)],
+            cwd=REPO_ROOT,
+            check=True,
+        )
+        return
+
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    # De-duplicate while preserving order.
+    seen: set[str] = set()
+    unique_needed: list[str] = []
+    for cat in needed:
+        if cat not in seen:
+            seen.add(cat)
+            unique_needed.append(cat)
+
+    incomplete = mod.preflight_check(unique_needed, fixtures_base=edge_fixtures_dir)
+    if not incomplete:
+        return  # All required categories pass structural preflight.
+
+    # Auto-setup the incomplete categories.
+    print(
+        f"Edge-case preflight: {len(incomplete)}/{len(unique_needed)} categories "
+        f"incomplete — auto-setting up: {', '.join(incomplete)}"
+    )
+    mod.setup_categories(incomplete)
+
+    # Re-check after setup.
+    still_incomplete = mod.preflight_check(unique_needed, fixtures_base=edge_fixtures_dir)
+    if still_incomplete:
+        print(
+            f"FATAL: Edge-case fixture preflight still failing after auto-setup.\n"
+            f"  Incomplete categories: {', '.join(still_incomplete)}\n"
+            f"  Run 'python3 tests/edge-cases/setup_fixtures.py --verify' for details.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+
+# ---------------------------------------------------------------------------
 # Main runner
 # ---------------------------------------------------------------------------
 
@@ -359,17 +486,7 @@ def run_matrix(
     Returns the run summary dict.
     """
     # Ensure edge-case fixtures are set up if they'll be needed.
-    edge_fixtures_dir = REPO_ROOT / "tests" / "edge-cases"
-    edge_setup_script = edge_fixtures_dir / "setup_fixtures.py"
-    if edge_setup_script.is_file():
-        # Check if fixtures exist; if not, run setup.
-        if not (edge_fixtures_dir / "ignore-source").is_dir():
-            print("Setting up edge-case fixtures...")
-            subprocess.run(
-                [sys.executable, str(edge_setup_script)],
-                cwd=REPO_ROOT,
-                check=True,
-            )
+    _preflight_edge_fixtures(targets, scenario_ids, group)
 
     # Load manifests.
     scenarios_manifest = _load_json(SCENARIOS_PATH)

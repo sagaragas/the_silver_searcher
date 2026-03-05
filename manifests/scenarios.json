@@ -7,9 +7,9 @@
     "rg",
     "ugrep"
   ],
-  "corpus_manifest_hash": "cd3ba2038fcb887179488c33809326c1ef25922b0ea1be470bdcca8b39b35006",
+  "corpus_manifest_hash": "d2b70aa3de31f0f8fa88e307d83a45a5eeac65d2b030226a8f152b17fa8467f3",
   "query_manifest_hash": "644958b7d4abfa6291abbd1585003208a04f1e890db83d81f1d02ae7c573b71d",
-  "manifest_hash": "2c398eeba90f5cc181911320c81980e4fafc7e565f355394e26c020471f02e2d",
+  "manifest_hash": "602662b425bcfedf7bf10a1e5542b804c96ba4f03bd4d0fff920252b0f29474e",
   "scenario_count": 20,
   "scenarios": [
     {

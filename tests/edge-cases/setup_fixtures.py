@@ -494,12 +494,115 @@ def setup_all() -> None:
         builder(target)
 
     # Write platform metadata
+    _write_platform_metadata()
+
+
+def setup_categories(categories: list[str]) -> None:
+    """Build only the specified fixture categories.
+
+    Also regenerates platform metadata so it stays in sync with the fixture
+    state on disk.
+    """
+    for name in categories:
+        builder = BUILDERS.get(name)
+        if builder is None:
+            print(f"WARNING: Unknown fixture category '{name}', skipping", file=sys.stderr)
+            continue
+        target = FIXTURES_BASE / name
+        print(f"  Building: {name}/ ...")
+        builder(target)
+
+    _write_platform_metadata()
+
+
+def _write_platform_metadata() -> None:
+    """Write platform metadata JSON."""
     meta = build_platform_metadata()
     meta_path = FIXTURES_BASE / "platform_metadata.json"
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2, sort_keys=False, ensure_ascii=False)
         f.write("\n")
     print(f"  Platform metadata: {meta_path}")
+
+
+# ---------------------------------------------------------------------------
+# Required fixture markers per category.  Each entry lists relative paths
+# (from the category root) that MUST exist for the category to be considered
+# "structurally present".  preflight_check() uses these lightweight markers
+# rather than the full verify_all() validation, so it can run quickly before
+# every parity execution.
+# ---------------------------------------------------------------------------
+
+REQUIRED_MARKERS: dict[str, list[str]] = {
+    "ignore-source": ["visible.txt", ".gitignore", ".ignore"],
+    "hidden-files": ["visible.txt", ".hidden-file.txt"],
+    "binary-files": ["text-file.txt", "binary-file.bin"],
+    "symlink-traversal": ["real-dir/real-file.txt"],
+    "one-device": ["local-file.txt", "one-device-marker.json"],
+    "large-file": ["normal.txt", "large.txt", "large.txt.sha256"],
+    "zero-length-regex": ["single-line.txt", "multi-line.txt"],
+    "max-count": ["few-matches.txt", "many-matches.txt", "mixed.txt"],
+}
+
+
+def preflight_check(
+    categories: list[str] | None = None,
+    fixtures_base: Path | None = None,
+) -> list[str]:
+    """Quick structural preflight — return names of incomplete categories.
+
+    Unlike :func:`verify_all`, this does NOT verify file content, checksums,
+    or symlink targets.  It only asserts that each required marker path exists
+    on disk so that expensive regeneration can be triggered deterministically
+    when the fixture tree is partial or absent.
+
+    Parameters
+    ----------
+    categories:
+        Category names to check.  ``None`` means all known categories.
+    fixtures_base:
+        Root directory for edge-case fixtures.  Defaults to
+        ``FIXTURES_BASE`` (``tests/edge-cases/``).
+
+    Returns
+    -------
+    list[str]
+        Names of categories that are missing or structurally incomplete.
+        An empty list means all requested categories pass preflight.
+    """
+    base = fixtures_base or FIXTURES_BASE
+    to_check = categories if categories is not None else list(REQUIRED_MARKERS)
+    incomplete: list[str] = []
+
+    for name in to_check:
+        markers = REQUIRED_MARKERS.get(name)
+        if markers is None:
+            # Unknown category — flag it as incomplete so caller decides.
+            incomplete.append(name)
+            continue
+
+        cat_dir = base / name
+        if not cat_dir.is_dir():
+            incomplete.append(name)
+            continue
+
+        for rel in markers:
+            if not (cat_dir / rel).exists():
+                incomplete.append(name)
+                break  # one missing marker is enough
+
+    # Also check platform_metadata.json existence.
+    meta_path = base / "platform_metadata.json"
+    if not meta_path.is_file():
+        # If metadata is missing, flag all requested categories so setup
+        # regenerates it via _write_platform_metadata().
+        if not incomplete:
+            # Return a sentinel that forces at least a metadata rebuild.
+            # We pick the first requested category to trigger setup_categories()
+            # which always writes platform metadata.
+            incomplete.append(to_check[0] if to_check else "ignore-source")
+
+    return incomplete
 
 
 def verify_all() -> bool:
