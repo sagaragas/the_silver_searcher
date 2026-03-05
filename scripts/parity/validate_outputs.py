@@ -51,8 +51,14 @@ REQUIRED_SUMMARY_FIELDS = [
 # Per-scenario required artifact extensions (for baseline).
 BASELINE_EXTENSIONS = [".stdout", ".stderr", ".norm", ".meta.json"]
 
-# Per-target required artifact extensions.
-TARGET_EXTENSIONS = [".stdout", ".stderr", ".norm", ".meta.json", ".diff", ".stderr.diff"]
+# Per-target required artifact extensions (common across all schema versions).
+TARGET_EXTENSIONS_BASE = [".stdout", ".stderr", ".norm", ".meta.json", ".diff"]
+
+# Additional per-target artifact extensions required for schema_version >= 2.
+TARGET_EXTENSIONS_STDERR_V2 = [".stderr.diff"]
+
+# Full set for backwards compatibility references.
+TARGET_EXTENSIONS = TARGET_EXTENSIONS_BASE + TARGET_EXTENSIONS_STDERR_V2
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +246,15 @@ def validate_run(run_dir: Path) -> ValidationResult:
                         )
 
     # Validate per-scenario artifact files.
+    # Determine required target artifact extensions based on schema version.
+    # Schema v1 runs pre-date stderr parity enforcement and lack .stderr.diff
+    # artifacts.  Requiring them would cause false validation failures on
+    # legitimate v1 run directories.
+    schema_version = summary.get("schema_version", 1)
+    required_target_extensions = list(TARGET_EXTENSIONS_BASE)
+    if schema_version >= 2:
+        required_target_extensions += TARGET_EXTENSIONS_STDERR_V2
+
     scenarios_dir = run_dir / "scenarios"
     if scenarios_dir.is_dir():
         for sc in summary.get("scenarios", []):
@@ -270,7 +285,7 @@ def validate_run(run_dir: Path) -> ValidationResult:
                 if tres.get("parity") == "skip":
                     continue
 
-                for ext in TARGET_EXTENSIONS:
+                for ext in required_target_extensions:
                     fpath = sc_dir / f"{tname}{ext}"
                     vr.check(
                         f"artifact:{sid}/{tname}{ext}",

@@ -314,6 +314,23 @@ class TestStderrInValidateOutputs(unittest.TestCase):
             f"v1 schema should not require stderr_match, got: {stderr_errors}",
         )
 
+    def test_v1_without_stderr_artifacts_passes_overall(self):
+        """v1 run lacking stderr.diff artifacts passes validation overall.
+
+        Schema v1 runs were produced before stderr parity enforcement was
+        added.  The validator must not require stderr diff artifacts for
+        these runs so legacy run directories remain valid.
+        """
+        import validate_outputs  # noqa: E402
+        run_dir = self._build_minimal_run_dir(
+            schema_version=1, include_stderr_match=False, include_stderr_diff=False
+        )
+        vr = validate_outputs.validate_run(run_dir)
+        self.assertTrue(
+            vr.passed,
+            f"v1 run without stderr artifacts should pass overall, got errors: {vr.errors}",
+        )
+
     def test_v2_missing_stderr_diff_artifact_fails(self):
         """v2 run missing stderr.diff artifact file fails artifact check."""
         import validate_outputs  # noqa: E402
@@ -325,6 +342,31 @@ class TestStderrInValidateOutputs(unittest.TestCase):
         self.assertTrue(
             len(artifact_errors) > 0,
             f"Expected stderr.diff artifact error, got: {vr.errors}",
+        )
+
+    def test_v2_with_stderr_diff_passes_overall(self):
+        """v2 run with all stderr artifacts passes validation overall."""
+        import validate_outputs  # noqa: E402
+        run_dir = self._build_minimal_run_dir(
+            schema_version=2, include_stderr_match=True, include_stderr_diff=True
+        )
+        vr = validate_outputs.validate_run(run_dir)
+        self.assertTrue(
+            vr.passed,
+            f"v2 run with complete stderr artifacts should pass, got errors: {vr.errors}",
+        )
+
+    def test_v3_requires_stderr_diff_artifacts(self):
+        """Future schema v3+ still requires stderr diff artifacts."""
+        import validate_outputs  # noqa: E402
+        run_dir = self._build_minimal_run_dir(
+            schema_version=3, include_stderr_match=True, include_stderr_diff=False
+        )
+        vr = validate_outputs.validate_run(run_dir)
+        artifact_errors = [e for e in vr.errors if "stderr.diff" in e]
+        self.assertTrue(
+            len(artifact_errors) > 0,
+            f"v3 run should require stderr.diff artifacts, got: {vr.errors}",
         )
 
 
