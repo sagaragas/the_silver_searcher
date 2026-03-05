@@ -4,6 +4,8 @@ commands:
   build: ./build.sh && if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo build --workspace --release; else echo "No Rust workspace yet; skipping Rust build"; fi
   test: PATH=".venv-ag-tests/bin:$PATH" make test && if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo test --workspace -- --test-threads=5; else echo "No Rust workspace yet; skipping Rust tests"; fi
   lint: if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings; else echo "No Rust workspace yet; skipping Rust lint"; fi
+  parity_baseline_smoke: python3 scripts/parity/run_matrix.py --target baseline --group smoke
+  parity_validate_latest: python3 scripts/parity/validate_outputs.py --run latest
   benchmark_smoke: python3 benchmarks/harness.py smoke --comparators rust ag rg ugrep
   publication_gate: python3 publication/check_claims.py --memo publication/ragas_blog_memo.md
 

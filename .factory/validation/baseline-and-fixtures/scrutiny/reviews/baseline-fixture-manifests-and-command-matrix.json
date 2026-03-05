@@ -1,0 +1,33 @@
+{
+  "featureId": "baseline-fixture-manifests-and-command-matrix",
+  "reviewedAt": "2026-03-05T09:09:36.336172+00:00",
+  "commitId": "b3928be",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature adds deterministic fixture/query/scenario manifest tooling and a comparator command matrix, but corpus manifest generation is not reproducible from a clean checkout because generated build artifacts are included in the hashed corpus.",
+    "issues": [
+      {
+        "file": "scripts/bench/build_scenario_manifest.py",
+        "line": 278,
+        "severity": "blocking",
+        "description": "`_collect_corpus` walks `tests/` and `src/` from the live working tree and does not exclude generated build files like `src/.dirstamp`, `src/config.h`, `src/config.h.in`, and `src/stamp-h1` (see `manifests/corpus.json` lines 12, 17, 22, 117). These files are absent from commit `b3928be` and vary by build/configure state, so corpus hashes are not reproducible from a clean checkout as required."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Shared guidance emphasizes deterministic artifacts but does not explicitly require manifest inputs to be source-controlled or otherwise normalized against build-generated files.",
+      "evidence": "AGENTS.md says to keep artifacts deterministic/machine-auditable; this feature still included generated `src/*` artifacts in `manifests/corpus.json` (e.g., `src/.dirstamp`, `src/config.h*`, `src/stamp-h1`)."
+    },
+    {
+      "area": "skills",
+      "observation": "`rewrite-worker` procedure enforces red-first test updates, but this manifest-generation feature workflow used direct script creation + `--verify` checks and still reported `skillFeedback.followedProcedure: true`; procedure/feedback criteria appear too rigid or ambiguous for non-Rust manifest features.",
+      "evidence": "Skill step 3 in `.factory/skills/rewrite-worker/SKILL.md` requires adding/updating failing tests first. Transcript skeleton for session `ef581a3e-a24c-40b0-a088-9960f6510b51` shows `Create` of manifest scripts before any failing-test step, while handoff skillFeedback marks followedProcedure true."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Fail: core deliverables were added, but clean-checkout reproducibility is broken by corpus hashing that includes generated build artifacts not present in the committed source tree."
+}

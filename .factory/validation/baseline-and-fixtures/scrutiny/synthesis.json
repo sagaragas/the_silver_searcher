@@ -1,0 +1,86 @@
+{
+  "milestone": "baseline-and-fixtures",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "PATH=\".venv-ag-tests/bin:$PATH\" make test && if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo test --workspace -- --test-threads=5; else echo \"No Rust workspace yet; skipping Rust tests\"; fi",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo check --workspace; else echo \"No Rust workspace yet; skipping typecheck\"; fi",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings; else echo \"No Rust workspace yet; skipping Rust lint\"; fi",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 4,
+    "passed": 1,
+    "failed": 3,
+    "failedFeatures": [
+      "baseline-fixture-manifests-and-command-matrix",
+      "baseline-parity-oracle-runner",
+      "baseline-edge-case-fixtures"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "baseline-fixture-manifests-and-command-matrix",
+      "severity": "blocking",
+      "description": "Corpus manifest collection includes build-generated files under src/ (e.g., .dirstamp/config.h/stamp-h1), making manifest hashes non-reproducible from clean checkout."
+    },
+    {
+      "featureId": "baseline-parity-oracle-runner",
+      "severity": "blocking",
+      "description": "scripts/parity/run_matrix.py tokenizes commands with str.split() after placeholder substitution, which breaks quoted arguments and paths/patterns containing spaces."
+    },
+    {
+      "featureId": "baseline-edge-case-fixtures",
+      "severity": "blocking",
+      "description": "one-device traversal fixtures/scenarios were not implemented despite being in scope (metadata present but no fixture builder or scenario coverage)."
+    },
+    {
+      "featureId": "baseline-edge-case-fixtures",
+      "severity": "blocking",
+      "description": "Large-file edge-case reproducibility is unreliable on clean checkout due conditional fixture setup and integrity checks that do not require missing large fixture files."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "services.yaml",
+      "description": "Added parity command entries parity_baseline_smoke and parity_validate_latest so milestone verification steps are executable from shared commands.",
+      "sourceFeature": "baseline-parity-oracle-runner"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add explicit reproducibility boundary: manifest-critical inputs must exclude build-generated/untracked files unless a normalization strategy is declared and validated from clean checkout; generated edge fixtures must be deterministically regenerated or required by integrity checks.",
+      "evidence": "Reviews for baseline-fixture-manifests-and-command-matrix and baseline-edge-case-fixtures found clean-checkout drift from generated/untracked inputs and conditional fixture setup.",
+      "isSystemic": true
+    },
+    {
+      "target": "rewrite-worker skill",
+      "suggestion": "Introduce a non-Rust tooling pathway and tighten procedure compliance checks so test-first requirements are evaluated against feature type (Rust code vs Python/tooling/manifests) and evidence in transcript skeleton.",
+      "evidence": "Three reviews (baseline-fixture-manifests-and-command-matrix, baseline-parity-oracle-runner, rust-workspace-bootstrap-and-test-harness) reported mismatch between strict test-first wording and observed workflow while handoff marked followedProcedure=true.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Duplicate test-first enforcement gap observations across multiple reviews.",
+      "reason": "duplicate"
+    },
+    {
+      "observation": "Duplicate conventions observation about deterministic artifacts without explicit source-tracking/normalization guidance.",
+      "reason": "duplicate"
+    }
+  ],
+  "previousRound": null
+}
