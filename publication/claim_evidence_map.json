@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "description": "Claim-evidence mapping for ragas.dev/blogs performance memo. Every factual/numeric claim maps to concrete evidence artifacts.",
+  "evidence_commit_sha": "44759b4b07252dbf8e471a71ee21e0e6539ce236",
+  "benchmark_run_ids": {
+    "local": "20260305T174325Z",
+    "nightly": "20260305T174330Z",
+    "manual": "20260305T174335Z"
+  },
+  "claims": [
+    {
+      "claim_id": "CLM-PERF-001",
+      "text": "rust-ag is approximately 2.0x faster than ag on the literal-simple scenario (median 9.69 ms vs 19.64 ms).",
+      "category": "performance",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174325Z/run_manifest.json",
+          "path": "scenarios[0].results.rust-ag.measured_samples",
+          "description": "Local run measured samples for rust-ag on literal-simple"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174325Z/run_manifest.json",
+          "path": "scenarios[0].results.ag.measured_samples",
+          "description": "Local run measured samples for ag on literal-simple"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "scenario_claims[0].pair_evaluations[1]",
+          "description": "Claim gate evaluation for rust-ag vs ag speedup"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-PERF-002",
+      "text": "rg is approximately 2.5x faster than ag on the literal-simple scenario (median 7.74 ms vs 19.64 ms).",
+      "category": "performance",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174325Z/run_manifest.json",
+          "path": "scenarios[0].results.rg.measured_samples",
+          "description": "Local run measured samples for rg on literal-simple"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "scenario_claims[0].pair_evaluations[0]",
+          "description": "Claim gate evaluation for rg vs ag speedup"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-PERF-003",
+      "text": "ugrep is approximately 4.9x faster than ag on the literal-simple scenario (median 4.02 ms vs 19.64 ms).",
+      "category": "performance",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174325Z/run_manifest.json",
+          "path": "scenarios[0].results.ugrep.measured_samples",
+          "description": "Local run measured samples for ugrep on literal-simple"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "scenario_claims[0].pair_evaluations[2]",
+          "description": "Claim gate evaluation for ugrep vs ag speedup"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-PERF-004",
+      "text": "rg is approximately 1.25x faster than rust-ag on the literal-simple scenario (median 7.74 ms vs 9.69 ms).",
+      "category": "performance",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "scenario_claims[0].pair_evaluations[3]",
+          "description": "Claim gate evaluation for rg vs rust-ag speedup"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-PERF-005",
+      "text": "ugrep is approximately 2.4x faster than rust-ag on the literal-simple scenario (median 4.02 ms vs 9.69 ms).",
+      "category": "performance",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "scenario_claims[0].pair_evaluations[5]",
+          "description": "Claim gate evaluation for ugrep vs rust-ag speedup"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-PARITY-001",
+      "text": "rust-ag produces output-identical results to ag (sorted stdout hash match) across all 8 smoke benchmark scenarios.",
+      "category": "correctness",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T183717Z/correctness_gate.json",
+          "path": "scenarios",
+          "description": "Correctness gate shows 8/8 scenarios passing parity between ag and rust-ag"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-PARITY-002",
+      "text": "rg and ugrep produce different output sets from ag due to differing ignore/traversal semantics.",
+      "category": "correctness",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T183717Z/correctness_gate.json",
+          "path": "scenarios[*].cross_tool_hashes",
+          "description": "Cross-tool hash comparison shows 3 unique hash clusters per scenario"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-ENV-001",
+      "text": "Benchmarks were run on macOS Darwin 25.3.0, Apple M4 (10 cores), 16 GiB RAM.",
+      "category": "environment",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174325Z/run_manifest.json",
+          "path": "environment",
+          "description": "Environment metadata from local benchmark run"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-ENV-002",
+      "text": "Comparator versions: ag 2.2.0 (+jit -lzma +zlib), rust-ag 0.1.0, rg 13.0.0, ugrep 7.5.0.",
+      "category": "environment",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174325Z/run_manifest.json",
+          "path": "tools_metadata.comparators",
+          "description": "Tools metadata with exact version strings"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-METHOD-001",
+      "text": "Statistical method: median with IQR dispersion and 95% percentile bootstrap confidence intervals (1000 bootstrap samples).",
+      "category": "methodology",
+      "evidence": [
+        {
+          "artifact": "benchmarks/sampling_policy.json",
+          "path": "statistical_method",
+          "description": "Locked statistical method definition"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/sampling_validation.json",
+          "path": "statistical_method",
+          "description": "Sampling validation confirming method application"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-METHOD-002",
+      "text": "Order bias was controlled via interleaved-random scheduling with deterministic seed derived from run_id hash.",
+      "category": "methodology",
+      "evidence": [
+        {
+          "artifact": "benchmarks/sampling_policy.json",
+          "path": "order_bias",
+          "description": "Order-bias policy definition"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/sampling_validation.json",
+          "path": "order_bias_check",
+          "description": "Order bias check passed with documented seed"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-METHOD-003",
+      "text": "Outlier policy: IQR fence method (1.5x IQR), flag-only (no silent drops), zero outliers flagged in measured runs.",
+      "category": "methodology",
+      "evidence": [
+        {
+          "artifact": "benchmarks/sampling_policy.json",
+          "path": "outlier_policy",
+          "description": "Predeclared outlier policy"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/sampling_validation.json",
+          "path": "outlier_audit",
+          "description": "Outlier audit showing zero flagged samples"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-METHOD-004",
+      "text": "Claim gate requires min 1.05x speedup, max 0.5 CI overlap fraction, agreement across local/nightly/manual run types.",
+      "category": "methodology",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "threshold_config",
+          "description": "Claim threshold configuration"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-GATE-001",
+      "text": "The overall claim gate result is 'fail' due to reproducibility check failure, despite all parity and threshold checks passing.",
+      "category": "gate_status",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "gate",
+          "description": "Top-level claim gate status"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "reproducibility_check",
+          "description": "Reproducibility check failed across all run types"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-SAMPLE-001",
+      "text": "Each measured run used 1 warmup iteration and 3 measured samples per scenario-comparator cell.",
+      "category": "methodology",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174325Z/run_manifest.json",
+          "path": "sampling_config",
+          "description": "Sampling configuration: 1 warmup, 3 measured"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/sampling_validation.json",
+          "path": "warmup_check",
+          "description": "Warmup check passed"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/sampling_validation.json",
+          "path": "sample_count_check",
+          "description": "Sample count check passed with min_required=3"
+        }
+      ]
+    }
+  ]
+}
