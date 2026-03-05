@@ -29,6 +29,7 @@ commands:
   publication_validate_metrics_tables: python3 publication/validate_metrics_tables.py --memo publication/ragas_blog_memo.md
   publication_style_gate: python3 publication/style_gate.py --memo publication/ragas_blog_memo.md
   publication_license_audit: python3 publication/license_audit.py
+  publication_tests: python3 -m pytest publication/tests/ -v
   publication_reconcile: python3 publication/reconcile_metrics.py --memo publication/ragas_blog_memo.md --summary benchmarks/out/latest/summary.json
   publication_traceability: python3 publication/traceability_check.py --memo publication/ragas_blog_memo.md --run latest
   publication_clean_checkout_smoke: test -n "$PUBLICATION_COMMIT_SHA" && python3 publication/run_clean_checkout_smoke.py --commit "$PUBLICATION_COMMIT_SHA"

@@ -1,0 +1,82 @@
+{
+  "milestone": "misc-performance-followup",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "PATH=\"/Users/ragas/code/missions/the_silver_searcher/.venv-ag-tests/bin:$PATH\" make -C \"/Users/ragas/code/missions/the_silver_searcher\" test && cargo test --workspace --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --test-threads=5",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "cargo check --workspace --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\"",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "cargo fmt --all --check --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" && cargo clippy --workspace --all-targets --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- -D warnings",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 4,
+    "passed": 2,
+    "failed": 2,
+    "failedFeatures": [
+      "misc-publication-reconcile-speedup-claims",
+      "misc-cli-stream-manifest-integrity-fix"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "misc-publication-reconcile-speedup-claims",
+      "severity": "blocking",
+      "description": "Narrative pair extraction in publication/reconcile_metrics.py is too narrow and skips validating extracted speedup claim text such as 'rust-ag achieved a 2.0× speedup over the original ag', leaving a required narrative claim unvalidated."
+    },
+    {
+      "featureId": "misc-publication-reconcile-speedup-claims",
+      "severity": "blocking",
+      "description": "publication/reconcile_metrics.py returns early on reconciliation failure before writing publication/reconciliation_report.json, so failing runs can leave stale or missing evidence output."
+    },
+    {
+      "featureId": "misc-cli-stream-manifest-integrity-fix",
+      "severity": "blocking",
+      "description": "scripts/bench/build_scenario_manifest.py now always emits '{pattern} {corpus}' for stdin stream scenarios; parity execution then supplies a file argument alongside stdin_data, regressing required stdin-driven stream behavior."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "services.yaml",
+      "description": "Added `publication_tests` command for deterministic execution of publication test suite (`python3 -m pytest publication/tests/ -v`).",
+      "sourceFeature": "misc-publication-reconcile-speedup-claims"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Clarify whether strict red-first test-first workflow applies uniformly to publication/tooling scripts or only to code paths where practical; align this with current skill procedures to remove contradictory guidance.",
+      "evidence": "Both misc-publication-license-audit-transitive-runtime-coverage and misc-publication-reconcile-speedup-claims reviews observed AGENTS test-first requirements not explicitly enforced by publication-worker procedure, creating inconsistent expectations.",
+      "isSystemic": true
+    },
+    {
+      "target": "skills",
+      "suggestion": "Update benchmark-worker guidance to explicitly preserve stdin/stream semantics when enforcing scenario-template integrity and comparator completeness.",
+      "evidence": "misc-cli-stream-manifest-integrity-fix passed comparator/placeholder checks but regressed stdin-driven stream execution semantics.",
+      "isSystemic": false
+    },
+    {
+      "target": "skills",
+      "suggestion": "Broaden rewrite-worker example handoff content to include tooling/manifests/non-Rust feature examples so reporting expectations are explicit beyond Rust parity work.",
+      "evidence": "misc-skill-guidance-alignment review noted residual Rust-centric handoff examples despite widened rewrite-worker scope.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Add a dedicated services.yaml command for publication license inventory generation.",
+      "reason": "ambiguous"
+    }
+  ],
+  "previousRound": null
+}
