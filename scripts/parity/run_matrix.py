@@ -98,6 +98,40 @@ def _write_text(path: Path, text: str) -> None:
         f.write(text)
 
 
+def _update_latest_symlink(artifacts_base: Path, run_dir: Path) -> None:
+    """Create or replace a ``latest`` symlink inside *artifacts_base*.
+
+    When *run_dir* is a direct child of *artifacts_base* (the default case),
+    the symlink target is a **relative** name (e.g. ``20260305T120000Z``) so
+    the link works from within the artifacts directory.
+
+    When *run_dir* lives **outside** *artifacts_base* (custom ``--output-dir``),
+    the symlink target is computed as a **relative path from** the symlink's
+    parent directory to the actual run directory.  This keeps the symlink valid
+    regardless of where the caller ``readlink``s from while avoiding hard-coded
+    absolute paths when possible.
+    """
+    latest_link = artifacts_base / "latest"
+    if latest_link.is_symlink() or latest_link.exists():
+        latest_link.unlink()
+
+    # Resolve both paths to eliminate any ``..`` or symlink indirection before
+    # computing the relationship.
+    resolved_base = artifacts_base.resolve()
+    resolved_run = run_dir.resolve()
+
+    try:
+        # If run_dir is a child of artifacts_base, Path.relative_to succeeds
+        # and we get a clean relative name such as ``20260305T120000Z``.
+        rel = resolved_run.relative_to(resolved_base)
+        latest_link.symlink_to(rel)
+    except ValueError:
+        # run_dir is NOT inside artifacts_base → compute a relative path from
+        # the symlink's parent (artifacts_base) to the run directory.
+        rel = os.path.relpath(resolved_run, resolved_base)
+        latest_link.symlink_to(rel)
+
+
 def _normalise_output(text: str) -> str:
     """Normalise captured output for stable diffing.
 
@@ -379,11 +413,9 @@ def run_matrix(
         run_dir = ARTIFACTS_BASE / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    # Also maintain a 'latest' symlink.
-    latest_link = ARTIFACTS_BASE / "latest"
-    if latest_link.is_symlink() or latest_link.exists():
-        latest_link.unlink()
-    latest_link.symlink_to(run_dir.name)
+    # Maintain a 'latest' symlink that resolves for both default and custom
+    # output directories.
+    _update_latest_symlink(ARTIFACTS_BASE, run_dir)
 
     # Collect environment metadata.
     env_meta = _collect_environment_metadata(list(needed))
