@@ -46,6 +46,28 @@ QUERIES_PATH = MANIFESTS_DIR / "queries.json"
 # Comparator identifiers (order matters for matrix columns).
 COMPARATORS = ["ag", "rust-ag", "rg", "ugrep"]
 
+# ---------------------------------------------------------------------------
+# Required edge scenario IDs — coverage shrinkage gate.
+#
+# Every ID listed here MUST appear in SCENARIOS.  The --verify path checks
+# this so that accidental removal of edge scenarios is caught immediately.
+# When adding a new edge-case scenario, also add its ID here.
+# ---------------------------------------------------------------------------
+
+REQUIRED_EDGE_SCENARIO_IDS: set[str] = {
+    "edge-binary-files",
+    "edge-hidden-files",
+    "edge-ignore-scope-leak",
+    "edge-ignore-source",
+    "edge-large-file",
+    "edge-max-count",
+    "edge-one-device",
+    "edge-recursion-n-r-precedence",
+    "edge-recursion-r-n-precedence",
+    "edge-symlink-traversal",
+    "edge-zero-length-regex",
+}
+
 # Corpus directories relative to REPO_ROOT.
 # The existing tests directory doubles as the initial corpus.
 CORPUS_DIRS = [
@@ -739,6 +761,25 @@ def verify_all() -> bool:
                 f"OK: {label} manifest verified "
                 f"({fresh[count_key]} entries, hash={fresh['manifest_hash'][:16]}…)"
             )
+
+    # --- Required edge scenario ID set gate ---
+    present_edge_ids: set[str] = {
+        s["id"] for s in scenarios["scenarios"]
+        if s["id"].startswith("edge-")
+    }
+    missing = REQUIRED_EDGE_SCENARIO_IDS - present_edge_ids
+    if missing:
+        print(
+            f"FAIL: Required edge scenario IDs missing from scenario list: "
+            f"{sorted(missing)}",
+            file=sys.stderr,
+        )
+        ok = False
+    else:
+        print(
+            f"OK: All {len(REQUIRED_EDGE_SCENARIO_IDS)} required edge "
+            f"scenario IDs present"
+        )
 
     return ok
 

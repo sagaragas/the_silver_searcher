@@ -8,6 +8,7 @@ Checks:
   4. Platform metadata is present and well-formed.
   5. Scenario manifest references valid fixture paths.
   6. Symlink/one-device fixtures have platform applicability notes.
+  7. Required edge scenario IDs are present (coverage shrinkage gate).
 
 Usage:
     python3 scripts/parity/validate_fixture_integrity.py
@@ -61,6 +62,29 @@ PLATFORM_CONDITIONAL_CATEGORIES = [
     "symlink-traversal",
     "one-device",
 ]
+
+# ---------------------------------------------------------------------------
+# Required edge scenario IDs — coverage shrinkage gate.
+#
+# Every scenario ID listed here MUST appear in the scenario manifest.  If a
+# required ID is missing the integrity check fails, preventing silent
+# coverage shrinkage.  When adding a new edge-case scenario to
+# build_scenario_manifest.py, also add its ID here.
+# ---------------------------------------------------------------------------
+
+REQUIRED_EDGE_SCENARIO_IDS: set[str] = {
+    "edge-binary-files",
+    "edge-hidden-files",
+    "edge-ignore-scope-leak",
+    "edge-ignore-source",
+    "edge-large-file",
+    "edge-max-count",
+    "edge-one-device",
+    "edge-recursion-n-r-precedence",
+    "edge-recursion-r-n-precedence",
+    "edge-symlink-traversal",
+    "edge-zero-length-regex",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -292,6 +316,59 @@ def validate_scenario_corpus_refs(result: IntegrityResult, verbose: bool) -> Non
 
     if verbose:
         print(f"  Edge-case scenarios: {len(edge_scenarios)}")
+
+
+def validate_required_edge_scenario_ids(result: IntegrityResult, verbose: bool) -> None:
+    """Enforce required edge scenario ID set — coverage shrinkage gate.
+
+    Compares the edge scenario IDs actually present in manifests/scenarios.json
+    against REQUIRED_EDGE_SCENARIO_IDS.  Fails when any required ID is absent,
+    preventing silent coverage shrinkage.
+    """
+    scenarios_path = MANIFESTS_DIR / "scenarios.json"
+    if not scenarios_path.is_file():
+        result.check(
+            "required_edge_ids:manifest_exists",
+            False,
+            "scenarios.json not found; cannot validate required edge scenario IDs",
+        )
+        return
+
+    with open(scenarios_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    present_edge_ids: set[str] = {
+        s["id"] for s in data.get("scenarios", [])
+        if s["id"].startswith("edge-")
+    }
+
+    missing = REQUIRED_EDGE_SCENARIO_IDS - present_edge_ids
+    result.check(
+        "required_edge_ids:all_present",
+        len(missing) == 0,
+        (
+            f"Missing required edge scenario IDs: {sorted(missing)}"
+            if missing
+            else f"All {len(REQUIRED_EDGE_SCENARIO_IDS)} required edge scenario IDs present"
+        ),
+    )
+
+    # Per-ID checks for clear reporting.
+    for sid in sorted(REQUIRED_EDGE_SCENARIO_IDS):
+        result.check(
+            f"required_edge_id:{sid}",
+            sid in present_edge_ids,
+            f"Required edge scenario '{sid}' is "
+            + ("present" if sid in present_edge_ids else "MISSING from scenarios.json"),
+        )
+
+    if verbose:
+        print(
+            f"  Required edge scenario IDs: "
+            f"{len(REQUIRED_EDGE_SCENARIO_IDS)} required, "
+            f"{len(present_edge_ids)} present, "
+            f"{len(missing)} missing"
+        )
 
 
 def validate_symlink_fixtures(result: IntegrityResult, verbose: bool) -> None:
@@ -563,24 +640,29 @@ def main() -> None:
         print("\nStage 4: Scenario corpus references")
     validate_scenario_corpus_refs(result, args.verbose)
 
-    # Stage 5: Symlink fixture integrity.
+    # Stage 5: Required edge scenario ID set (coverage shrinkage gate).
     if args.verbose:
-        print("\nStage 5: Symlink fixtures")
+        print("\nStage 5: Required edge scenario IDs")
+    validate_required_edge_scenario_ids(result, args.verbose)
+
+    # Stage 6: Symlink fixture integrity.
+    if args.verbose:
+        print("\nStage 6: Symlink fixtures")
     validate_symlink_fixtures(result, args.verbose)
 
-    # Stage 6: Binary fixture integrity.
+    # Stage 7: Binary fixture integrity.
     if args.verbose:
-        print("\nStage 6: Binary fixtures")
+        print("\nStage 7: Binary fixtures")
     validate_binary_fixtures(result, args.verbose)
 
-    # Stage 7: Large-file fixture.
+    # Stage 8: Large-file fixture.
     if args.verbose:
-        print("\nStage 7: Large-file fixture")
+        print("\nStage 8: Large-file fixture")
     validate_large_file(result, args.verbose)
 
-    # Stage 8: One-device fixture.
+    # Stage 9: One-device fixture.
     if args.verbose:
-        print("\nStage 8: One-device fixture")
+        print("\nStage 9: One-device fixture")
     validate_one_device_fixtures(result, args.verbose)
 
     # Output results.
