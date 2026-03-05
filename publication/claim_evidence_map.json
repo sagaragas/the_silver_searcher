@@ -419,7 +419,7 @@
     },
     {
       "claim_id": "CLM-ADV-003",
-      "text": "3 measured samples per cell produce clear separation (IQR 0.10-0.53 ms vs inter-tool gaps of 5-15 ms) despite limited statistical power.",
+      "text": "3 measured samples per cell produce clear separation (IQR 0.05-0.60 ms vs inter-tool gaps of 5-15 ms) despite limited statistical power.",
       "category": "adversarial_qa",
       "evidence": [
         {

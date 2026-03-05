@@ -26,5 +26,7 @@ commands:
   benchmark_package_publication: python3 benchmarks/package_publication_artifacts.py --run latest
   benchmark_verify_checksums: python3 benchmarks/verify_checksums.py --manifest benchmarks/out/latest/publication/publication_manifest.json
   publication_gate: python3 publication/check_claims.py --memo publication/ragas_blog_memo.md
+  publication_reconcile: python3 publication/reconcile_metrics.py --memo publication/ragas_blog_memo.md --summary benchmarks/out/latest/summary.json
+  publication_traceability: python3 publication/traceability_check.py --memo publication/ragas_blog_memo.md --run latest
 
 services: {}

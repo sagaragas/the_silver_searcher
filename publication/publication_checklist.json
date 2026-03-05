@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "checks": [
+    {
+      "id": "VAL-CROSS-001",
+      "name": "Shared fixture lineage across stages",
+      "result": "pass",
+      "errors": []
+    },
+    {
+      "id": "VAL-CROSS-004",
+      "name": "Public fork contains reproducibility package",
+      "result": "pass",
+      "errors": []
+    },
+    {
+      "id": "VAL-CROSS-005",
+      "name": "Public release includes legal + methodology disclosure",
+      "result": "pass",
+      "errors": []
+    },
+    {
+      "id": "VAL-CROSS-008",
+      "name": "Public publication commit is traceable to measured evidence",
+      "result": "pass",
+      "errors": []
+    }
+  ]
+}

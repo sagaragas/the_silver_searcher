@@ -229,7 +229,7 @@ types. All times are wall-clock elapsed in milliseconds (ms).
 | ag | 19.64 | 0.29 | 19.35 | 19.93 | 3 |
 | rust-ag | 9.69 | 0.19 | 9.53 | 9.91 | 3 |
 | rg | 7.74 | 0.38 | 7.25 | 8.00 | 3 |
-| ugrep | 4.02 | 0.10 | 3.81 | 4.10 | 3 |
+| ugrep | 4.02 | 0.15 | 3.81 | 4.10 | 3 |
 
 #### Table 2.2b: Nightly Run (20260305T174330Z)
 
@@ -237,9 +237,9 @@ types. All times are wall-clock elapsed in milliseconds (ms).
 
 | Comparator | Median (ms) | IQR (ms) | 95% CI Lower (ms) | 95% CI Upper (ms) | Samples (n) |
 |------------|-------------|----------|--------------------|--------------------|-------------|
-| ag | 18.90 | 0.21 | 18.63 | 19.04 | 3 |
+| ag | 18.90 | 0.20 | 18.63 | 19.04 | 3 |
 | rust-ag | 9.65 | 0.07 | 9.55 | 9.69 | 3 |
-| rg | 7.70 | 0.53 | 7.56 | 8.76 | 3 |
+| rg | 7.70 | 0.60 | 7.56 | 8.76 | 3 |
 | ugrep | 3.97 | 0.05 | 3.92 | 4.02 | 3 |
 
 #### Table 2.2c: Manual Run (20260305T174335Z)
@@ -592,7 +592,7 @@ Evidence: `manifests/scenarios.json` — 38 registered scenarios,
 balancing measurement time against coverage. Bootstrap CIs from 3
 samples have wider bounds than from larger samples, which is why we
 report them explicitly. For the `literal-simple` scenario, the measured
-IQRs are small (0.10–0.53 ms) relative to the inter-tool gaps
+IQRs are small (0.05–0.60 ms) relative to the inter-tool gaps
 (5–15 ms), giving clear separation despite the small n. We acknowledge
 this as a limitation in §5.2.
 
