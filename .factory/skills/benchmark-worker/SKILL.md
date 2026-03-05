@@ -17,6 +17,7 @@ Use for features in milestone `benchmark-harness` and related benchmark hardenin
 2. Implement harness behavior test-first: schema tests, matrix completeness tests, and gate tests before runtime code.
 3. Ensure command equivalence across `ag`, Rust rewrite, `rg`, and `ugrep` with explicit scenario manifests.
    - **Comparator completeness policy:** Each benchmark scenario must define and execute the full required comparator set (`ag`, `rust-ag`, `rg`, `ugrep`). Missing comparator command templates or cells are always blocking failures — never skip or mark as advisory.
+   - **Stdin/stream semantics safeguard:** When a scenario declares `stdin_data`, the expanded command must execute as a stdin-driven search — the corpus/file argument must be stripped (or not emitted) so the comparator reads from piped stdin, not from a file path. Enforcing template integrity (e.g., ensuring `{corpus}` placeholders exist) must not regress stdin-only execution semantics. Changes to scenario templates must be validated against both placeholder/comparator completeness checks **and** actual execution-path checks confirming stdin-driven scenarios do not receive a file argument at runtime.
 4. Capture immutable run metadata: commit SHA, corpus/query hashes, tool versions, environment snapshot.
 5. Enforce sampling/warmup/order policy and outlier policy via machine-checked artifacts.
 6. **Correctness gate enforcement:**

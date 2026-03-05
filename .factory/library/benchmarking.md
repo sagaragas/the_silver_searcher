@@ -12,3 +12,4 @@ Guidance for benchmark harness implementation and interpretation.
 - Correctness gate policy: **`ag` vs `rust-ag` parity divergence is a hard failure**; cross-tool (`rg`/`ugrep`) hash differences are advisory details and do not fail the gate by themselves.
 - Harness CLI contract: when correctness gate fails, `benchmarks/harness.py` benchmark modes must exit non-zero even if scenario cell execution itself reports zero errors.
 - Latest-run resolution contract: treat only canonical timestamp-form run directories as eligible `latest` targets, and reject symlink targets that do not resolve to canonical run directories under the benchmark output root.
+- Stdin/stream semantics: scenarios declaring `stdin_data` must execute as stdin-driven searches with no corpus/file argument. Template integrity enforcement (e.g., `{corpus}` placeholder checks) must not regress stdin-only execution paths.

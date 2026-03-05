@@ -1,6 +1,6 @@
 ---
 name: rewrite-worker
-description: Implements baseline fixtures/tooling plus Rust search engine and CLI parity behavior using strict test-first workflow.
+description: Implements baseline fixtures/tooling plus Rust search engine and CLI parity behavior using test-first workflow (strict for Rust code; scoped-validator-driven for tooling/manifest/script features).
 ---
 
 # Rewrite Worker
@@ -44,7 +44,9 @@ This includes Python/parity-tooling hardening features, manifest/fixture regener
 
 When reporting `followedProcedure` in skill feedback, evaluate compliance against the feature type (Rust code vs tooling/manifests). Claiming `followedProcedure: true` requires that transcript ordering evidence shows tests or scoped validators ran before or alongside implementation edits — not only after.
 
-## Example Handoff
+## Example Handoffs
+
+### Rust Parity Feature
 
 ```json
 {
@@ -92,6 +94,56 @@ When reporting `followedProcedure` in skill feedback, evaluate compliance agains
         ]
       }
     ]
+  },
+  "discoveredIssues": []
+}
+```
+
+### Tooling / Manifest / Non-Rust Feature
+
+```json
+{
+  "salientSummary": "Fixed scenario manifest stream-template regression; stdin-driven scenarios no longer receive a corpus file argument at runtime.",
+  "whatWasImplemented": "Updated build_scenario_manifest.py to omit {corpus} from cmd_template when stdin_data is present, preserving stdin-only execution semantics. Added unit test covering stdin-scenario template expansion and ran scoped validators before and after the change.",
+  "whatWasLeftUndone": "",
+  "verification": {
+    "commandsRun": [
+      {
+        "command": "python3 -m pytest scripts/bench/tests/test_scenario_manifest.py -v",
+        "exitCode": 0,
+        "observation": "3 tests passed including stdin template expansion edge case"
+      },
+      {
+        "command": "python3 scripts/bench/build_scenario_manifest.py --verify",
+        "exitCode": 0,
+        "observation": "Manifest integrity check passed; stdin scenarios have no corpus arg"
+      },
+      {
+        "command": "python3 scripts/parity/validate_fixture_integrity.py",
+        "exitCode": 0,
+        "observation": "All fixture integrity checks passed"
+      }
+    ],
+    "interactiveChecks": [
+      {
+        "action": "Inspect manifests/scenarios.json cli-stream entries and confirm cmd_template omits corpus placeholder",
+        "observed": "Stream scenarios use '{pattern}' only, no '{corpus}' in template"
+      }
+    ]
+  },
+  "tests": {
+    "added": [
+      {
+        "file": "scripts/bench/tests/test_scenario_manifest.py",
+        "cases": [
+          {
+            "name": "stdin_scenario_omits_corpus_arg",
+            "verifies": "stdin-driven stream scenarios do not receive file argument"
+          }
+        ]
+      }
+    ],
+    "coverage": "Covers stdin template expansion, manifest integrity, and fixture validation for tooling change"
   },
   "discoveredIssues": []
 }
