@@ -1,7 +1,7 @@
 {
   "milestone": "baseline-and-fixtures",
-  "round": 2,
-  "status": "fail",
+  "round": 3,
+  "status": "pass",
   "validatorsRun": {
     "test": {
       "passed": true,
@@ -20,50 +20,36 @@
     }
   },
   "reviewsSummary": {
-    "total": 5,
-    "passed": 4,
-    "failed": 1,
-    "failedFeatures": [
-      "baseline-parity-argv-tokenization-fix"
-    ]
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "failedFeatures": []
   },
-  "blockingIssues": [
-    {
-      "featureId": "baseline-parity-argv-tokenization-fix",
-      "severity": "blocking",
-      "description": "scripts/parity/run_matrix.py now uses shlex.split(cmd_str), which fixes quoted arguments but regresses existing unquoted escaped-regex scenarios by stripping backslashes and changing argv semantics."
-    }
-  ],
-  "appliedUpdates": [
-    {
-      "target": "services.yaml",
-      "description": "Added shared command entries for parity edge-case and fixture/manifest verification workflows: parity_edge_cases_baseline, parity_validate_fixture_integrity, parity_build_fixture_manifest_verify, parity_build_scenario_manifest_verify, and edge_fixtures_setup_verify.",
-      "sourceFeature": "baseline-edge-case-fixtures-one-device-largefile-fix"
-    }
-  ],
+  "blockingIssues": [],
+  "appliedUpdates": [],
   "suggestedGuidanceUpdates": [
     {
       "target": "AGENTS.md",
-      "suggestion": "Document scenario command-template escaping conventions for manifests (especially `{pattern}` placeholders and backslash-sensitive regex inputs), and document nested fixture `.git/` pitfalls during staging so workers avoid accidental submodule-like states.",
-      "evidence": "The failing review for baseline-parity-argv-tokenization-fix ties regression risk to undocumented escaping assumptions, and edge-case fixture review observed nested `.git/` staging failures that required remediation.",
+      "suggestion": "Add explicit single-source-of-truth guidance for edge scenario/category mapping and synchronization expectations between `manifests/scenarios.json` and `scripts/parity/run_matrix.py` preflight helpers.",
+      "evidence": "Review for baseline-edge-case-autosetup-preflight-fix flagged hardcoded `_SCENARIO_TO_CATEGORY` mapping drift risk in `run_matrix.py:362` with no shared guidance describing required sync behavior.",
       "isSystemic": true
     },
     {
       "target": "rewrite-worker skill",
-      "suggestion": "Add explicit tooling-feature workflow guidance (Python/script/manifests) and require edge-case regression coverage for argv/tokenization changes, since current wording is Rust-centric and does not sufficiently guard shell/regex escaping semantics.",
-      "evidence": "Reviews for baseline-fixture-manifest-reproducibility-fix and baseline-parity-argv-tokenization-fix both reported procedure mismatch for non-Rust work and missed escaping-regression coverage.",
+      "suggestion": "Clarify procedure and reporting expectations for non-Rust tooling features (Python/script/manifests) and require explicit transcript evidence when claiming test-first compliance in skill feedback.",
+      "evidence": "Current review evidence shows rewrite-worker instructions remain Rust-centric for implementation wording, and one completed feature reported followedProcedure=true even though transcript ordering showed implementation edits before test creation.",
       "isSystemic": true
     }
   ],
   "rejectedObservations": [
     {
-      "observation": "Duplicate services.yaml missing-command observations for fixture/manifest verification commands.",
-      "reason": "already-applied"
+      "observation": "Document command-template escaping/backslash conventions for parity manifests and regex placeholders.",
+      "reason": "already-recommended-in-round2"
     },
     {
-      "observation": "Edge-scenario integrity strictness suggestion (require specific expected IDs) is a code-quality enhancement but not needed for immediate shared-state guidance update in this scrutiny round.",
-      "reason": "defer-as-feature"
+      "observation": "rewrite-worker Rust-centric wording for tooling features.",
+      "reason": "already-recommended-in-round2; kept only incremental recommendation about compliance evidence"
     }
   ],
-  "previousRound": ".factory/validation/baseline-and-fixtures/scrutiny/synthesis.round1.json"
+  "previousRound": ".factory/validation/baseline-and-fixtures/scrutiny/synthesis.round2.json"
 }

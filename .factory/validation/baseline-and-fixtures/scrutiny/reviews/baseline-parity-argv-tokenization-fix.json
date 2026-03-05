@@ -1,33 +1,26 @@
 {
   "featureId": "baseline-parity-argv-tokenization-fix",
-  "reviewedAt": "2026-03-05T09:47:14Z",
-  "commitId": "fec364e4e8f3978d04f869ce4c3d2389e1ef7f51",
+  "reviewedAt": "2026-03-05T10:13:09Z",
+  "commitId": "0f0178e546c6b3035867e5b7f95a48305c5a53a2",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
-  "status": "fail",
+  "status": "pass",
   "codeReview": {
-    "summary": "The fix addresses the original quoted-argument fragmentation from `str.split()`, but it introduces a new blocking regression for existing regex scenarios that rely on backslash escapes, so the original failure is not adequately resolved.",
-    "issues": [
-      {
-        "file": "scripts/parity/run_matrix.py",
-        "line": 219,
-        "severity": "blocking",
-        "description": "Using `shlex.split(cmd_str)` strips unquoted backslashes from existing regex patterns (e.g. `\\b...\\b`), changing argv semantics for existing non-space scenarios. Evidence from the reviewed commits: original scenario `regex-complex` uses unquoted `{pattern}` (`manifests/scenarios.json:93` in commit `45832a8...`) with query pattern `\\b[A-Z]{2,}_[A-Z]{2,}\\b` (`manifests/queries.json:52` in commit `45832a8...`), while fix commit tokenization turns that argument into `b[A-Z]{2,}_[A-Z]{2,}b`."
-      }
-    ]
+    "summary": "The fix adequately resolves the prior blocking regression: argv tokenization now preserves escaped backslashes for unquoted regex patterns while still preserving quoted arguments/paths with spaces as single tokens. The previous failing path (`shlex.split` in POSIX mode) is replaced with `tokenize_command`, and coverage was expanded to include both behaviors.",
+    "issues": []
   },
   "sharedStateObservations": [
     {
       "area": "conventions",
-      "observation": "Shared guidance does not document command-template escaping rules for scenario manifests (quoted vs unquoted `{pattern}`), which made this argv-tokenization fix regress existing escaped-regex behavior.",
-      "evidence": "AGENTS.md and .factory/library docs emphasize parity/reproducibility but do not specify manifest command escaping conventions; manifests/scenarios.json (commit 45832a8..., line 93) uses unquoted `{pattern}` while manifests/queries.json (line 52) contains escaped regex boundaries."
+      "observation": "Shared mission/library guidance still does not explicitly document command-template escaping conventions for `{pattern}` in parity scenario manifests (quoted vs unquoted placeholders and required backslash preservation expectations).",
+      "evidence": "`/Users/ragas/.factory/missions/d1c51473-4105-4ffd-8739-51d144ec03b4/AGENTS.md` and `.factory/library/*.md` describe parity/reproducibility constraints but do not define template escaping rules; current manifests continue to use unquoted `{pattern}` templates (`manifests/scenarios.json` regex scenarios) with escaped regex patterns in `manifests/queries.json` (for example `q-regex-complex`)."
     },
     {
       "area": "skills",
-      "observation": "`rewrite-worker` remains Rust-centric and does not explicitly force Python tooling edge-case coverage for argv parsing, despite this mission containing Python parity tooling where shell-tokenization semantics are subtle.",
-      "evidence": ".factory/skills/rewrite-worker/SKILL.md step 4 says 'Implement Rust changes', while this feature changed Python (`scripts/parity/run_matrix.py`) and transcript skeleton for session f0c71383-e61e-45c6-8477-b732e09e10fa focused on Python/manifests."
+      "observation": "`rewrite-worker` procedure remains Rust-centric for implementation steps even when mission features are in Python parity tooling, which can create procedure ambiguity for workers on non-Rust fixes.",
+      "evidence": "`.factory/skills/rewrite-worker/SKILL.md` step 4 says 'Implement Rust changes', while this reviewed fix commit (`0f0178e...`) modifies Python files (`scripts/parity/run_matrix.py`, `scripts/parity/test_argv_tokenization.py`)."
     }
   ],
-  "addressesFailureFrom": ".factory/validation/baseline-and-fixtures/scrutiny/reviews/baseline-parity-oracle-runner.json",
-  "summary": "Reviewed fix feature `baseline-parity-argv-tokenization-fix`, its transcript skeleton, prior failed review, and both relevant diffs (`45832a8...` and `fec364e...`). The quoted-args bug was targeted, but the new shlex tokenization regresses existing escaped-regex scenarios by dropping backslashes, so this fix review is marked fail."
+  "addressesFailureFrom": ".factory/validation/baseline-and-fixtures/scrutiny/reviews/baseline-parity-argv-tokenization-fix.json",
+  "summary": "Reviewed the fix commit, handoff, prior failed review, and latest transcript skeleton for `baseline-parity-argv-tokenization-fix`. The prior blocking issue (loss of escaped backslashes from POSIX `shlex.split`) is now addressed by `tokenize_command` in `scripts/parity/run_matrix.py:244` and its use in `run_command` (`:282`), with regression tests added in `scripts/parity/test_argv_tokenization.py` (including backslash and quoted-arg cases). This fix review is PASS."
 }
