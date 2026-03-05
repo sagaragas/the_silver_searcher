@@ -718,7 +718,11 @@ def main() -> int:
         "--speedup-tolerance",
         type=float,
         default=DEFAULT_SPEEDUP_TOLERANCE_RATIO,
-        help=f"Max allowed absolute ratio diff for narrative speedup claims (default: {DEFAULT_SPEEDUP_TOLERANCE_RATIO})",
+        help=(
+            f"Max allowed absolute ratio diff for speedup checks — applies to "
+            f"both narrative speedup claims and speedup table values "
+            f"(default: {DEFAULT_SPEEDUP_TOLERANCE_RATIO})"
+        ),
     )
     args = parser.parse_args()
 
