@@ -646,3 +646,221 @@ class TestVerifyChecksumsCLI:
             cwd=REPO_ROOT,
         )
         assert result.returncode == 0, f"Verify failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+
+
+# ===========================================================================
+# Test: Hard-fail on missing required artifacts (integrity fix)
+# ===========================================================================
+
+
+class TestPackagingFailsOnMissingRequired:
+    """Packaging must hard-fail when required raw artifacts are missing."""
+
+    def test_packaging_raises_on_missing_tools_metadata(self, tmp_path: Path) -> None:
+        """Packaging raises when tools_metadata.json is missing."""
+        from package_publication_artifacts import package_publication_artifacts
+
+        run_dir = tmp_path / "run"
+        _make_minimal_run(run_dir)
+        (run_dir / "tools_metadata.json").unlink()
+
+        with pytest.raises(SystemExit):
+            package_publication_artifacts(run_dir, tmp_path / "pub")
+
+    def test_packaging_raises_on_missing_environment_metadata(self, tmp_path: Path) -> None:
+        """Packaging raises when environment_metadata.json is missing."""
+        from package_publication_artifacts import package_publication_artifacts
+
+        run_dir = tmp_path / "run"
+        _make_minimal_run(run_dir)
+        (run_dir / "environment_metadata.json").unlink()
+
+        with pytest.raises(SystemExit):
+            package_publication_artifacts(run_dir, tmp_path / "pub")
+
+    def test_packaging_raises_on_missing_command_equivalence(self, tmp_path: Path) -> None:
+        """Packaging raises when command_equivalence.json is missing."""
+        from package_publication_artifacts import package_publication_artifacts
+
+        run_dir = tmp_path / "run"
+        _make_minimal_run(run_dir)
+        (run_dir / "command_equivalence.json").unlink()
+
+        with pytest.raises(SystemExit):
+            package_publication_artifacts(run_dir, tmp_path / "pub")
+
+    def test_packaging_raises_on_missing_run_manifest(self, tmp_path: Path) -> None:
+        """Packaging raises when run_manifest.json is missing (it's loaded first)."""
+        from package_publication_artifacts import package_publication_artifacts
+
+        run_dir = tmp_path / "run"
+        _make_minimal_run(run_dir)
+        (run_dir / "run_manifest.json").unlink()
+
+        with pytest.raises((SystemExit, FileNotFoundError)):
+            package_publication_artifacts(run_dir, tmp_path / "pub")
+
+    def test_cli_exits_nonzero_on_missing_required_artifact(self, tmp_path: Path) -> None:
+        """CLI exits non-zero when a required artifact is missing."""
+        import subprocess
+
+        run_dir = tmp_path / "run"
+        _make_minimal_run(run_dir)
+        (run_dir / "tools_metadata.json").unlink()
+
+        result = subprocess.run(
+            [
+                "python3",
+                str(REPO_ROOT / "benchmarks" / "package_publication_artifacts.py"),
+                "--run-dir", str(run_dir),
+                "--output-dir", str(tmp_path / "pub"),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+        )
+        assert result.returncode != 0, (
+            f"CLI should fail on missing required artifact but exited 0.\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+
+    def test_packaging_succeeds_when_optional_artifacts_missing(self, tmp_path: Path) -> None:
+        """Packaging succeeds when only optional artifacts are missing."""
+        from package_publication_artifacts import package_publication_artifacts
+
+        run_dir = tmp_path / "run"
+        _make_minimal_run(run_dir)
+        # Remove optional artifacts
+        for name in ["correctness_gate.json", "sampling_validation.json"]:
+            p = run_dir / name
+            if p.exists():
+                p.unlink()
+
+        # Should NOT raise
+        result = package_publication_artifacts(run_dir, tmp_path / "pub")
+        assert result is not None
+        assert result["run_id"] == "20260305T120000Z"
+
+
+# ===========================================================================
+# Test: Checksum coverage enforcement (integrity fix)
+# ===========================================================================
+
+
+class TestChecksumCoverageEnforcement:
+    """Checksum verifier must fail when coverage is incomplete."""
+
+    def test_verify_fails_when_required_artifact_has_no_checksum(self, tmp_path: Path) -> None:
+        """Verification fails when a required artifact exists on disk but
+        has no corresponding checksum in the manifest."""
+        from package_publication_artifacts import package_publication_artifacts
+        from verify_checksums import verify_checksums
+
+        run_dir = tmp_path / "run"
+        _make_minimal_run(run_dir)
+
+        pub_dir = tmp_path / "pub"
+        package_publication_artifacts(run_dir, pub_dir)
+
+        # Tamper with the manifest: remove a checksum entry while keeping the
+        # artifact file on disk and in the artifacts list.
+        manifest_path = pub_dir / "publication_manifest.json"
+        manifest = _load_json(manifest_path)
+        # Remove checksum for run_manifest.json
+        manifest["checksums"].pop("run_manifest.json", None)
+        _write_json(manifest_path, manifest)
+
+        result = verify_checksums(manifest_path)
+        assert result["gate"] == "fail", (
+            "Verifier should fail when a required artifact has no checksum coverage"
+        )
+
+    def test_verify_fails_when_multiple_required_checksums_missing(self, tmp_path: Path) -> None:
+        """Verification fails when multiple required artifacts lack checksums."""
+        from package_publication_artifacts import package_publication_artifacts
+        from verify_checksums import verify_checksums
+
+        run_dir = tmp_path / "run"
+        _make_minimal_run(run_dir)
+
+        pub_dir = tmp_path / "pub"
+        package_publication_artifacts(run_dir, pub_dir)
+
+        manifest_path = pub_dir / "publication_manifest.json"
+        manifest = _load_json(manifest_path)
+        # Remove checksums for two required artifacts
+        manifest["checksums"].pop("run_manifest.json", None)
+        manifest["checksums"].pop("tools_metadata.json", None)
+        _write_json(manifest_path, manifest)
+
+        result = verify_checksums(manifest_path)
+        assert result["gate"] == "fail"
+        assert result.get("uncovered_count", 0) >= 2
+
+    def test_verify_reports_uncovered_artifacts(self, tmp_path: Path) -> None:
+        """Verification report includes list of uncovered artifacts."""
+        from package_publication_artifacts import package_publication_artifacts
+        from verify_checksums import verify_checksums
+
+        run_dir = tmp_path / "run"
+        _make_minimal_run(run_dir)
+
+        pub_dir = tmp_path / "pub"
+        package_publication_artifacts(run_dir, pub_dir)
+
+        manifest_path = pub_dir / "publication_manifest.json"
+        manifest = _load_json(manifest_path)
+        manifest["checksums"].pop("environment_metadata.json", None)
+        _write_json(manifest_path, manifest)
+
+        result = verify_checksums(manifest_path)
+        assert result["gate"] == "fail"
+        uncovered = result.get("uncovered", [])
+        assert any("environment_metadata.json" in u.get("file", "") for u in uncovered)
+
+    def test_verify_passes_when_all_artifacts_have_checksums(self, tmp_path: Path) -> None:
+        """Verification passes when every artifact has a corresponding checksum."""
+        from package_publication_artifacts import package_publication_artifacts
+        from verify_checksums import verify_checksums
+
+        run_dir = tmp_path / "run"
+        _make_minimal_run(run_dir)
+
+        pub_dir = tmp_path / "pub"
+        package_publication_artifacts(run_dir, pub_dir)
+
+        result = verify_checksums(pub_dir / "publication_manifest.json")
+        assert result["gate"] == "pass"
+        assert result.get("uncovered_count", 0) == 0
+
+    def test_cli_verify_exits_nonzero_on_incomplete_coverage(self, tmp_path: Path) -> None:
+        """CLI exits non-zero when checksum coverage is incomplete."""
+        import subprocess
+        from package_publication_artifacts import package_publication_artifacts
+
+        run_dir = tmp_path / "run"
+        _make_minimal_run(run_dir)
+
+        pub_dir = tmp_path / "pub"
+        package_publication_artifacts(run_dir, pub_dir)
+
+        # Tamper with manifest to remove a checksum
+        manifest_path = pub_dir / "publication_manifest.json"
+        manifest = _load_json(manifest_path)
+        manifest["checksums"].pop("command_equivalence.json", None)
+        _write_json(manifest_path, manifest)
+
+        result = subprocess.run(
+            [
+                "python3",
+                str(REPO_ROOT / "benchmarks" / "verify_checksums.py"),
+                "--manifest", str(manifest_path),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+        )
+        assert result.returncode != 0, (
+            f"CLI should fail on incomplete checksum coverage but exited 0.\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )

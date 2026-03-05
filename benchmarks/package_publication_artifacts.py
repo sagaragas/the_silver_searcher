@@ -278,14 +278,27 @@ def package_publication_artifacts(
     # Load run manifest.
     run_manifest = _load_json(run_dir / "run_manifest.json")
 
+    # --- Validate required raw artifacts exist before copying ---
+    missing_required: list[str] = []
+    for name in REQUIRED_RAW_ARTIFACTS:
+        if not (run_dir / name).exists():
+            missing_required.append(name)
+
+    if missing_required:
+        for name in missing_required:
+            print(f"ERROR: Required artifact missing: {name}", file=sys.stderr)
+        print(
+            f"ERROR: {len(missing_required)} required artifact(s) missing — "
+            "packaging cannot proceed.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     # --- Copy raw artifacts ---
     copied_artifacts: list[dict[str, Any]] = []
 
     for name in REQUIRED_RAW_ARTIFACTS:
         src = run_dir / name
-        if not src.exists():
-            print(f"WARNING: Required artifact missing: {name}", file=sys.stderr)
-            continue
         dst = output_dir / name
         shutil.copy2(src, dst)
         copied_artifacts.append({

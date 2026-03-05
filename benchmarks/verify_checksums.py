@@ -98,9 +98,25 @@ def verify_checksums(manifest_path: Path) -> dict[str, Any]:
                 "actual_hash": actual_hash,
             })
 
-    gate = "pass" if not mismatches and not missing else "fail"
+    # --- Checksum coverage enforcement ---
+    # Every artifact listed in the manifest (except checksums.sha256 and
+    # publication_manifest.json themselves) must have a checksum entry.
+    # Files without checksums are "uncovered" and cause a gate failure.
+    excluded_from_coverage = {"checksums.sha256", "publication_manifest.json"}
+    artifacts_list: list[dict[str, Any]] = pub_manifest.get("artifacts", [])
+    artifact_names = {
+        a["name"]
+        for a in artifacts_list
+        if a.get("name") not in excluded_from_coverage
+    }
+    uncovered: list[dict[str, Any]] = []
+    for name in sorted(artifact_names):
+        if name not in checksums:
+            uncovered.append({"file": name})
 
-    report = {
+    gate = "pass" if not mismatches and not missing and not uncovered else "fail"
+
+    report: dict[str, Any] = {
         "schema_version": 1,
         "gate": gate,
         "timestamp": _now_iso(),
@@ -109,9 +125,11 @@ def verify_checksums(manifest_path: Path) -> dict[str, Any]:
         "verified_count": len(verified),
         "mismatch_count": len(mismatches),
         "missing_count": len(missing),
+        "uncovered_count": len(uncovered),
         "verified": verified,
         "mismatches": mismatches,
         "missing": missing,
+        "uncovered": uncovered,
     }
 
     # Write verification report alongside the manifest.
@@ -152,6 +170,7 @@ def main() -> None:
     print(f"  Verified:  {result['verified_count']}")
     print(f"  Mismatches: {result['mismatch_count']}")
     print(f"  Missing:   {result['missing_count']}")
+    print(f"  Uncovered: {result['uncovered_count']}")
 
     if result["mismatches"]:
         print("\n  Mismatched files:")
@@ -164,6 +183,11 @@ def main() -> None:
         print("\n  Missing files:")
         for m in result["missing"]:
             print(f"    {m['file']}")
+
+    if result["uncovered"]:
+        print("\n  Uncovered artifacts (no checksum):")
+        for u in result["uncovered"]:
+            print(f"    {u['file']}")
 
     report_path = manifest_path.parent / "checksum_verification.json"
     print(f"\n  Verification report: {report_path}")
