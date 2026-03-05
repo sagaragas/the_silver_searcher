@@ -1,70 +1,46 @@
 {
   "milestone": "performance-memo",
-  "round": 2,
-  "status": "fail",
+  "round": 3,
+  "status": "pass",
   "validatorsRun": {
     "test": {
       "passed": true,
-      "command": "PATH=\".venv-ag-tests/bin:$PATH\" make test && if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo test --workspace -- --test-threads=5; else echo \"No Rust workspace yet; skipping Rust tests\"; fi",
+      "command": "PATH=\"/Users/ragas/code/missions/the_silver_searcher/.venv-ag-tests/bin:$PATH\" make -C \"/Users/ragas/code/missions/the_silver_searcher\" test && cargo test --workspace --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --test-threads=5",
       "exitCode": 0
     },
     "typecheck": {
       "passed": true,
-      "command": "if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo check --workspace; else echo \"No Rust workspace yet; skipping typecheck\"; fi",
+      "command": "cargo check --workspace --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\"",
       "exitCode": 0
     },
     "lint": {
       "passed": true,
-      "command": "if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings; else echo \"No Rust workspace yet; skipping Rust lint\"; fi",
+      "command": "cargo fmt --all --check --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" && cargo clippy --workspace --all-targets --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- -D warnings",
       "exitCode": 0
     }
   },
   "reviewsSummary": {
-    "total": 2,
+    "total": 1,
     "passed": 1,
-    "failed": 1,
-    "failedFeatures": [
-      "performance-memo-traceability-lineage-clean-checkout-fix"
-    ]
+    "failed": 0,
+    "failedFeatures": []
   },
-  "blockingIssues": [
-    {
-      "featureId": "performance-memo-traceability-lineage-clean-checkout-fix",
-      "severity": "blocking",
-      "description": "publication/run_clean_checkout_smoke.py verifies commit existence with git cat-file but executes smoke checks in the current working tree without verifying an actual checkout/clone of the cited commit, so clean-checkout provenance is not enforced."
-    }
-  ],
+  "blockingIssues": [],
   "appliedUpdates": [
     {
-      "target": "services.yaml",
-      "description": "Added publication_clean_checkout_smoke command alias requiring PUBLICATION_COMMIT_SHA to run publication/run_clean_checkout_smoke.py consistently across workers.",
-      "sourceFeature": "performance-memo-traceability-lineage-clean-checkout-fix"
-    },
-    {
       "target": "library",
-      "description": "Extended .factory/library/publication.md with clean-checkout evidence contract fields and commit-SHA equality requirements for publication reproducibility evidence.",
+      "description": "Updated .factory/library/publication.md clean-checkout schema notes to require schema_version, requested/checked_out commit provenance fields, and isolated_worktree execution context.",
       "sourceFeature": "performance-memo-traceability-lineage-clean-checkout-fix"
     }
   ],
   "suggestedGuidanceUpdates": [
     {
       "target": "publication-worker skill",
-      "suggestion": "Explicitly require sampling_validation.json as the authoritative source for memo/Q&A uncertainty claims (IQR/CI), and forbid hand-entered uncertainty values.",
-      "evidence": "Review performance-memo-publication-claim-integrity-fix identified missing skill-level instruction despite prior failures caused by uncertainty-value drift.",
-      "isSystemic": true
-    },
-    {
-      "target": "publication-worker skill",
-      "suggestion": "Require clean-checkout smoke reproducibility to execute against an actual checkout/clone of the cited commit, not only commit existence plus current-tree execution.",
-      "evidence": "Review performance-memo-traceability-lineage-clean-checkout-fix found remaining blocker where run_clean_checkout_smoke.py uses git cat-file but does not verify execution context matches cited commit.",
+      "suggestion": "Explicitly require isolated-worktree clean-checkout evidence fields (schema_version, requested_commit_sha, checked_out_commit_sha, execution_context=isolated_worktree) and strict no-fallback parity_run_ids enforcement in traceability steps.",
+      "evidence": "Review performance-memo-traceability-lineage-clean-checkout-fix passed because these constraints are enforced in code, but SKILL.md language remains higher-level and could miss these concrete contract requirements.",
       "isSystemic": true
     }
   ],
-  "rejectedObservations": [
-    {
-      "observation": "Shared-state recommendation to duplicate strict commit-SHA equality guidance in skills.",
-      "reason": "already-documented"
-    }
-  ],
-  "previousRound": ".factory/validation/performance-memo/scrutiny/synthesis.round1.json"
+  "rejectedObservations": [],
+  "previousRound": ".factory/validation/performance-memo/scrutiny/synthesis.round2.json"
 }

@@ -1,44 +1,26 @@
 {
   "featureId": "performance-memo-traceability-lineage-clean-checkout-fix",
-  "reviewedAt": "2026-03-05T20:20:39Z",
-  "commitId": "93e6cb2bd36b486b8f606b35e0035be80013d7e7",
+  "reviewedAt": "2026-03-05T20:37:58Z",
+  "commitId": "af0f30f77367f0f0b5beffc2d8d0f439e24b94e9",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
-  "status": "fail",
+  "status": "pass",
   "codeReview": {
-    "summary": "The fix resolves the original parity-lineage gap and adds explicit VAL-CROSS-004 execution evidence/checklist wiring, but it still does not enforce that smoke reproducibility was executed on an actual clean checkout of the cited commit.",
-    "issues": [
-      {
-        "file": "publication/run_clean_checkout_smoke.py",
-        "line": 55,
-        "severity": "blocking",
-        "description": "The script only checks commit existence via `git cat-file -t` and then runs all smoke checks in the current working tree; it never performs (or verifies) checkout/clone of the cited commit. This allows evidence to claim commit X while executing on a different checkout, so the original clean-checkout-on-cited-commit failure is not fully fixed. Related trust point: publication/traceability_check.py:327 only compares the JSON `commit_sha` field to memo text, not the actual execution checkout state."
-      },
-      {
-        "file": "publication/traceability_check.py",
-        "line": 101,
-        "severity": "non_blocking",
-        "description": "If `claim_evidence_map.parity_run_ids` is present but unresolved, the checker silently falls back to `parity-artifacts/latest`. That weakens strict traceability because an undeclared/latest run can satisfy lineage checks when an explicitly referenced run is missing."
-      }
-    ]
+    "summary": "The rerun fix resolves the prior blocking failure: clean-checkout smoke now executes inside an actual isolated git worktree at the cited commit with provenance fields, and traceability now hard-fails unresolved or missing claim_evidence_map parity_run_ids without any latest fallback.",
+    "issues": []
   },
   "sharedStateObservations": [
     {
       "area": "skills",
-      "observation": "publication-worker guidance still does not explicitly require an executed clean-checkout smoke run on the cited commit, nor strict parity/benchmark/memo SHA equality enforcement behavior.",
-      "evidence": ".factory/skills/publication-worker/SKILL.md:20 only requires a traceable commit SHA; mission AGENTS requires clean-checkout smoke on cited commit at /Users/ragas/.factory/missions/d1c51473-4105-4ffd-8739-51d144ec03b4/AGENTS.md:29."
-    },
-    {
-      "area": "services",
-      "observation": "The new reproducibility evidence generator command is not represented in shared command registry, which makes the required execution step less discoverable/repeatable for future workers.",
-      "evidence": ".factory/services.yaml has publication_traceability at line 33 but no command for `publication/run_clean_checkout_smoke.py`."
+      "observation": "The publication-worker skill remains less specific than the enforced traceability contract: it asks for a traceable commit SHA but does not explicitly require isolated-worktree clean-checkout execution evidence and no-fallback parity_run_ids behavior.",
+      "evidence": ".factory/skills/publication-worker/SKILL.md:20 says to ensure a traceable commit SHA, while implementation now enforces isolated worktree provenance and strict no-fallback parity resolution in publication/traceability_check.py:103,118,361-364."
     },
     {
       "area": "knowledge",
-      "observation": "Shared publication library notes mention commit traceability but do not document the clean-checkout execution evidence contract/schema now required by traceability checks.",
-      "evidence": ".factory/library/publication.md:13 mentions parity/benchmark commit traceability, but no clean-checkout evidence artifact requirements are documented."
+      "observation": "Shared publication notes still describe the old clean-checkout evidence schema (`commit_sha`) and do not reflect the current provenance fields used by the checker.",
+      "evidence": ".factory/library/publication.md:14 documents fields `executed`, `commit_sha`, `result`, `checks`, but traceability now requires schema_version>=2 provenance fields (`requested_commit_sha`, `checked_out_commit_sha`, `execution_context`) in publication/traceability_check.py:329-343,369-388."
     }
   ],
-  "addressesFailureFrom": ".factory/validation/performance-memo/scrutiny/reviews/release-traceability-public-fork-package.json",
-  "summary": "Reviewed handoff, fix transcript skeleton, publication-worker skill guidance, shared-state docs, and both commits (4141ea19f180b21e0c4379ed6eca9f9aa24db013 and 93e6cb2bd36b486b8f606b35e0035be80013d7e7). The parity SHA lineage blocker from the prior failure is addressed, but the clean-checkout reproducibility blocker remains open because execution is not tied to an actual checkout/clone of the cited commit."
+  "addressesFailureFrom": ".factory/validation/performance-memo/scrutiny/reviews/performance-memo-traceability-lineage-clean-checkout-fix.json",
+  "summary": "Reviewed the prior failed review, both worker handoffs/sessions, both commits (93e6cb2 and af0f30f), transcript skeleton, and publication-worker/shared-state docs. The latest implementation now performs smoke checks in an isolated worktree at the cited commit and records/validates provenance equality, and unresolved parity_run_ids are now explicit hard failures with no parity-artifacts/latest fallback, so the prior blocker is resolved."
 }
