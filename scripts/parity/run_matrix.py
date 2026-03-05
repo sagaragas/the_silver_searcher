@@ -241,6 +241,35 @@ def _git_sha() -> str:
 # ---------------------------------------------------------------------------
 
 
+def tokenize_command(cmd_str: str) -> list[str]:
+    """Split a command string into argv tokens.
+
+    This is a replacement for :func:`shlex.split` that preserves both:
+
+    * **Quoted arguments** – double- or single-quoted tokens are merged into a
+      single argv entry with surrounding quotes removed (e.g. paths with
+      spaces).
+    * **Literal backslashes** – unquoted backslash sequences (e.g. ``\\b`` word
+      boundaries in regex patterns) are kept verbatim instead of being
+      interpreted as escape characters.
+
+    The implementation uses ``shlex.split(posix=False)`` which keeps backslashes
+    intact but leaves surrounding quotes on quoted tokens.  A post-processing
+    step then strips exactly the outermost quote pair from each token.
+    """
+    tokens = shlex.split(cmd_str, posix=False)
+    result: list[str] = []
+    for tok in tokens:
+        if len(tok) >= 2 and (
+            (tok[0] == '"' and tok[-1] == '"')
+            or (tok[0] == "'" and tok[-1] == "'")
+        ):
+            result.append(tok[1:-1])
+        else:
+            result.append(tok)
+    return result
+
+
 def run_command(
     cmd_template: str,
     pattern: str,
@@ -250,7 +279,7 @@ def run_command(
 ) -> dict[str, Any]:
     """Execute a single command and capture output."""
     cmd_str = cmd_template.replace("{pattern}", pattern).replace("{corpus}", corpus)
-    parts = shlex.split(cmd_str)
+    parts = tokenize_command(cmd_str)
 
     # Resolve the binary name to an actual executable path.
     binary_name = parts[0]
