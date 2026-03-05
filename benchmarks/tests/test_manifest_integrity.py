@@ -408,3 +408,397 @@ class TestHarnessSmokeExecution:
         for entry in equiv["scenarios"]:
             assert "scenario_id" in entry
             assert "expanded_commands" in entry
+
+
+# ---------------------------------------------------------------------------
+# Negative tests: missing required comparator cells fail validation
+# ---------------------------------------------------------------------------
+
+
+class TestRequiredComparatorEnforcement:
+    """Verify that missing required comparator cells cause hard failures."""
+
+    def test_validate_manifest_fails_on_missing_required_cell(self, tmp_path):
+        """validate_manifest must fail when a required comparator cell is missing.
+
+        A scenario declares commands for ag, rust-ag, rg, ugrep but the run
+        manifest only has results for 3 of them — validation must fail.
+        """
+        from validate_manifest import validate_run
+
+        run_dir = tmp_path / "test_run"
+        run_dir.mkdir()
+
+        # Build a run manifest where scenario "literal-simple" is missing
+        # the ugrep result despite having a command for it.
+        manifest = {
+            "schema_version": 1,
+            "run_id": "test-missing-cell",
+            "run_type": "smoke",
+            "timestamp": "2026-03-05T00:00:00Z",
+            "commit_sha": "abc123",
+            "comparators": ["ag", "rust-ag", "rg", "ugrep"],
+            "manifest_hashes": {"scenarios": "", "queries": "", "corpus": ""},
+            "environment": {},
+            "tools_metadata": {
+                "comparators": {
+                    "ag": {"binary_path": "/usr/bin/ag", "version": "1.0", "version_raw": "1.0"},
+                    "rust-ag": {"binary_path": "/usr/bin/rust-ag", "version": "1.0", "version_raw": "1.0"},
+                    "rg": {"binary_path": "/usr/bin/rg", "version": "1.0", "version_raw": "1.0"},
+                    "ugrep": {"binary_path": "/usr/bin/ugrep", "version": "1.0", "version_raw": "1.0"},
+                },
+            },
+            "scenario_count": 1,
+            "cell_totals": {"total": 4, "executed": 3, "skipped": 1, "errors": 0},
+            "scenarios": [
+                {
+                    "scenario_id": "literal-simple",
+                    "query_id": "q-literal-simple",
+                    "pattern": "TODO",
+                    "corpus": ".",
+                    "commands": {
+                        "ag": "ag {pattern} {corpus}",
+                        "rust-ag": "rust-ag {pattern} {corpus}",
+                        "rg": "rg {pattern} {corpus}",
+                        "ugrep": "ugrep {pattern} {corpus}",
+                    },
+                    "results": {
+                        "ag": {"command": "ag TODO .", "exit_code": 0, "elapsed_s": 0.1},
+                        "rust-ag": {"command": "rust-ag TODO .", "exit_code": 0, "elapsed_s": 0.1},
+                        "rg": {"command": "rg TODO .", "exit_code": 0, "elapsed_s": 0.1},
+                        # ugrep is MISSING — this must fail validation
+                    },
+                    "skipped": False,
+                }
+            ],
+        }
+        _write_test_manifest(run_dir, manifest)
+
+        ok = validate_run(run_dir)
+        assert not ok, "Validation must fail when a required comparator cell is missing"
+
+    def test_validate_manifest_fails_on_skipped_required_cell(self, tmp_path):
+        """validate_manifest must fail when a required comparator cell is skipped.
+
+        A scenario declares commands for a comparator but the result says
+        skipped=True — this is a required cell and must not be allowed.
+        """
+        from validate_manifest import validate_run
+
+        run_dir = tmp_path / "test_run"
+        run_dir.mkdir()
+
+        manifest = {
+            "schema_version": 1,
+            "run_id": "test-skipped-cell",
+            "run_type": "smoke",
+            "timestamp": "2026-03-05T00:00:00Z",
+            "commit_sha": "abc123",
+            "comparators": ["ag", "rust-ag", "rg", "ugrep"],
+            "manifest_hashes": {"scenarios": "", "queries": "", "corpus": ""},
+            "environment": {},
+            "tools_metadata": {
+                "comparators": {
+                    "ag": {"binary_path": "/usr/bin/ag", "version": "1.0", "version_raw": "1.0"},
+                    "rust-ag": {"binary_path": "/usr/bin/rust-ag", "version": "1.0", "version_raw": "1.0"},
+                    "rg": {"binary_path": "/usr/bin/rg", "version": "1.0", "version_raw": "1.0"},
+                    "ugrep": {"binary_path": "/usr/bin/ugrep", "version": "1.0", "version_raw": "1.0"},
+                },
+            },
+            "scenario_count": 1,
+            "cell_totals": {"total": 4, "executed": 3, "skipped": 1, "errors": 0},
+            "scenarios": [
+                {
+                    "scenario_id": "literal-simple",
+                    "query_id": "q-literal-simple",
+                    "pattern": "TODO",
+                    "corpus": ".",
+                    "commands": {
+                        "ag": "ag {pattern} {corpus}",
+                        "rust-ag": "rust-ag {pattern} {corpus}",
+                        "rg": "rg {pattern} {corpus}",
+                        "ugrep": "ugrep {pattern} {corpus}",
+                    },
+                    "results": {
+                        "ag": {"command": "ag TODO .", "exit_code": 0, "elapsed_s": 0.1},
+                        "rust-ag": {"command": "rust-ag TODO .", "exit_code": 0, "elapsed_s": 0.1},
+                        "rg": {"command": "rg TODO .", "exit_code": 0, "elapsed_s": 0.1},
+                        "ugrep": {"skipped": True, "reason": "No command template for ugrep"},
+                    },
+                    "skipped": False,
+                }
+            ],
+        }
+        _write_test_manifest(run_dir, manifest)
+
+        ok = validate_run(run_dir)
+        assert not ok, "Validation must fail when a required comparator cell is skipped"
+
+    def test_validate_manifest_passes_for_partial_scenario(self, tmp_path):
+        """Scenarios that only define ag/rust-ag commands should pass when
+        only those comparators have results (they are not required for rg/ugrep).
+        """
+        from validate_manifest import validate_run
+
+        run_dir = tmp_path / "test_run"
+        run_dir.mkdir()
+
+        manifest = {
+            "schema_version": 1,
+            "run_id": "test-partial-ok",
+            "run_type": "smoke",
+            "timestamp": "2026-03-05T00:00:00Z",
+            "commit_sha": "abc123",
+            "comparators": ["ag", "rust-ag", "rg", "ugrep"],
+            "manifest_hashes": {"scenarios": "", "queries": "", "corpus": ""},
+            "environment": {},
+            "tools_metadata": {
+                "comparators": {
+                    "ag": {"binary_path": "/usr/bin/ag", "version": "1.0", "version_raw": "1.0"},
+                    "rust-ag": {"binary_path": "/usr/bin/rust-ag", "version": "1.0", "version_raw": "1.0"},
+                    "rg": {"binary_path": "/usr/bin/rg", "version": "1.0", "version_raw": "1.0"},
+                    "ugrep": {"binary_path": "/usr/bin/ugrep", "version": "1.0", "version_raw": "1.0"},
+                },
+            },
+            "scenario_count": 1,
+            "cell_totals": {"total": 2, "executed": 2, "skipped": 0, "errors": 0},
+            "scenarios": [
+                {
+                    "scenario_id": "edge-ignore-scope-leak",
+                    "query_id": "q-edge-needle",
+                    "pattern": "NEEDLE",
+                    "corpus": "tests/edge-cases/ignore-scope-leak",
+                    "commands": {
+                        "ag": "ag {pattern} {corpus}",
+                        "rust-ag": "rust-ag {pattern} {corpus}",
+                        # No rg/ugrep commands — they are NOT required
+                    },
+                    "results": {
+                        "ag": {"command": "ag NEEDLE .", "exit_code": 0, "elapsed_s": 0.1},
+                        "rust-ag": {"command": "rust-ag NEEDLE .", "exit_code": 0, "elapsed_s": 0.1},
+                    },
+                    "skipped": False,
+                }
+            ],
+        }
+        _write_test_manifest(run_dir, manifest)
+
+        ok = validate_run(run_dir)
+        assert ok, "Validation should pass when all defined-command comparators have results"
+
+    def test_harness_smoke_fails_on_missing_required_cell(self, tmp_path):
+        """Harness smoke run must fail (non-zero exit) when a required comparator
+        cell cannot be executed because the comparator in the scenario's commands
+        was requested but the binary is not found.
+
+        We mock resolve_binary to return None for ugrep to simulate missing.
+        """
+        from harness import run_smoke, resolve_binary
+
+        # Only run this test if we can mock away one comparator.
+        # We need at least ag, rust-ag, rg to be present.
+        for comp in ["ag", "rust-ag", "rg"]:
+            if resolve_binary(comp) is None:
+                pytest.skip(f"Missing comparator {comp}")
+
+        with mock.patch("harness.resolve_binary") as mock_resolve:
+            def mock_resolve_fn(name):
+                if name == "ugrep":
+                    return None
+                return resolve_binary.__wrapped__(name) if hasattr(resolve_binary, '__wrapped__') else resolve_binary(name)
+
+            # We need the original resolve_binary to work for non-ugrep.
+            original_resolve = resolve_binary
+
+            def selective_mock(name):
+                if name == "ugrep":
+                    return None
+                return original_resolve(name)
+
+            mock_resolve.side_effect = selective_mock
+
+            # The harness should detect missing required cells and raise or exit.
+            with pytest.raises(SystemExit) as exc_info:
+                run_smoke(
+                    comparators=["ag", "rust-ag", "rg", "ugrep"],
+                    output_dir=tmp_path,
+                    scenario_ids=["literal-simple"],
+                    timeout=10,
+                )
+
+            # Must be a non-zero exit.
+            assert exc_info.value.code != 0, (
+                "Harness must exit non-zero when required comparator is missing"
+            )
+
+    def test_validate_manifest_fails_on_binary_not_found_cell(self, tmp_path):
+        """validate_manifest must fail when a cell has error=binary_not_found
+        for a comparator defined in the scenario's commands.
+        """
+        from validate_manifest import validate_run
+
+        run_dir = tmp_path / "test_run"
+        run_dir.mkdir()
+
+        manifest = {
+            "schema_version": 1,
+            "run_id": "test-binary-not-found",
+            "run_type": "smoke",
+            "timestamp": "2026-03-05T00:00:00Z",
+            "commit_sha": "abc123",
+            "comparators": ["ag", "rust-ag", "rg", "ugrep"],
+            "manifest_hashes": {"scenarios": "", "queries": "", "corpus": ""},
+            "environment": {},
+            "tools_metadata": {
+                "comparators": {
+                    "ag": {"binary_path": "/usr/bin/ag", "version": "1.0", "version_raw": "1.0"},
+                    "rust-ag": {"binary_path": "/usr/bin/rust-ag", "version": "1.0", "version_raw": "1.0"},
+                    "rg": {"binary_path": "/usr/bin/rg", "version": "1.0", "version_raw": "1.0"},
+                    "ugrep": {"binary_path": None, "version": "not found", "version_raw": "not found"},
+                },
+            },
+            "scenario_count": 1,
+            "cell_totals": {"total": 4, "executed": 3, "skipped": 0, "errors": 1},
+            "scenarios": [
+                {
+                    "scenario_id": "literal-simple",
+                    "query_id": "q-literal-simple",
+                    "pattern": "TODO",
+                    "corpus": ".",
+                    "commands": {
+                        "ag": "ag {pattern} {corpus}",
+                        "rust-ag": "rust-ag {pattern} {corpus}",
+                        "rg": "rg {pattern} {corpus}",
+                        "ugrep": "ugrep {pattern} {corpus}",
+                    },
+                    "results": {
+                        "ag": {"command": "ag TODO .", "exit_code": 0, "elapsed_s": 0.1},
+                        "rust-ag": {"command": "rust-ag TODO .", "exit_code": 0, "elapsed_s": 0.1},
+                        "rg": {"command": "rg TODO .", "exit_code": 0, "elapsed_s": 0.1},
+                        "ugrep": {
+                            "command": "ugrep TODO .",
+                            "exit_code": -127,
+                            "elapsed_s": 0,
+                            "error": "binary_not_found",
+                        },
+                    },
+                    "skipped": False,
+                }
+            ],
+        }
+        _write_test_manifest(run_dir, manifest)
+
+        ok = validate_run(run_dir)
+        assert not ok, "Validation must fail when a required cell has binary_not_found error"
+
+    def test_validate_manifest_enforces_required_for_requested_comparators(self, tmp_path):
+        """When run comparators list includes a comparator that has a command
+        template in a scenario, the cell result MUST exist.
+        """
+        from validate_manifest import validate_run
+
+        run_dir = tmp_path / "test_run"
+        run_dir.mkdir()
+
+        # Scenario has all 4 commands, but results only for 2.
+        manifest = {
+            "schema_version": 1,
+            "run_id": "test-half-missing",
+            "run_type": "smoke",
+            "timestamp": "2026-03-05T00:00:00Z",
+            "commit_sha": "abc123",
+            "comparators": ["ag", "rust-ag", "rg", "ugrep"],
+            "manifest_hashes": {"scenarios": "", "queries": "", "corpus": ""},
+            "environment": {},
+            "tools_metadata": {
+                "comparators": {
+                    "ag": {"binary_path": "/usr/bin/ag", "version": "1.0", "version_raw": "1.0"},
+                    "rust-ag": {"binary_path": "/usr/bin/rust-ag", "version": "1.0", "version_raw": "1.0"},
+                    "rg": {"binary_path": "/usr/bin/rg", "version": "1.0", "version_raw": "1.0"},
+                    "ugrep": {"binary_path": "/usr/bin/ugrep", "version": "1.0", "version_raw": "1.0"},
+                },
+            },
+            "scenario_count": 1,
+            "cell_totals": {"total": 4, "executed": 2, "skipped": 2, "errors": 0},
+            "scenarios": [
+                {
+                    "scenario_id": "literal-simple",
+                    "query_id": "q-literal-simple",
+                    "pattern": "TODO",
+                    "corpus": ".",
+                    "commands": {
+                        "ag": "ag {pattern} {corpus}",
+                        "rust-ag": "rust-ag {pattern} {corpus}",
+                        "rg": "rg {pattern} {corpus}",
+                        "ugrep": "ugrep {pattern} {corpus}",
+                    },
+                    "results": {
+                        "ag": {"command": "ag TODO .", "exit_code": 0, "elapsed_s": 0.1},
+                        "rust-ag": {"command": "rust-ag TODO .", "exit_code": 0, "elapsed_s": 0.1},
+                        # rg and ugrep are MISSING — hard failure
+                    },
+                    "skipped": False,
+                }
+            ],
+        }
+        _write_test_manifest(run_dir, manifest)
+
+        ok = validate_run(run_dir)
+        assert not ok, "Validation must fail when multiple required comparator cells are missing"
+
+
+def _get_on_disk_manifest_hashes() -> dict[str, str]:
+    """Read manifest hashes from on-disk scenario/query/corpus manifests."""
+    hashes = {}
+    for name in ["scenarios", "queries", "corpus"]:
+        path = MANIFESTS_DIR / f"{name}.json"
+        if path.exists():
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            hashes[name] = data.get("manifest_hash", "")
+        else:
+            hashes[name] = ""
+    return hashes
+
+
+def _write_test_manifest(run_dir: Path, manifest: dict) -> None:
+    """Write test manifests to a run directory for validation tests.
+
+    Automatically populates manifest_hashes from on-disk manifests if
+    the test manifest has empty hashes, to avoid spurious hash-mismatch
+    failures that would mask the check being tested.
+    """
+    import json
+
+    # Auto-fill manifest hashes if they are empty placeholders.
+    mh = manifest.get("manifest_hashes", {})
+    if not mh.get("scenarios") and not mh.get("queries") and not mh.get("corpus"):
+        on_disk = _get_on_disk_manifest_hashes()
+        manifest["manifest_hashes"] = on_disk
+
+    # Write run manifest
+    with open(run_dir / "run_manifest.json", "w") as f:
+        json.dump(manifest, f, indent=2)
+
+    # Write minimal tools_metadata.json
+    tools = manifest.get("tools_metadata", {})
+    with open(run_dir / "tools_metadata.json", "w") as f:
+        json.dump(tools, f, indent=2)
+
+    # Write minimal command_equivalence.json
+    equiv = {
+        "schema_version": 1,
+        "scenarios": [
+            {
+                "scenario_id": s["scenario_id"],
+                "expanded_commands": {
+                    comp: cmd.replace("{pattern}", s.get("pattern", "X")).replace("{corpus}", s.get("corpus", "."))
+                    for comp, cmd in s.get("commands", {}).items()
+                },
+            }
+            for s in manifest.get("scenarios", [])
+            if not s.get("skipped")
+        ],
+    }
+    with open(run_dir / "command_equivalence.json", "w") as f:
+        json.dump(equiv, f, indent=2)

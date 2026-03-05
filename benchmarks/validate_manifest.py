@@ -134,7 +134,11 @@ def validate_run(run_dir: Path) -> bool:
     )
 
     # --- VAL-BENCH-001: No missing scenario-comparator cells ---
+    # Required comparator enforcement: every comparator defined in a scenario's
+    # commands dict AND listed in the run's comparators list is REQUIRED.
+    # A required cell must have a valid (non-skipped, non-error) result entry.
     scenarios = manifest.get("scenarios", [])
+    run_comparators = set(manifest.get("comparators", []))
     check(
         "scenario_count > 0",
         len(scenarios) > 0,
@@ -142,21 +146,44 @@ def validate_run(run_dir: Path) -> bool:
     )
 
     missing_cells: list[str] = []
+    incomplete_cells: list[str] = []
     for scenario in scenarios:
         if scenario.get("skipped"):
             continue
+        sid = scenario.get("scenario_id", scenario.get("id", "?"))
         commands = scenario.get("commands", {})
         results = scenario.get("results", {})
-        for comp in commands:
+
+        # Required comparators for this scenario = intersection of
+        # scenario-defined commands and run-level comparators.
+        required = set(commands.keys()) & run_comparators
+
+        for comp in required:
             if comp not in results:
-                missing_cells.append(f"{scenario['scenario_id']}/{comp}")
-            elif not results[comp].get("skipped", False) and results[comp].get("error") == "binary_not_found":
-                missing_cells.append(f"{scenario['scenario_id']}/{comp} (binary not found)")
+                missing_cells.append(f"{sid}/{comp}")
+            else:
+                cell = results[comp]
+                # A skipped cell for a required comparator is a hard failure.
+                if cell.get("skipped", False):
+                    incomplete_cells.append(
+                        f"{sid}/{comp} (skipped: {cell.get('reason', 'unknown')})"
+                    )
+                # A binary_not_found error is a hard failure.
+                elif cell.get("error") == "binary_not_found":
+                    incomplete_cells.append(
+                        f"{sid}/{comp} (binary not found)"
+                    )
 
     check(
-        "no missing scenario-comparator cells",
+        "no missing required comparator cells",
         len(missing_cells) == 0,
         f"missing: {missing_cells}" if missing_cells else "",
+    )
+
+    check(
+        "no incomplete required comparator cells (skipped/error)",
+        len(incomplete_cells) == 0,
+        f"incomplete: {incomplete_cells}" if incomplete_cells else "",
     )
 
     # Check cell totals consistency.

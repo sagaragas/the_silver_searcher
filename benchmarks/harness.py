@@ -604,6 +604,31 @@ def run_smoke(
     except ImportError:
         gate_status = "SKIPPED (module not available)"
 
+    # --- Required comparator-set completeness check (VAL-BENCH-001) ---
+    # Every comparator defined in a scenario's commands dict that was also
+    # requested for this run must have a valid (non-skipped, non-error) result.
+    required_failures: list[str] = []
+    for scenario in scenario_results:
+        if scenario.get("skipped"):
+            continue
+        sid = scenario.get("scenario_id", "?")
+        commands = scenario.get("commands", {})
+        results = scenario.get("results", {})
+        required = set(commands.keys()) & set(resolved_comparators)
+        for comp in required:
+            if comp not in results:
+                required_failures.append(f"{sid}/{comp} (no result)")
+            else:
+                cell = results[comp]
+                if cell.get("skipped", False):
+                    required_failures.append(
+                        f"{sid}/{comp} (skipped: {cell.get('reason', 'unknown')})"
+                    )
+                elif cell.get("error") == "binary_not_found":
+                    required_failures.append(
+                        f"{sid}/{comp} (binary not found)"
+                    )
+
     # Print summary.
     print(f"\nSmoke run complete: {run_id}")
     print(f"  Output: {output_dir}")
@@ -612,6 +637,12 @@ def run_smoke(
     print(f"  Command equiv:     {output_dir / 'command_equivalence.json'}")
     print(f"  Env metadata:      {output_dir / 'environment_metadata.json'}")
     print(f"  Correctness gate:  {gate_status}")
+
+    if required_failures:
+        print(f"\n  FATAL: Required comparator cells incomplete:")
+        for f in required_failures:
+            print(f"    - {f}")
+        run_manifest["required_comparator_failures"] = required_failures
 
     # Print version summary.
     print(f"\n  Comparator versions:")
@@ -943,11 +974,40 @@ def run_measured(
     except ImportError:
         sampling_status = "SKIPPED"
 
+    # --- Required comparator-set completeness check (VAL-BENCH-001) ---
+    required_failures: list[str] = []
+    for scenario in scenario_results:
+        if scenario.get("skipped"):
+            continue
+        sid = scenario.get("scenario_id", "?")
+        commands = scenario.get("commands", {})
+        results = scenario.get("results", {})
+        required = set(commands.keys()) & set(resolved_comparators)
+        for comp in required:
+            if comp not in results:
+                required_failures.append(f"{sid}/{comp} (no result)")
+            else:
+                cell = results[comp]
+                if cell.get("skipped", False):
+                    required_failures.append(
+                        f"{sid}/{comp} (skipped: {cell.get('reason', 'unknown')})"
+                    )
+                elif cell.get("error") == "binary_not_found":
+                    required_failures.append(
+                        f"{sid}/{comp} (binary not found)"
+                    )
+
     print(f"\nMeasured run complete: {run_id}")
     print(f"  Output: {output_dir}")
     print(f"  Cells: {executed_cells} executed, {skipped_cells} skipped, {error_cells} errors")
     print(f"  Correctness gate: {gate_status}")
     print(f"  Sampling validation: {sampling_status}")
+
+    if required_failures:
+        print(f"\n  FATAL: Required comparator cells incomplete:")
+        for f in required_failures:
+            print(f"    - {f}")
+        run_manifest["required_comparator_failures"] = required_failures
 
     return run_manifest
 
@@ -1097,7 +1157,9 @@ def main() -> None:
             scenario_ids=args.scenarios,
             timeout=args.timeout,
         )
-        # Exit with error if any cells had errors.
+        # Exit with error if any cells had errors or required cells are incomplete.
+        if manifest.get("required_comparator_failures"):
+            sys.exit(1)
         if manifest["cell_totals"]["errors"] > 0:
             sys.exit(1)
         sys.exit(0)
@@ -1127,6 +1189,8 @@ def main() -> None:
             if out.exists():
                 _write_json(out / "run_manifest.json", manifest)
 
+        if manifest.get("required_comparator_failures"):
+            sys.exit(1)
         if manifest["cell_totals"]["errors"] > 0:
             sys.exit(1)
         sys.exit(0)
@@ -1142,6 +1206,8 @@ def main() -> None:
             timeout=args.timeout,
             run_type=args.run_type,
         )
+        if manifest.get("required_comparator_failures"):
+            sys.exit(1)
         if manifest["cell_totals"]["errors"] > 0:
             sys.exit(1)
         sys.exit(0)
