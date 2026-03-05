@@ -4,8 +4,8 @@
   "fixture_dirs": [
     "tests"
   ],
-  "manifest_hash": "6b9979f49e0518f7823252d39f400e96576be32a735955c0b0fd575319a83351",
-  "file_count": 90,
+  "manifest_hash": "9f25974294396aee4ffedbc30c05596f1ae274d810fb430e5f40cfd0d10ae40a",
+  "file_count": 103,
   "files": [
     {
       "path": "tests/adjacent_matches.t",
@@ -68,9 +68,24 @@
       "sha256": "8690dae6279c0883c4cecee17fe1059fb9e0f0479745edb382ba8193b333c028"
     },
     {
+      "path": "tests/edge-cases/binary-files/short-binary.dat",
+      "size": 15,
+      "sha256": "80ead1d34cddad1883a76ed331504eb400ee800f6b3bacd419bc1c68782c453e"
+    },
+    {
       "path": "tests/edge-cases/binary-files/text-file.txt",
       "size": 33,
       "sha256": "b0ce7916a4cb857b2046ce50ad513d7bc92f2aeab505bb96cbfe9ef8387955b6"
+    },
+    {
+      "path": "tests/edge-cases/case-sensitivity/.gitignore",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tests/edge-cases/case-sensitivity/mixed.txt",
+      "size": 60,
+      "sha256": "751a0f88ca7ae68fd4091db37765a6586b521eb78ccb2ace62ffd4f15ee97750"
     },
     {
       "path": "tests/edge-cases/hidden-files/.gitignore",
@@ -96,6 +111,31 @@
       "path": "tests/edge-cases/hidden-files/visible.txt",
       "size": 23,
       "sha256": "d7918fd5da11aaa3356701c1ec081e108de9ecb24f52a0f7bb34c86881dff339"
+    },
+    {
+      "path": "tests/edge-cases/ignore-scope-leak/alpha/.gitignore",
+      "size": 9,
+      "sha256": "a2bdaac3d54d46bfebbc2a12317e114c000c6d732ab6a859e4082bb2230de548"
+    },
+    {
+      "path": "tests/edge-cases/ignore-scope-leak/alpha/visible.txt",
+      "size": 21,
+      "sha256": "88817b3b168f89ba0852cedd4162ec631a4e0cf3b454dce05c3ff4680dc40d88"
+    },
+    {
+      "path": "tests/edge-cases/ignore-scope-leak/beta/keep.txt",
+      "size": 17,
+      "sha256": "7d0e73246a1140d1cba592e0243d5e35e4dbbec04b28fb08c6e8efcb9c40e372"
+    },
+    {
+      "path": "tests/edge-cases/ignore-scope-leak/beta/visible.txt",
+      "size": 20,
+      "sha256": "18e74e4a6bf80902adac4acae8865790afa08a05714efddf65e898e1b64a52d2"
+    },
+    {
+      "path": "tests/edge-cases/ignore-scope-leak/root.txt",
+      "size": 12,
+      "sha256": "5f00faa0addaa40cc024797020d6280ad10d7a02d91cbf6c0ece34550db5d7d8"
     },
     {
       "path": "tests/edge-cases/ignore-source/.gitignore",
@@ -163,6 +203,11 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
+      "path": "tests/edge-cases/max-count/all-match-12050.txt",
+      "size": 205790,
+      "sha256": "2e8eda0c6dce3673a862ec0e7d714d8b2de662dc807e47e17243bc90492d2c58"
+    },
+    {
       "path": "tests/edge-cases/max-count/few-matches.txt",
       "size": 69,
       "sha256": "83b6dd0a23f752fb4e273fd6cb2f029e2b4a106137d80b7b3ed06122a59d9582"
@@ -176,6 +221,16 @@
       "path": "tests/edge-cases/max-count/mixed.txt",
       "size": 290,
       "sha256": "b88dd860b64ae2094e06973538acbca25dc7683b7c96806e9642c46a01c4e7b5"
+    },
+    {
+      "path": "tests/edge-cases/multiline/.gitignore",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tests/edge-cases/multiline/spans.txt",
+      "size": 49,
+      "sha256": "1b0deaa0ac952c6dcc836234ce4270a8f0dba9e12f5ec4cf1d65108168a17843"
     },
     {
       "path": "tests/edge-cases/one-device/.gitignore",
@@ -199,8 +254,8 @@
     },
     {
       "path": "tests/edge-cases/platform_metadata.json",
-      "size": 1580,
-      "sha256": "ec79ad53e227b089cf856964723f1198e6aef48a1932dbd9f63c640100a22e77"
+      "size": 1739,
+      "sha256": "0a85daa9c4431b2dd8cf447e30609d65df865ef045087b4b4d5cf4c073b606a5"
     },
     {
       "path": "tests/edge-cases/quoted args/another file.txt",
@@ -214,8 +269,8 @@
     },
     {
       "path": "tests/edge-cases/setup_fixtures.py",
-      "size": 26751,
-      "sha256": "4d4ee78569969ee1b769387dadcda699a82ae7a62fcc6b8d57640013e44ac983"
+      "size": 29391,
+      "sha256": "56b7816b7c932dcf7d7ea84082fbee45b227c378bd766dd54f80cb6729c18a56"
     },
     {
       "path": "tests/edge-cases/symlink-traversal/.gitignore",
@@ -231,6 +286,16 @@
       "path": "tests/edge-cases/symlink-traversal/real-dir/real-file.txt",
       "size": 19,
       "sha256": "479cddec5d0ce2c163de5cae2578461031bd490abbf465e1150cb1ffa3170fac"
+    },
+    {
+      "path": "tests/edge-cases/word-boundary/.gitignore",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tests/edge-cases/word-boundary/words.txt",
+      "size": 64,
+      "sha256": "f252f83bcb835498188c8d79cd027b7b7bc3286d7454b811c7a7376727dc1735"
     },
     {
       "path": "tests/edge-cases/zero-length-regex/.gitignore",
