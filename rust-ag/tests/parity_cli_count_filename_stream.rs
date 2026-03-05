@@ -494,3 +494,360 @@ fn val_cli_003_stream_non_utf8_no_panic() {
     assert_ne!(exit, 101, "must not panic on non-UTF8 stdin");
     assert_eq!(exit, 1, "no match → exit 1");
 }
+
+// ============================================================
+// Multi-file -c -v parity: suppress zero-count files
+// ============================================================
+
+#[test]
+fn val_cli_001_count_invert_multi_file_suppresses_zero() {
+    // Baseline ag -c -v: only files with non-zero inverted count are printed.
+    // file1.txt: "hello world\nhello there\ngoodbye\n" → 2 match hello, 1 non-match → count=1
+    // multi_match.txt: "hello hello hello\n" → 1 line matches → 0 non-match → suppressed
+    // sub/file2.txt: "hello foo\nhello bar\n" → 2 lines match → 0 non-match → suppressed
+    let dir = setup_fixture();
+    let (stdout, _stderr, exit) = run_ag(&["-c", "-v", "hello", dir.path().to_str().unwrap()]);
+    let mut lines: Vec<&str> = stdout.trim().lines().collect();
+    lines.sort();
+    // Only file1.txt should appear (1 non-matching line).
+    assert_eq!(
+        lines.len(),
+        1,
+        "only files with non-zero inverted count should appear, got: {:?}",
+        lines
+    );
+    assert!(
+        lines[0].ends_with(":1"),
+        "file1.txt should show count 1: {}",
+        lines[0]
+    );
+    assert!(
+        lines[0].contains("file1.txt"),
+        "should be file1.txt: {}",
+        lines[0]
+    );
+    assert_eq!(exit, 0);
+}
+
+#[test]
+fn val_cli_001_count_invert_nofilename_multi_file_suppresses_zero() {
+    // Same as above but with --nofilename: only non-zero counts.
+    let dir = setup_fixture();
+    let (stdout, _stderr, exit) = run_ag(&[
+        "--nofilename",
+        "-c",
+        "-v",
+        "hello",
+        dir.path().to_str().unwrap(),
+    ]);
+    let lines: Vec<&str> = stdout.trim().lines().collect();
+    // Only 1 line (for file1.txt's count of 1).
+    assert_eq!(
+        lines.len(),
+        1,
+        "only non-zero inverted counts should appear, got: {:?}",
+        lines
+    );
+    assert_eq!(lines[0], "1", "inverted count should be 1");
+    assert_eq!(exit, 0);
+}
+
+#[test]
+fn val_cli_001_count_invert_multi_file_all_match() {
+    // If all files have all lines matching, -c -v produces no output.
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("a.txt"), "hello\n").unwrap();
+    std::fs::write(dir.path().join("b.txt"), "hello world\n").unwrap();
+    let (stdout, _stderr, exit) = run_ag(&["-c", "-v", "hello", dir.path().to_str().unwrap()]);
+    assert_eq!(
+        stdout.trim(),
+        "",
+        "all files fully matching → no inverted output"
+    );
+    assert_eq!(exit, 1, "no inverted matches → exit 1");
+}
+
+// ============================================================
+// Direct baseline-vs-rust transcript comparisons (VAL-CLI-001..003)
+// ============================================================
+
+/// Helper: run baseline ag on file paths and return (stdout, stderr, exit_code).
+fn run_baseline_ag(args: &[&str]) -> (String, String, i32) {
+    // Use the locally-built ag binary from the repo root.
+    let ag_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("ag");
+    if !ag_path.exists() {
+        panic!(
+            "baseline ag binary not found at {}; build with ./build.sh first",
+            ag_path.display()
+        );
+    }
+    let out = Command::new(&ag_path)
+        .args(args)
+        .output()
+        .expect("failed to run baseline ag");
+    (
+        String::from_utf8_lossy(&out.stdout).to_string(),
+        String::from_utf8_lossy(&out.stderr).to_string(),
+        out.status.code().unwrap_or(-1),
+    )
+}
+
+/// Normalise multi-file output for comparison: sort non-empty lines, strip blanks.
+fn normalise_multifile_output(text: &str) -> Vec<String> {
+    let mut lines: Vec<String> = text
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(|l| l.to_string())
+        .collect();
+    lines.sort();
+    lines
+}
+
+#[test]
+fn val_cli_001_transcript_count_multi_file() {
+    // Direct transcript comparison: ag -c vs rust-ag -c on multi-file fixture.
+    let dir = setup_fixture();
+    let path = dir.path().to_str().unwrap();
+    let (ag_out, _ag_err, ag_exit) = run_baseline_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "-c",
+        "hello",
+        path,
+    ]);
+    let (rust_out, _rust_err, rust_exit) = run_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "-c",
+        "hello",
+        path,
+    ]);
+
+    let ag_norm = normalise_multifile_output(&ag_out);
+    let rust_norm = normalise_multifile_output(&rust_out);
+    assert_eq!(
+        ag_norm, rust_norm,
+        "sorted -c output should match baseline:\nbaseline: {:?}\nrust-ag:  {:?}",
+        ag_norm, rust_norm
+    );
+    assert_eq!(ag_exit, rust_exit, "exit codes should match");
+}
+
+#[test]
+fn val_cli_002_transcript_default_multi_file() {
+    // Direct transcript comparison: default multi-file search.
+    let dir = setup_fixture();
+    let path = dir.path().to_str().unwrap();
+    let (ag_out, _ag_err, ag_exit) = run_baseline_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "hello",
+        path,
+    ]);
+    let (rust_out, _rust_err, rust_exit) = run_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "hello",
+        path,
+    ]);
+
+    let ag_norm = normalise_multifile_output(&ag_out);
+    let rust_norm = normalise_multifile_output(&rust_out);
+    assert_eq!(
+        ag_norm, rust_norm,
+        "sorted default output should match baseline:\nbaseline: {:?}\nrust-ag:  {:?}",
+        ag_norm, rust_norm
+    );
+    assert_eq!(ag_exit, rust_exit, "exit codes should match");
+}
+
+#[test]
+fn val_cli_003_transcript_nofilename_multi_file() {
+    // Direct transcript comparison: --nofilename multi-file search.
+    // Blank-line separated groups — compare sorted non-empty lines.
+    let dir = setup_fixture();
+    let path = dir.path().to_str().unwrap();
+    let (ag_out, _ag_err, ag_exit) = run_baseline_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "--nofilename",
+        "hello",
+        path,
+    ]);
+    let (rust_out, _rust_err, rust_exit) = run_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "--nofilename",
+        "hello",
+        path,
+    ]);
+
+    let ag_norm = normalise_multifile_output(&ag_out);
+    let rust_norm = normalise_multifile_output(&rust_out);
+    assert_eq!(
+        ag_norm, rust_norm,
+        "sorted --nofilename output should match baseline:\nbaseline: {:?}\nrust-ag:  {:?}",
+        ag_norm, rust_norm
+    );
+    assert_eq!(ag_exit, rust_exit, "exit codes should match");
+}
+
+#[test]
+fn val_cli_001_transcript_count_invert_multi_file() {
+    // Direct transcript comparison: ag -c -v vs rust-ag -c -v on multi-file fixture.
+    let dir = setup_fixture();
+    let path = dir.path().to_str().unwrap();
+    let (ag_out, _ag_err, ag_exit) = run_baseline_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "-c",
+        "-v",
+        "hello",
+        path,
+    ]);
+    let (rust_out, _rust_err, rust_exit) = run_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "-c",
+        "-v",
+        "hello",
+        path,
+    ]);
+
+    let ag_norm = normalise_multifile_output(&ag_out);
+    let rust_norm = normalise_multifile_output(&rust_out);
+    assert_eq!(
+        ag_norm, rust_norm,
+        "sorted -c -v output should match baseline:\nbaseline: {:?}\nrust-ag:  {:?}",
+        ag_norm, rust_norm
+    );
+    assert_eq!(ag_exit, rust_exit, "exit codes should match");
+}
+
+#[test]
+fn val_cli_001_transcript_count_nofilename_multi_file() {
+    // Direct transcript comparison: ag -c --nofilename vs rust-ag.
+    let dir = setup_fixture();
+    let path = dir.path().to_str().unwrap();
+    let (ag_out, _ag_err, ag_exit) = run_baseline_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "-c",
+        "--nofilename",
+        "hello",
+        path,
+    ]);
+    let (rust_out, _rust_err, rust_exit) = run_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "-c",
+        "--nofilename",
+        "hello",
+        path,
+    ]);
+
+    // For --nofilename -c, both should output sorted counts.
+    let mut ag_lines: Vec<&str> = ag_out.trim().lines().collect();
+    let mut rust_lines: Vec<&str> = rust_out.trim().lines().collect();
+    ag_lines.sort();
+    rust_lines.sort();
+    assert_eq!(
+        ag_lines, rust_lines,
+        "sorted -c --nofilename output should match baseline:\nbaseline: {:?}\nrust-ag:  {:?}",
+        ag_lines, rust_lines
+    );
+    assert_eq!(ag_exit, rust_exit, "exit codes should match");
+}
+
+#[test]
+fn val_cli_002_transcript_nonumbers_multi_file() {
+    // Direct transcript comparison: --nonumbers multi-file.
+    let dir = setup_fixture();
+    let path = dir.path().to_str().unwrap();
+    let (ag_out, _ag_err, ag_exit) = run_baseline_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "--nonumbers",
+        "hello",
+        path,
+    ]);
+    let (rust_out, _rust_err, rust_exit) = run_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "--nonumbers",
+        "hello",
+        path,
+    ]);
+
+    let ag_norm = normalise_multifile_output(&ag_out);
+    let rust_norm = normalise_multifile_output(&rust_out);
+    assert_eq!(
+        ag_norm, rust_norm,
+        "sorted --nonumbers output should match baseline:\nbaseline: {:?}\nrust-ag:  {:?}",
+        ag_norm, rust_norm
+    );
+    assert_eq!(ag_exit, rust_exit, "exit codes should match");
+}
+
+#[test]
+fn val_cli_003_transcript_nofilename_numbers_multi_file() {
+    // Direct transcript comparison: --nofilename --numbers multi-file.
+    let dir = setup_fixture();
+    let path = dir.path().to_str().unwrap();
+    let (ag_out, _ag_err, ag_exit) = run_baseline_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "--nofilename",
+        "--numbers",
+        "hello",
+        path,
+    ]);
+    let (rust_out, _rust_err, rust_exit) = run_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "--nofilename",
+        "--numbers",
+        "hello",
+        path,
+    ]);
+
+    let ag_norm = normalise_multifile_output(&ag_out);
+    let rust_norm = normalise_multifile_output(&rust_out);
+    assert_eq!(
+        ag_norm, rust_norm,
+        "sorted --nofilename --numbers output should match baseline:\nbaseline: {:?}\nrust-ag:  {:?}",
+        ag_norm, rust_norm
+    );
+    assert_eq!(ag_exit, rust_exit, "exit codes should match");
+}

@@ -176,7 +176,12 @@ fn main() {
         }
 
         if opts.count {
-            if !result.matches.is_empty() || opts.invert_match {
+            // Print count line only when there are actual results.
+            // In normal mode: when there are matching lines.
+            // In invert mode (-v): when there are non-matching lines
+            // (match_count == matches.len() == 0 when all lines match).
+            // Baseline ag suppresses files with zero count in both cases.
+            if result.match_count > 0 {
                 let line = output::format_count_line(
                     if show_filename {
                         Some(&display_path)
