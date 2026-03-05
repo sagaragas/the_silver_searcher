@@ -5,8 +5,8 @@
     "tests",
     "src"
   ],
-  "manifest_hash": "d2b70aa3de31f0f8fa88e307d83a45a5eeac65d2b030226a8f152b17fa8467f3",
-  "file_count": 112,
+  "manifest_hash": "21cb23b3e3fd04a063f8db2fbfcf8121778a2919d7fa5f3cff0c8b1cac502fbc",
+  "file_count": 118,
   "files": [
     {
       "path": "src/decompress.c",
@@ -184,6 +184,16 @@
       "sha256": "b0ce7916a4cb857b2046ce50ad513d7bc92f2aeab505bb96cbfe9ef8387955b6"
     },
     {
+      "path": "tests/edge-cases/case-sensitivity/.gitignore",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tests/edge-cases/case-sensitivity/mixed.txt",
+      "size": 60,
+      "sha256": "751a0f88ca7ae68fd4091db37765a6586b521eb78ccb2ace62ffd4f15ee97750"
+    },
+    {
       "path": "tests/edge-cases/hidden-files/.gitignore",
       "size": 0,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -289,6 +299,16 @@
       "sha256": "b88dd860b64ae2094e06973538acbca25dc7683b7c96806e9642c46a01c4e7b5"
     },
     {
+      "path": "tests/edge-cases/multiline/.gitignore",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tests/edge-cases/multiline/spans.txt",
+      "size": 49,
+      "sha256": "1b0deaa0ac952c6dcc836234ce4270a8f0dba9e12f5ec4cf1d65108168a17843"
+    },
+    {
       "path": "tests/edge-cases/one-device/.gitignore",
       "size": 0,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -342,6 +362,16 @@
       "path": "tests/edge-cases/symlink-traversal/real-dir/real-file.txt",
       "size": 19,
       "sha256": "479cddec5d0ce2c163de5cae2578461031bd490abbf465e1150cb1ffa3170fac"
+    },
+    {
+      "path": "tests/edge-cases/word-boundary/.gitignore",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tests/edge-cases/word-boundary/words.txt",
+      "size": 64,
+      "sha256": "f252f83bcb835498188c8d79cd027b7b7bc3286d7454b811c7a7376727dc1735"
     },
     {
       "path": "tests/edge-cases/zero-length-regex/.gitignore",

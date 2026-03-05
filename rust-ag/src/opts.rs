@@ -19,6 +19,19 @@ pub enum CaseMode {
     Sensitive,
 }
 
+/// Tracks which recursion flag was set last for "last wins" precedence.
+///
+/// In `ag`, conflicting recursion flags are resolved by the last one specified
+/// on the command line. For example, `-n -r` recurses (last wins),
+/// while `-r -n` does not recurse (last wins).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RecurseMode {
+    /// Recurse into directories (default).
+    Recurse,
+    /// Do not recurse (`-n` / `--norecurse`).
+    NoRecurse,
+}
+
 /// Tracks which multiline flag was set last for "last wins" precedence.
 ///
 /// In `ag`, conflicting multiline flags are resolved by the last one specified
@@ -80,6 +93,10 @@ pub struct Opts {
 
     /// Recurse into directories (`-r` / `--recurse`). Default true.
     pub recurse: bool,
+
+    /// The resolved recurse mode after applying "last wins" flag precedence.
+    /// This is the authoritative field for determining recursion behavior.
+    pub recurse_mode: RecurseMode,
 
     /// Maximum directory depth (`--depth NUM`). Default 25.
     pub max_depth: usize,
@@ -195,6 +212,7 @@ impl Default for Opts {
             follow_symlinks: false,
             no_recurse: false,
             recurse: true,
+            recurse_mode: RecurseMode::Recurse,
             max_depth: 25,
             no_color: false,
             workers: None,
@@ -320,8 +338,14 @@ impl Opts {
                     "--skip-vcs-ignores" => opts.skip_vcs_ignores = true,
                     "--unrestricted" => opts.unrestricted = true,
                     "--follow" => opts.follow_symlinks = true,
-                    "--norecurse" => opts.no_recurse = true,
-                    "--recurse" => opts.recurse = true,
+                    "--norecurse" => {
+                        opts.no_recurse = true;
+                        opts.recurse_mode = RecurseMode::NoRecurse;
+                    }
+                    "--recurse" => {
+                        opts.recurse = true;
+                        opts.recurse_mode = RecurseMode::Recurse;
+                    }
                     "--nocolor" | "--no-color" => opts.no_color = true,
                     "--color" => opts.no_color = false,
                     "--parallel" => opts.parallel = true,
@@ -457,8 +481,14 @@ impl Opts {
                         'U' => opts.skip_vcs_ignores = true,
                         'u' => opts.unrestricted = true,
                         'f' => opts.follow_symlinks = true,
-                        'n' => opts.no_recurse = true,
-                        'r' => opts.recurse = true,
+                        'n' => {
+                            opts.no_recurse = true;
+                            opts.recurse_mode = RecurseMode::NoRecurse;
+                        }
+                        'r' => {
+                            opts.recurse = true;
+                            opts.recurse_mode = RecurseMode::Recurse;
+                        }
                         'Q' => opts.literal = true,
                         'F' => opts.literal = true,
                         'w' => opts.word_regexp = true,

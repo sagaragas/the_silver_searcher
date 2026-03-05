@@ -354,6 +354,43 @@ def build_zero_length_regex(base: Path) -> None:
     _write(base / ".gitignore", "")
 
 
+def build_ignore_scope_leak(base: Path) -> None:
+    """Build ignore-scope-leak fixtures.
+
+    Tests that directory-scoped ignore rules do not leak into sibling
+    directories during recursive traversal.
+
+    Directory structure:
+      ignore-scope-leak/
+        .git/                  -> fake git repo for .gitignore support
+        root.txt               -> match in root
+        alpha/
+          .gitignore           -> ignores "keep.txt"
+          keep.txt             -> ignored in alpha (matches alpha/.gitignore)
+          visible.txt          -> visible in alpha
+        beta/
+          keep.txt             -> NOT ignored (beta has no .gitignore)
+          visible.txt          -> visible in beta
+
+    Bug scenario: if the walker does not pop alpha's ignore state on exit,
+    beta/keep.txt is incorrectly suppressed by alpha's .gitignore rule.
+    """
+    _rmtree_safe(base)
+    _ensure_dir(base)
+    _git_init(base)
+
+    _write(base / "root.txt", "NEEDLE root\n")
+
+    # alpha has a .gitignore that ignores keep.txt
+    _write(base / "alpha" / ".gitignore", "keep.txt\n")
+    _write(base / "alpha" / "keep.txt", "NEEDLE alpha keep\n")
+    _write(base / "alpha" / "visible.txt", "NEEDLE alpha visible\n")
+
+    # beta has NO .gitignore — keep.txt should be found
+    _write(base / "beta" / "keep.txt", "NEEDLE beta keep\n")
+    _write(base / "beta" / "visible.txt", "NEEDLE beta visible\n")
+
+
 def build_max_count(base: Path) -> None:
     """Build max-count fixtures.
 
@@ -413,6 +450,11 @@ def build_platform_metadata() -> dict:
                 "supported": True,
                 "skip_reason": None,
                 "notes": "Requires git to be installed for .gitignore handling",
+            },
+            "ignore-scope-leak": {
+                "supported": True,
+                "skip_reason": None,
+                "notes": "Tests ignore scope isolation across sibling directories",
             },
             "hidden-files": {
                 "supported": True,
@@ -476,6 +518,7 @@ def build_platform_metadata() -> dict:
 
 BUILDERS = {
     "ignore-source": build_ignore_source,
+    "ignore-scope-leak": build_ignore_scope_leak,
     "hidden-files": build_hidden_files,
     "binary-files": build_binary_files,
     "symlink-traversal": build_symlink_traversal,
@@ -535,6 +578,7 @@ def _write_platform_metadata() -> None:
 
 REQUIRED_MARKERS: dict[str, list[str]] = {
     "ignore-source": ["visible.txt", ".gitignore", ".ignore"],
+    "ignore-scope-leak": ["root.txt", "alpha/.gitignore", "beta/keep.txt"],
     "hidden-files": ["visible.txt", ".hidden-file.txt"],
     "binary-files": ["text-file.txt", "binary-file.bin"],
     "symlink-traversal": ["real-dir/real-file.txt"],

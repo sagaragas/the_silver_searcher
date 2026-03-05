@@ -2,7 +2,7 @@
   "schema_version": 1,
   "description": "Query / pattern manifest for benchmark scenarios",
   "manifest_hash": "644958b7d4abfa6291abbd1585003208a04f1e890db83d81f1d02ae7c573b71d",
-  "query_count": 17,
+  "query_count": 11,
   "queries": [
     {
       "id": "q-literal-simple",
@@ -69,42 +69,6 @@
       "type": "regex",
       "pattern": "",
       "description": "Zero-length regex for edge-case safety testing"
-    },
-    {
-      "id": "q-case-smart-lower",
-      "type": "literal",
-      "pattern": "hello",
-      "description": "All-lowercase pattern for smart-case testing (case-insensitive)"
-    },
-    {
-      "id": "q-case-smart-upper",
-      "type": "literal",
-      "pattern": "Hello",
-      "description": "Mixed-case pattern for smart-case testing (case-sensitive)"
-    },
-    {
-      "id": "q-multiline-span",
-      "type": "regex",
-      "pattern": "one\\nline",
-      "description": "Pattern spanning two lines for multiline testing"
-    },
-    {
-      "id": "q-word-boundary",
-      "type": "literal",
-      "pattern": "foo",
-      "description": "Word for word-boundary matching"
-    },
-    {
-      "id": "q-zero-len-x-opt",
-      "type": "regex",
-      "pattern": "x?",
-      "description": "Zero-length optional pattern for safe progression testing"
-    },
-    {
-      "id": "q-zero-len-dot-star",
-      "type": "regex",
-      "pattern": ".*",
-      "description": "Zero-length dot-star pattern for multiline edge testing"
     }
   ]
 }

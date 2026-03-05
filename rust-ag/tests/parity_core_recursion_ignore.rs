@@ -475,3 +475,153 @@ fn val_core_009_default_recursive() {
         "Default recursive search should find files in subdirectories: {stdout}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Regression: -n/-r last-flag-wins precedence (VAL-CORE-009)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn val_core_009_n_then_r_last_wins_recurse() {
+    // -n -r: last flag (-r) wins, so search should recurse.
+    let fixture = repo_root().join("tests/edge-cases/ignore-source");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "-n",
+            "-r",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_009_r_then_n_last_wins_norecurse() {
+    // -r -n: last flag (-n) wins, so search should NOT recurse.
+    let fixture = repo_root().join("tests/edge-cases/ignore-source");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "-r",
+            "-n",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_009_n_r_n_triple_last_wins() {
+    // -n -r -n: last flag (-n) wins, no recurse.
+    let fixture = repo_root().join("tests/edge-cases/ignore-source");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "-n",
+            "-r",
+            "-n",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_009_long_norecurse_then_recurse() {
+    // --norecurse --recurse: last flag (--recurse) wins.
+    let fixture = repo_root().join("tests/edge-cases/ignore-source");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--norecurse",
+            "--recurse",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Regression: ignore state must not leak across sibling directories
+// (VAL-CORE-002)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn val_core_002_ignore_scope_no_leak_across_siblings() {
+    // alpha/.gitignore ignores "keep.txt", but beta has no such ignore.
+    // beta/keep.txt must NOT be suppressed by alpha's ignore rules.
+    let fixture = repo_root().join("tests/edge-cases/ignore-scope-leak");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_002_ignore_scope_leak_beta_keep_visible() {
+    // Directly verify that beta/keep.txt is found (not suppressed by alpha's .gitignore).
+    let fixture = repo_root().join("tests/edge-cases/ignore-scope-leak");
+    let rust = run_cmd(
+        &rust_ag_bin(),
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+    let stdout = String::from_utf8_lossy(&rust.stdout);
+    assert!(
+        stdout.contains("beta/keep.txt"),
+        "beta/keep.txt should NOT be suppressed by alpha/.gitignore scope: {stdout}"
+    );
+}
+
+#[test]
+fn val_core_002_ignore_scope_alpha_keep_hidden() {
+    // Verify that alpha/keep.txt IS properly ignored (by alpha/.gitignore).
+    let fixture = repo_root().join("tests/edge-cases/ignore-scope-leak");
+    let rust = run_cmd(
+        &rust_ag_bin(),
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+    let stdout = String::from_utf8_lossy(&rust.stdout);
+    assert!(
+        !stdout.contains("alpha/keep.txt"),
+        "alpha/keep.txt should be ignored by alpha/.gitignore: {stdout}"
+    );
+}

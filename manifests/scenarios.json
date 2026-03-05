@@ -7,26 +7,26 @@
     "rg",
     "ugrep"
   ],
-  "corpus_manifest_hash": "d2b70aa3de31f0f8fa88e307d83a45a5eeac65d2b030226a8f152b17fa8467f3",
+  "corpus_manifest_hash": "21cb23b3e3fd04a063f8db2fbfcf8121778a2919d7fa5f3cff0c8b1cac502fbc",
   "query_manifest_hash": "644958b7d4abfa6291abbd1585003208a04f1e890db83d81f1d02ae7c573b71d",
-  "manifest_hash": "740b9dab2ab619fd0a5836e8895d45d4e5c49cab1ecaf1a0c5a3c468340aff63",
-  "scenario_count": 31,
+  "manifest_hash": "b2dcfe788b989af67920ca3a0849d45025352d786ba0474e114d8af19bc3c5cb",
+  "scenario_count": 23,
   "scenarios": [
     {
       "id": "literal-simple",
       "description": "Simple literal search across repo",
       "query_id": "q-literal-simple",
       "corpus": ".",
-      "groups": [
-        "smoke",
-        "core-ignore-recursion"
-      ],
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rg": "rg --no-heading --color=never {pattern} {corpus}",
         "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "smoke",
+        "core-ignore-recursion"
+      ]
     },
     {
       "id": "literal-word",
@@ -57,16 +57,16 @@
       "description": "Literal with zero matches (pure traversal overhead)",
       "query_id": "q-nomatch",
       "corpus": ".",
-      "groups": [
-        "smoke",
-        "core-ignore-recursion"
-      ],
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rg": "rg --no-heading --color=never {pattern} {corpus}",
         "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "smoke",
+        "core-ignore-recursion"
+      ]
     },
     {
       "id": "regex-simple",
@@ -169,32 +169,74 @@
       "description": "Search in ignore-source fixture to verify ignore semantics",
       "query_id": "q-edge-needle",
       "corpus": "tests/edge-cases/ignore-source",
-      "groups": [
-        "edge-cases",
-        "core-ignore-recursion"
-      ],
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rg": "rg --no-heading --color=never {pattern} {corpus}",
         "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "edge-cases",
+        "core-ignore-recursion"
+      ]
     },
     {
       "id": "edge-hidden-files",
       "description": "Search with --hidden flag in hidden-files fixture",
       "query_id": "q-edge-needle",
       "corpus": "tests/edge-cases/hidden-files",
-      "groups": [
-        "edge-cases",
-        "core-ignore-recursion"
-      ],
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity --hidden {pattern} {corpus}",
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --hidden {pattern} {corpus}",
         "rg": "rg --no-heading --color=never --hidden {pattern} {corpus}",
         "ugrep": "ugrep --color=never --hidden {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "edge-cases",
+        "core-ignore-recursion"
+      ]
+    },
+    {
+      "id": "edge-ignore-scope-leak",
+      "description": "Search in ignore-scope-leak fixture to verify ignore state does not leak across siblings",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/ignore-scope-leak",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}"
+      },
+      "groups": [
+        "edge-cases",
+        "core-ignore-recursion"
+      ]
+    },
+    {
+      "id": "edge-recursion-n-r-precedence",
+      "description": "Verify -n -r last-flag-wins precedence (last: -r → recurse)",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/ignore-source",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -n -r {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -n -r {pattern} {corpus}"
+      },
+      "groups": [
+        "edge-cases",
+        "core-ignore-recursion"
+      ]
+    },
+    {
+      "id": "edge-recursion-r-n-precedence",
+      "description": "Verify -r -n last-flag-wins precedence (last: -n → no recurse)",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/ignore-source",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -r -n {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -r -n {pattern} {corpus}"
+      },
+      "groups": [
+        "edge-cases",
+        "core-ignore-recursion"
+      ]
     },
     {
       "id": "edge-binary-files",
@@ -223,14 +265,14 @@
         "rg": "rg --no-heading --color=never -L {pattern} {corpus}",
         "ugrep": "ugrep --color=never -L {pattern} {corpus}"
       },
-      "platform_skip": {
-        "condition": "platform.system() == 'Windows'",
-        "reason": "Symlink creation requires elevated privileges on Windows"
-      },
       "groups": [
         "core-edge-cases",
         "edge-cases"
-      ]
+      ],
+      "platform_skip": {
+        "condition": "platform.system() == 'Windows'",
+        "reason": "Symlink creation requires elevated privileges on Windows"
+      }
     },
     {
       "id": "edge-one-device",
@@ -243,14 +285,14 @@
         "rg": "rg --no-heading --color=never {pattern} {corpus}",
         "ugrep": "ugrep --color=never {pattern} {corpus}"
       },
-      "platform_skip": {
-        "condition": "not cross_device_available",
-        "reason": "Cross-device mount point not available on this platform"
-      },
       "groups": [
         "core-edge-cases",
         "edge-cases"
-      ]
+      ],
+      "platform_skip": {
+        "condition": "not cross_device_available",
+        "reason": "Cross-device mount point not available on this platform"
+      }
     },
     {
       "id": "edge-large-file",
@@ -298,182 +340,6 @@
         "core-edge-cases",
         "edge-cases"
       ]
-    },
-    {
-      "id": "core-matching-smart-case-lower",
-      "description": "Smart-case with all-lowercase pattern (case-insensitive)",
-      "query_id": "q-case-smart-lower",
-      "corpus": "tests/edge-cases/case-sensitivity",
-      "groups": [
-        "core-matching"
-      ],
-      "commands": {
-        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
-        "rg": "rg --no-heading --color=never --smart-case {pattern} {corpus}",
-        "ugrep": "ugrep --color=never --smart-case {pattern} {corpus}"
-      }
-    },
-    {
-      "id": "core-matching-smart-case-upper",
-      "description": "Smart-case with uppercase pattern (case-sensitive)",
-      "query_id": "q-case-smart-upper",
-      "corpus": "tests/edge-cases/case-sensitivity",
-      "groups": [
-        "core-matching"
-      ],
-      "commands": {
-        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
-        "rg": "rg --no-heading --color=never --smart-case {pattern} {corpus}",
-        "ugrep": "ugrep --color=never --smart-case {pattern} {corpus}"
-      }
-    },
-    {
-      "id": "core-matching-case-flag-s-i",
-      "description": "Case-flag precedence: -s -i (last wins → insensitive)",
-      "query_id": "q-case-smart-lower",
-      "corpus": "tests/edge-cases/case-sensitivity",
-      "groups": [
-        "core-matching"
-      ],
-      "commands": {
-        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -s -i {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -s -i {pattern} {corpus}",
-        "rg": "rg --no-heading --color=never -i {pattern} {corpus}",
-        "ugrep": "ugrep --color=never -i {pattern} {corpus}"
-      }
-    },
-    {
-      "id": "core-matching-case-flag-i-s",
-      "description": "Case-flag precedence: -i -s (last wins → sensitive)",
-      "query_id": "q-case-smart-lower",
-      "corpus": "tests/edge-cases/case-sensitivity",
-      "groups": [
-        "core-matching"
-      ],
-      "commands": {
-        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -i -s {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -i -s {pattern} {corpus}",
-        "rg": "rg --no-heading --color=never -s {pattern} {corpus}",
-        "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
-    },
-    {
-      "id": "core-matching-multiline-span",
-      "description": "Multiline regex spanning two lines",
-      "query_id": "q-multiline-span",
-      "corpus": "tests/edge-cases/multiline",
-      "groups": [
-        "core-matching"
-      ],
-      "commands": {
-        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
-        "rg": "rg --no-heading --color=never --multiline {pattern} {corpus}",
-        "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
-    },
-    {
-      "id": "core-matching-nomultiline",
-      "description": "Nomultiline: cross-line pattern should not match",
-      "query_id": "q-multiline-span",
-      "corpus": "tests/edge-cases/multiline",
-      "groups": [
-        "core-matching"
-      ],
-      "commands": {
-        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --nomultiline {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --nomultiline {pattern} {corpus}",
-        "rg": "rg --no-heading --color=never {pattern} {corpus}",
-        "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
-    },
-    {
-      "id": "core-matching-nomultiline-then-multiline",
-      "description": "Conflicting flags: --nomultiline --multiline last-wins → multiline enabled",
-      "query_id": "q-multiline-span",
-      "corpus": "tests/edge-cases/multiline",
-      "groups": [
-        "core-matching"
-      ],
-      "commands": {
-        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --nomultiline --multiline {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --nomultiline --multiline {pattern} {corpus}"
-      }
-    },
-    {
-      "id": "core-matching-multiline-then-nomultiline",
-      "description": "Conflicting flags: --multiline --nomultiline last-wins → multiline disabled",
-      "query_id": "q-multiline-span",
-      "corpus": "tests/edge-cases/multiline",
-      "groups": [
-        "core-matching"
-      ],
-      "commands": {
-        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --multiline --nomultiline {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --multiline --nomultiline {pattern} {corpus}"
-      }
-    },
-    {
-      "id": "core-matching-word-boundary",
-      "description": "Word-boundary matching with -w",
-      "query_id": "q-word-boundary",
-      "corpus": "tests/edge-cases/word-boundary",
-      "groups": [
-        "core-matching"
-      ],
-      "commands": {
-        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -w {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -w {pattern} {corpus}",
-        "rg": "rg --no-heading --color=never -w {pattern} {corpus}",
-        "ugrep": "ugrep --color=never -w {pattern} {corpus}"
-      }
-    },
-    {
-      "id": "core-matching-literal-escape",
-      "description": "Literal mode escapes regex metacharacters",
-      "query_id": "q-word-boundary",
-      "corpus": "tests/edge-cases/word-boundary",
-      "groups": [
-        "core-matching"
-      ],
-      "commands": {
-        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -Q \"foo.bar\" {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -Q \"foo.bar\" {corpus}",
-        "rg": "rg --no-heading --color=never -F \"foo.bar\" {corpus}",
-        "ugrep": "ugrep --color=never -F \"foo.bar\" {corpus}"
-      }
-    },
-    {
-      "id": "core-matching-zero-len-x-opt",
-      "description": "Zero-length optional pattern x? completes safely",
-      "query_id": "q-zero-len-x-opt",
-      "corpus": "tests/edge-cases/zero-length-regex",
-      "groups": [
-        "core-matching"
-      ],
-      "commands": {
-        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
-        "rg": "rg --no-heading --color=never {pattern} {corpus}",
-        "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
-    },
-    {
-      "id": "core-matching-zero-len-dot-star",
-      "description": "Zero-length .* pattern completes safely with multiline",
-      "query_id": "q-zero-len-dot-star",
-      "corpus": "tests/edge-cases/zero-length-regex",
-      "groups": [
-        "core-matching"
-      ],
-      "commands": {
-        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
-        "rg": "rg --no-heading --color=never {pattern} {corpus}",
-        "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
     }
   ]
 }

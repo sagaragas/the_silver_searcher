@@ -11,6 +11,11 @@
       "skip_reason": null,
       "notes": "Requires git to be installed for .gitignore handling"
     },
+    "ignore-scope-leak": {
+      "supported": true,
+      "skip_reason": null,
+      "notes": "Tests ignore scope isolation across sibling directories"
+    },
     "hidden-files": {
       "supported": true,
       "skip_reason": null,

@@ -85,6 +85,7 @@ fn walk_dir(
         Ok(rd) => rd.filter_map(|e| e.ok()).collect(),
         Err(e) => {
             eprintln!("ERR: unable to open directory {}: {e}", dir.display());
+            engine.pop_directory();
             return;
         }
     };
@@ -144,8 +145,8 @@ fn walk_dir(
         }
 
         if is_dir {
-            // Check recursion settings.
-            if opts.no_recurse {
+            // Check recursion settings using the authoritative "last wins" mode.
+            if opts.recurse_mode == crate::opts::RecurseMode::NoRecurse {
                 continue;
             }
             if depth >= opts.max_depth {
@@ -165,6 +166,9 @@ fn walk_dir(
             out.push(path);
         }
     }
+
+    // Pop directory-scoped ignore rules to prevent leakage into siblings.
+    engine.pop_directory();
 }
 
 /// Simple binary file detection.

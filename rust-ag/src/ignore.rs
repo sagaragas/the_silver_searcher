@@ -54,6 +54,9 @@ pub struct IgnoreEngine {
     rule_sets: Vec<IgnoreRuleSet>,
     /// Whether VCS ignores are active.
     vcs_ignores_active: bool,
+    /// Stack of rule-set counts pushed per `push_directory` call.
+    /// Used by `pop_directory` to restore state on recursion unwind.
+    dir_rule_counts: Vec<usize>,
 }
 
 impl IgnoreEngine {
@@ -65,6 +68,7 @@ impl IgnoreEngine {
         let mut engine = Self {
             rule_sets: Vec::new(),
             vcs_ignores_active: !skip_vcs_ignores,
+            dir_rule_counts: Vec::new(),
         };
 
         // Add CLI ignore patterns.
@@ -89,7 +93,12 @@ impl IgnoreEngine {
     }
 
     /// Load ignore files from the given directory and push them onto the stack.
+    ///
+    /// Call [`pop_directory`] after finishing traversal of this directory to
+    /// restore the ignore state and prevent rule leakage into sibling dirs.
     pub fn push_directory(&mut self, dir: &Path) {
+        let before = self.rule_sets.len();
+
         // Always load `.ignore` files.
         let dot_ignore = dir.join(".ignore");
         if dot_ignore.is_file() {
@@ -124,6 +133,20 @@ impl IgnoreEngine {
                     self.rule_sets.push(rs);
                 }
             }
+        }
+
+        self.dir_rule_counts.push(self.rule_sets.len() - before);
+    }
+
+    /// Pop the ignore rules that were pushed by the most recent
+    /// [`push_directory`] call.
+    ///
+    /// This must be called after finishing traversal of a directory so that
+    /// directory-scoped ignore rules do not leak into sibling directories.
+    pub fn pop_directory(&mut self) {
+        if let Some(count) = self.dir_rule_counts.pop() {
+            let new_len = self.rule_sets.len().saturating_sub(count);
+            self.rule_sets.truncate(new_len);
         }
     }
 

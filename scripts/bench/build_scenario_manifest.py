@@ -143,10 +143,18 @@ def _scenario(
     flags: dict[str, str] | None = None,
     corpus: str = ".",
     extra: dict[str, Any] | None = None,
+    groups: list[str] | None = None,
+    comparators: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Build a single scenario entry with comparator command matrix."""
+    """Build a single scenario entry with comparator command matrix.
+
+    *comparators*: optional subset of COMPARATORS to include. Default: all.
+    *groups*: optional scenario group tags for filtering in the parity runner.
+    """
     if flags is None:
         flags = {}
+    if comparators is None:
+        comparators = COMPARATORS
 
     # Default flag sets per comparator to normalise output for benchmarking.
     # ag: --nocolor --workers=1 --parallel --noaffinity
@@ -162,7 +170,7 @@ def _scenario(
     }
 
     commands: dict[str, str] = {}
-    for comp in COMPARATORS:
+    for comp in comparators:
         bf = base_flags[comp]
         ef = flags.get(comp, flags.get("all", ""))
         binary = comp if comp != "rust-ag" else "rust-ag"
@@ -177,6 +185,8 @@ def _scenario(
         "corpus": corpus,
         "commands": commands,
     }
+    if groups:
+        entry["groups"] = groups
     if extra:
         entry.update(extra)
     return entry
@@ -188,6 +198,7 @@ SCENARIOS: list[dict[str, Any]] = [
         "literal-simple",
         "Simple literal search across repo",
         "q-literal-simple",
+        groups=["smoke", "core-ignore-recursion"],
     ),
     _scenario(
         "literal-word",
@@ -203,6 +214,7 @@ SCENARIOS: list[dict[str, Any]] = [
         "literal-nomatch",
         "Literal with zero matches (pure traversal overhead)",
         "q-nomatch",
+        groups=["smoke", "core-ignore-recursion"],
     ),
     # --- Regex search scenarios ---
     _scenario(
@@ -276,6 +288,7 @@ SCENARIOS: list[dict[str, Any]] = [
         "Search in ignore-source fixture to verify ignore semantics",
         "q-edge-needle",
         corpus="tests/edge-cases/ignore-source",
+        groups=["edge-cases", "core-ignore-recursion"],
     ),
     _scenario(
         "edge-hidden-files",
@@ -288,12 +301,46 @@ SCENARIOS: list[dict[str, Any]] = [
             "ugrep": "--hidden",
         },
         corpus="tests/edge-cases/hidden-files",
+        groups=["edge-cases", "core-ignore-recursion"],
+    ),
+    _scenario(
+        "edge-ignore-scope-leak",
+        "Search in ignore-scope-leak fixture to verify ignore state does not leak across siblings",
+        "q-edge-needle",
+        corpus="tests/edge-cases/ignore-scope-leak",
+        groups=["edge-cases", "core-ignore-recursion"],
+        comparators=["ag", "rust-ag"],
+    ),
+    _scenario(
+        "edge-recursion-n-r-precedence",
+        "Verify -n -r last-flag-wins precedence (last: -r → recurse)",
+        "q-edge-needle",
+        flags={
+            "ag": "-n -r",
+            "rust-ag": "-n -r",
+        },
+        corpus="tests/edge-cases/ignore-source",
+        groups=["edge-cases", "core-ignore-recursion"],
+        comparators=["ag", "rust-ag"],
+    ),
+    _scenario(
+        "edge-recursion-r-n-precedence",
+        "Verify -r -n last-flag-wins precedence (last: -n → no recurse)",
+        "q-edge-needle",
+        flags={
+            "ag": "-r -n",
+            "rust-ag": "-r -n",
+        },
+        corpus="tests/edge-cases/ignore-source",
+        groups=["edge-cases", "core-ignore-recursion"],
+        comparators=["ag", "rust-ag"],
     ),
     _scenario(
         "edge-binary-files",
         "Search in binary-files fixture to verify binary detection",
         "q-edge-needle",
         corpus="tests/edge-cases/binary-files",
+        groups=["core-edge-cases", "edge-cases"],
     ),
     _scenario(
         "edge-symlink-traversal",
@@ -312,6 +359,7 @@ SCENARIOS: list[dict[str, Any]] = [
                 "reason": "Symlink creation requires elevated privileges on Windows",
             },
         },
+        groups=["core-edge-cases", "edge-cases"],
     ),
     _scenario(
         "edge-one-device",
@@ -330,18 +378,21 @@ SCENARIOS: list[dict[str, Any]] = [
                 "reason": "Cross-device mount point not available on this platform",
             },
         },
+        groups=["core-edge-cases", "edge-cases"],
     ),
     _scenario(
         "edge-large-file",
         "Search in large-file fixture to verify large-file handling",
         "q-edge-needle",
         corpus="tests/edge-cases/large-file",
+        groups=["core-edge-cases", "edge-cases"],
     ),
     _scenario(
         "edge-zero-length-regex",
         "Zero-length regex search to verify safe handling",
         "q-edge-zero-len",
         corpus="tests/edge-cases/zero-length-regex",
+        groups=["edge-cases"],
     ),
     _scenario(
         "edge-max-count",
@@ -354,6 +405,7 @@ SCENARIOS: list[dict[str, Any]] = [
             "ugrep": "--max-count=3",
         },
         corpus="tests/edge-cases/max-count",
+        groups=["core-edge-cases", "edge-cases"],
     ),
 ]
 
