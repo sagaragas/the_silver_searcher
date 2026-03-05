@@ -1,6 +1,6 @@
 {
   "milestone": "baseline-and-fixtures",
-  "round": 1,
+  "round": 2,
   "status": "fail",
   "validatorsRun": {
     "test": {
@@ -20,67 +20,50 @@
     }
   },
   "reviewsSummary": {
-    "total": 4,
-    "passed": 1,
-    "failed": 3,
+    "total": 5,
+    "passed": 4,
+    "failed": 1,
     "failedFeatures": [
-      "baseline-fixture-manifests-and-command-matrix",
-      "baseline-parity-oracle-runner",
-      "baseline-edge-case-fixtures"
+      "baseline-parity-argv-tokenization-fix"
     ]
   },
   "blockingIssues": [
     {
-      "featureId": "baseline-fixture-manifests-and-command-matrix",
+      "featureId": "baseline-parity-argv-tokenization-fix",
       "severity": "blocking",
-      "description": "Corpus manifest collection includes build-generated files under src/ (e.g., .dirstamp/config.h/stamp-h1), making manifest hashes non-reproducible from clean checkout."
-    },
-    {
-      "featureId": "baseline-parity-oracle-runner",
-      "severity": "blocking",
-      "description": "scripts/parity/run_matrix.py tokenizes commands with str.split() after placeholder substitution, which breaks quoted arguments and paths/patterns containing spaces."
-    },
-    {
-      "featureId": "baseline-edge-case-fixtures",
-      "severity": "blocking",
-      "description": "one-device traversal fixtures/scenarios were not implemented despite being in scope (metadata present but no fixture builder or scenario coverage)."
-    },
-    {
-      "featureId": "baseline-edge-case-fixtures",
-      "severity": "blocking",
-      "description": "Large-file edge-case reproducibility is unreliable on clean checkout due conditional fixture setup and integrity checks that do not require missing large fixture files."
+      "description": "scripts/parity/run_matrix.py now uses shlex.split(cmd_str), which fixes quoted arguments but regresses existing unquoted escaped-regex scenarios by stripping backslashes and changing argv semantics."
     }
   ],
   "appliedUpdates": [
     {
       "target": "services.yaml",
-      "description": "Added parity command entries parity_baseline_smoke and parity_validate_latest so milestone verification steps are executable from shared commands.",
-      "sourceFeature": "baseline-parity-oracle-runner"
+      "description": "Added shared command entries for parity edge-case and fixture/manifest verification workflows: parity_edge_cases_baseline, parity_validate_fixture_integrity, parity_build_fixture_manifest_verify, parity_build_scenario_manifest_verify, and edge_fixtures_setup_verify.",
+      "sourceFeature": "baseline-edge-case-fixtures-one-device-largefile-fix"
     }
   ],
   "suggestedGuidanceUpdates": [
     {
       "target": "AGENTS.md",
-      "suggestion": "Add explicit reproducibility boundary: manifest-critical inputs must exclude build-generated/untracked files unless a normalization strategy is declared and validated from clean checkout; generated edge fixtures must be deterministically regenerated or required by integrity checks.",
-      "evidence": "Reviews for baseline-fixture-manifests-and-command-matrix and baseline-edge-case-fixtures found clean-checkout drift from generated/untracked inputs and conditional fixture setup.",
+      "suggestion": "Document scenario command-template escaping conventions for manifests (especially `{pattern}` placeholders and backslash-sensitive regex inputs), and document nested fixture `.git/` pitfalls during staging so workers avoid accidental submodule-like states.",
+      "evidence": "The failing review for baseline-parity-argv-tokenization-fix ties regression risk to undocumented escaping assumptions, and edge-case fixture review observed nested `.git/` staging failures that required remediation.",
       "isSystemic": true
     },
     {
       "target": "rewrite-worker skill",
-      "suggestion": "Introduce a non-Rust tooling pathway and tighten procedure compliance checks so test-first requirements are evaluated against feature type (Rust code vs Python/tooling/manifests) and evidence in transcript skeleton.",
-      "evidence": "Three reviews (baseline-fixture-manifests-and-command-matrix, baseline-parity-oracle-runner, rust-workspace-bootstrap-and-test-harness) reported mismatch between strict test-first wording and observed workflow while handoff marked followedProcedure=true.",
+      "suggestion": "Add explicit tooling-feature workflow guidance (Python/script/manifests) and require edge-case regression coverage for argv/tokenization changes, since current wording is Rust-centric and does not sufficiently guard shell/regex escaping semantics.",
+      "evidence": "Reviews for baseline-fixture-manifest-reproducibility-fix and baseline-parity-argv-tokenization-fix both reported procedure mismatch for non-Rust work and missed escaping-regression coverage.",
       "isSystemic": true
     }
   ],
   "rejectedObservations": [
     {
-      "observation": "Duplicate test-first enforcement gap observations across multiple reviews.",
-      "reason": "duplicate"
+      "observation": "Duplicate services.yaml missing-command observations for fixture/manifest verification commands.",
+      "reason": "already-applied"
     },
     {
-      "observation": "Duplicate conventions observation about deterministic artifacts without explicit source-tracking/normalization guidance.",
-      "reason": "duplicate"
+      "observation": "Edge-scenario integrity strictness suggestion (require specific expected IDs) is a code-quality enhancement but not needed for immediate shared-state guidance update in this scrutiny round.",
+      "reason": "defer-as-feature"
     }
   ],
-  "previousRound": null
+  "previousRound": ".factory/validation/baseline-and-fixtures/scrutiny/synthesis.round1.json"
 }
