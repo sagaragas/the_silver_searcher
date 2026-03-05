@@ -29,3 +29,10 @@ Testing surface information for validators and workers.
 - Always record command, `stdout`, `stderr`, and exit code for CLI parity checks.
 - For benchmark checks, attach run manifest, environment metadata, and checksum report.
 - For publication checks, attach claim-evidence map and metric reconciliation report.
+
+## Flow Validator Guidance: CLI
+
+- Parallel flow validators must use only assigned assertion IDs and data namespace labels in their reports.
+- Do not modify source code, manifests, or baseline artifacts during validation runs.
+- Keep all generated evidence under `.factory/validation/<milestone>/user-testing/flows/` with deterministic JSON output.
+- Treat shared filesystem state as read-only except for assigned flow report files.
