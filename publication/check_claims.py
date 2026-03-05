@@ -40,11 +40,15 @@ def extract_claim_ids_from_map(claim_map: dict) -> set[str]:
 
 
 def find_numeric_lines(memo_text: str) -> list[tuple[int, str]]:
-    """Find lines containing numeric claims (numbers with units)."""
+    """Find lines containing numeric claims (numbers with units or countable nouns)."""
     numeric_pattern = re.compile(
         r"\d+\.?\d*\s*(?:ms|×|x|%|GiB|GB|MB|cores?|seconds?|s\b)"
         r"|"
-        r"\d+\.?\d*×",
+        r"\d+\.?\d*×"
+        r"|"
+        r"\b\d+\s+(?:scenario|scenarios|runs?|samples?|clusters?|comparators?"
+        r"|checks?|tools?|features?|iterations?|warmups?|cells?|pairs?"
+        r"|violations?|flagged|dropped|entries|dependencies|crates?)\b",
         re.IGNORECASE,
     )
     results = []

@@ -69,6 +69,8 @@ commit must produce identical hashes.
 
 ### 1.4 Benchmark Scenarios
 
+<!-- CLM-REG-003 | CLM-LIM-001 -->
+
 The registered scenario matrix contains 38 scenarios spanning:
 
 - **Literal searches**: simple, word, rare, no-match, case-insensitive
@@ -226,7 +228,7 @@ types. All times are wall-clock elapsed in milliseconds (ms).
 
 | Comparator | Median (ms) | IQR (ms) | 95% CI Lower (ms) | 95% CI Upper (ms) | Samples (n) |
 |------------|-------------|----------|--------------------|--------------------|-------------|
-| ag | 19.64 | 0.29 | 19.35 | 19.93 | 3 |
+| ag | 19.64 | 0.28 | 19.35 | 19.92 | 3 |
 | rust-ag | 9.69 | 0.19 | 9.53 | 9.91 | 3 |
 | rg | 7.74 | 0.38 | 7.25 | 8.00 | 3 |
 | ugrep | 4.02 | 0.15 | 3.81 | 4.10 | 3 |
@@ -593,7 +595,7 @@ balancing measurement time against coverage. Bootstrap CIs from 3
 samples have wider bounds than from larger samples, which is why we
 report them explicitly. For the `literal-simple` scenario, the measured
 IQRs are small (0.05–0.60 ms) relative to the inter-tool gaps
-(5–15 ms), giving clear separation despite the small n. We acknowledge
+(2–16 ms), giving clear separation despite the small n. We acknowledge
 this as a limitation in §5.2.
 
 Evidence: `benchmarks/sampling_policy.json` — min_samples=3.

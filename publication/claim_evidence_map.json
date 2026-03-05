@@ -419,7 +419,7 @@
     },
     {
       "claim_id": "CLM-ADV-003",
-      "text": "3 measured samples per cell produce clear separation (IQR 0.05-0.60 ms vs inter-tool gaps of 5-15 ms) despite limited statistical power.",
+      "text": "3 measured samples per cell produce clear separation (IQR 0.05-0.60 ms vs inter-tool gaps of 2-16 ms) despite limited statistical power.",
       "category": "adversarial_qa",
       "evidence": [
         {
@@ -428,9 +428,19 @@
           "description": "Policy: minimum 3 samples"
         },
         {
-          "artifact": "benchmarks/out/20260305T174325Z/run_manifest.json",
-          "path": "scenarios[0].results",
-          "description": "Raw samples showing small IQR relative to inter-tool gaps"
+          "artifact": "benchmarks/out/20260305T174325Z/sampling_validation.json",
+          "path": "scenario_summaries[0].comparator_stats",
+          "description": "Local run IQR values: ag=0.28 ms, rust-ag=0.19 ms, rg=0.38 ms, ugrep=0.15 ms"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174330Z/sampling_validation.json",
+          "path": "scenario_summaries[0].comparator_stats",
+          "description": "Nightly run IQR values: ag=0.20 ms, rust-ag=0.07 ms, rg=0.60 ms, ugrep=0.05 ms"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/sampling_validation.json",
+          "path": "scenario_summaries[0].comparator_stats",
+          "description": "Manual run IQR values: ag=0.32 ms, rust-ag=0.39 ms, rg=0.36 ms, ugrep=0.10 ms"
         }
       ]
     },
