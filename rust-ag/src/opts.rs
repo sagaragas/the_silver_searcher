@@ -192,6 +192,11 @@ pub struct Opts {
 
     /// No break between files.
     pub no_break: bool,
+
+    /// Whether explicit paths were provided on the command line.
+    /// When false and stdin is a pipe, the tool reads from stdin instead of
+    /// defaulting to the current directory.
+    pub paths_were_explicit: bool,
 }
 
 impl Default for Opts {
@@ -244,6 +249,7 @@ impl Default for Opts {
             no_heading: false,
             file_break: false,
             no_break: false,
+            paths_were_explicit: false,
         }
     }
 }
@@ -631,11 +637,13 @@ impl Opts {
         }
         if positional.len() > 1 {
             opts.paths = positional[1..].to_vec();
+            opts.paths_were_explicit = true;
         }
 
         // If no paths specified, default to current directory.
         if opts.paths.is_empty() && opts.pattern.is_some() {
             opts.paths.push(".".to_string());
+            // paths_were_explicit remains false — no paths were given
         }
 
         // ag treats --max-count=0 / -m0 as "no limit" (its internal default

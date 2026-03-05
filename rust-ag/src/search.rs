@@ -30,6 +30,9 @@ pub struct FileSearchResult {
     pub binary_has_match: bool,
     /// Whether max-count was reached (triggers "Too many matches" diagnostic).
     pub max_count_hit: bool,
+    /// Total number of regex match occurrences (not lines).
+    /// Used by --count mode which reports match occurrences, not line counts.
+    pub match_count: usize,
 }
 
 /// Search a single file for the given pattern.
@@ -46,6 +49,7 @@ pub fn search_file(path: &Path, re: &Regex, opts: &Opts) -> FileSearchResult {
                 is_binary: false,
                 binary_has_match: false,
                 max_count_hit: false,
+                match_count: 0,
             };
         }
     };
@@ -57,6 +61,7 @@ pub fn search_file(path: &Path, re: &Regex, opts: &Opts) -> FileSearchResult {
             is_binary: false,
             binary_has_match: false,
             max_count_hit: false,
+            match_count: 0,
         };
     }
 
@@ -72,6 +77,7 @@ pub fn search_file(path: &Path, re: &Regex, opts: &Opts) -> FileSearchResult {
                 is_binary: true,
                 binary_has_match: false,
                 max_count_hit: false,
+                match_count: 0,
             };
         }
 
@@ -97,11 +103,13 @@ pub fn search_file(path: &Path, re: &Regex, opts: &Opts) -> FileSearchResult {
                 // this is hard to replicate meaningfully for binary content.
                 // Fall back to text-based search for -v.
                 let matches = search_text(&text, re, opts);
+                let mc = matches.len();
                 return FileSearchResult {
                     matches,
                     is_binary: true,
                     binary_has_match: false,
                     max_count_hit,
+                    match_count: mc,
                 };
             } else {
                 match_count.min(opts.max_count)
@@ -117,6 +125,7 @@ pub fn search_file(path: &Path, re: &Regex, opts: &Opts) -> FileSearchResult {
                 is_binary: true,
                 binary_has_match: false,
                 max_count_hit,
+                match_count,
             };
         }
         let has_match = re.is_match(&text);
@@ -125,6 +134,7 @@ pub fn search_file(path: &Path, re: &Regex, opts: &Opts) -> FileSearchResult {
             is_binary: true,
             binary_has_match: has_match,
             max_count_hit: false,
+            match_count: 0,
         };
     }
 
@@ -136,11 +146,13 @@ pub fn search_file(path: &Path, re: &Regex, opts: &Opts) -> FileSearchResult {
             let matches = search_text(&s, re, opts);
             let total = count_total_matches_positive(&s, re, opts);
             let max_count_hit = total >= opts.max_count;
+            let match_count = count_regex_occurrences(&s, re);
             return FileSearchResult {
                 matches,
                 is_binary: false,
                 binary_has_match: false,
                 max_count_hit,
+                match_count,
             };
         }
     };
@@ -152,12 +164,55 @@ pub fn search_file(path: &Path, re: &Regex, opts: &Opts) -> FileSearchResult {
     // regardless of whether -v/--invert-match is set.
     let total = count_total_matches_positive(text, re, opts);
     let max_count_hit = total >= opts.max_count;
+    let match_count = if opts.invert_match {
+        // For inverted match, the "count" is the number of non-matching lines.
+        matches.len()
+    } else {
+        count_regex_occurrences(text, re)
+    };
     FileSearchResult {
         matches,
         is_binary: false,
         binary_has_match: false,
         max_count_hit,
+        match_count,
     }
+}
+
+/// Search text content for matches (public interface for stream/stdin mode).
+///
+/// Returns matching lines with line numbers and the total match count.
+pub fn search_text_content(text: &str, re: &Regex, opts: &Opts) -> (Vec<Match>, usize) {
+    let matches = search_text(text, re, opts);
+    let match_count = if opts.invert_match {
+        matches.len()
+    } else {
+        count_regex_occurrences(text, re)
+    };
+    (matches, match_count)
+}
+
+/// Count regex match occurrences on a single line.
+/// Used by stream -c mode where ag outputs per-line match counts.
+pub fn count_line_matches(line: &str, re: &Regex) -> usize {
+    let buf_len = line.len();
+    let mut count = 0;
+    let mut search_start = 0;
+    while let Some(m) = re.find_at(line, search_start) {
+        count += 1;
+        if m.start() == m.end() {
+            if search_start >= buf_len {
+                break;
+            }
+            search_start = next_char_boundary(line, m.end());
+        } else {
+            search_start = m.end();
+            if search_start >= buf_len {
+                break;
+            }
+        }
+    }
+    count
 }
 
 /// Search text content for matches.
