@@ -260,10 +260,13 @@ def main() -> None:
                 if "errors" in detail:
                     for err in detail["errors"]:
                         print(f"        {err}")
-                if "hash_divergence" in detail:
-                    print("        Stdout hash divergence:")
-                    for comp, h in detail["hash_divergence"].items():
-                        print(f"          {comp}: {h[:16]}…")
+                if "parity_divergence" in detail:
+                    print("        Parity divergence:")
+                    for comp, h in detail["parity_divergence"].items():
+                        if isinstance(h, str):
+                            print(f"          {comp}: {h[:16]}…")
+                        else:
+                            print(f"          {comp}: {h}")
 
     print(f"\n  Gate artifact: {run_dir / 'correctness_gate.json'}")
 

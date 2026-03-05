@@ -555,3 +555,140 @@ class TestCorrectnessGateHarnessPropagation:
             "On-disk run_manifest.json must contain correctness_gate_failure"
         )
         assert on_disk["correctness_gate_failure"]["gate"] == "fail"
+
+
+# ---------------------------------------------------------------------------
+# Regression: parity_divergence detail rendering in CLI output
+# ---------------------------------------------------------------------------
+
+
+class TestCorrectnessGateCLIDetailRendering:
+    """Verify the CLI prints parity divergence details on failure.
+
+    Regression test for key mismatch bug where the CLI checked for
+    'hash_divergence' but check_correctness() stored data under
+    'parity_divergence', causing divergence details to be silently dropped.
+    """
+
+    def test_parity_divergence_details_printed_on_failure(self, tmp_path, capsys):
+        """CLI output must include parity divergence hashes when gate fails."""
+        from correctness_gate import check_correctness
+
+        manifest = _make_run_manifest([_make_scenario_divergent("div-scenario")])
+        result = check_correctness(manifest, tmp_path)
+
+        # Confirm the gate logic stores divergence under parity_divergence.
+        failed_details = [
+            d for d in result["scenarios"] if d["result"] == "fail"
+        ]
+        assert len(failed_details) == 1
+        assert "parity_divergence" in failed_details[0], (
+            "check_correctness must store divergence under 'parity_divergence'"
+        )
+
+        # Simulate the CLI summary output (same logic as main()).
+        # Import the module to call the printing section in isolation.
+        # We replicate the print logic to validate the key is correct.
+        import io
+        import contextlib
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            print(f"\nCorrectness Gate: {result['gate'].upper()}")
+            if result["scenarios_failed"] > 0:
+                print("\n  Failed scenarios:")
+                for detail in result["scenarios"]:
+                    if detail["result"] == "fail":
+                        print(f"    - {detail['scenario_id']}")
+                        if "errors" in detail:
+                            for err in detail["errors"]:
+                                print(f"        {err}")
+                        if "parity_divergence" in detail:
+                            print("        Parity divergence:")
+                            for comp, h in detail["parity_divergence"].items():
+                                print(f"          {comp}: {h[:16]}…")
+
+        output = buf.getvalue()
+        assert "div-scenario" in output
+        assert "Parity divergence:" in output
+        assert "ag:" in output
+        assert "rust-ag:" in output
+
+    def test_parity_divergence_key_in_failed_detail(self, tmp_path):
+        """Failed scenario detail dict must use 'parity_divergence' key."""
+        from correctness_gate import check_correctness
+
+        manifest = _make_run_manifest([_make_scenario_divergent()])
+        result = check_correctness(manifest, tmp_path)
+
+        failed = [d for d in result["scenarios"] if d["result"] == "fail"]
+        assert len(failed) == 1
+        detail = failed[0]
+
+        # The key must be parity_divergence, NOT hash_divergence.
+        assert "parity_divergence" in detail, (
+            "Failed scenario detail must use 'parity_divergence' key"
+        )
+        assert "hash_divergence" not in detail, (
+            "Failed scenario detail must NOT use legacy 'hash_divergence' key"
+        )
+
+    def test_missing_parity_member_details_printed(self, tmp_path):
+        """When a parity member is missing (error), details should include
+        missing_parity_members info in parity_divergence."""
+        from correctness_gate import check_correctness
+
+        # Make a scenario where ag has an error (missing from stdout_hashes).
+        scenario = _make_scenario_all_agree("missing-member")
+        scenario["results"]["ag"]["error"] = "binary_not_found"
+        scenario["results"]["ag"]["stdout_hash"] = ""
+        scenario["results"]["ag"]["stdout_sorted_hash"] = ""
+
+        manifest = _make_run_manifest([scenario])
+        result = check_correctness(manifest, tmp_path)
+
+        assert result["gate"] == "fail"
+        failed = [d for d in result["scenarios"] if d["result"] == "fail"]
+        assert len(failed) == 1
+        detail = failed[0]
+        assert "parity_divergence" in detail
+        assert "missing_parity_members" in detail["parity_divergence"]
+
+    def test_cli_main_prints_parity_divergence(self, tmp_path):
+        """End-to-end: CLI main() must print parity divergence payload.
+
+        Regression test for bug where main() checked 'hash_divergence'
+        instead of 'parity_divergence', silently dropping detail output.
+        """
+        import subprocess
+
+        # Write a synthetic run_manifest.json with a divergent scenario.
+        manifest = _make_run_manifest([_make_scenario_divergent("e2e-div")])
+        manifest_path = tmp_path / "run_manifest.json"
+        manifest_path.write_text(json.dumps(manifest, indent=2))
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(Path(__file__).resolve().parents[1] / "correctness_gate.py"),
+                "--run-dir",
+                str(tmp_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        # CLI should exit 1 because gate fails.
+        assert result.returncode == 1, (
+            f"Expected exit 1 for divergent scenario, got {result.returncode}\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+
+        # Key assertion: the output must contain parity divergence details.
+        assert "Parity divergence:" in result.stdout, (
+            f"CLI must print 'Parity divergence:' for divergent scenarios.\n"
+            f"stdout was:\n{result.stdout}"
+        )
+        assert "ag:" in result.stdout
+        assert "rust-ag:" in result.stdout
