@@ -731,13 +731,21 @@ def run_matrix(
                 "norm_sha256": _sha256_bytes(target_norm.encode("utf-8")),
             })
 
-            # Compute diff.
+            # Compute stdout diff.
             diff_text = compute_diff(baseline_norm, target_norm)
             _write_text(scenario_dir / f"{target}.diff", diff_text)
 
+            # Compute stderr diff.
+            baseline_stderr_norm = _normalise_output(baseline_result["stderr"])
+            target_stderr_norm = _normalise_output(target_result["stderr"])
+            stderr_diff_text = compute_diff(baseline_stderr_norm, target_stderr_norm)
+            _write_text(scenario_dir / f"{target}.stderr.diff", stderr_diff_text)
+
             diff_lines = len([l for l in diff_text.splitlines() if l.startswith(("+", "-")) and not l.startswith(("+++", "---"))])
+            stderr_diff_lines = len([l for l in stderr_diff_text.splitlines() if l.startswith(("+", "-")) and not l.startswith(("+++", "---"))])
             exit_match = baseline_result["exit_code"] == target_result["exit_code"]
             output_match = baseline_norm == target_norm
+            stderr_match = baseline_stderr_norm == target_stderr_norm
 
             if target_result["exit_code"] == -127:
                 parity = "error"
@@ -745,7 +753,7 @@ def run_matrix(
             elif target_result["timed_out"]:
                 parity = "error"
                 error_count += 1
-            elif output_match and exit_match:
+            elif output_match and exit_match and stderr_match:
                 parity = "pass"
                 pass_count += 1
             else:
@@ -760,14 +768,16 @@ def run_matrix(
                 "parity": parity,
                 "exit_code_match": exit_match,
                 "output_match": output_match,
+                "stderr_match": stderr_match,
                 "diff_lines": diff_lines,
+                "stderr_diff_lines": stderr_diff_lines,
             }
 
         results.append(scenario_result)
 
     # Write run summary.
     summary = {
-        "schema_version": 1,
+        "schema_version": 2,
         "run_id": run_id,
         "timestamp": _now_iso(),
         "commit_sha": _git_sha(),
@@ -802,7 +812,9 @@ def run_matrix(
                     print(f"    {r['scenario_id']}/{tname}: {tres['parity']} "
                           f"(exit_match={tres.get('exit_code_match')}, "
                           f"output_match={tres.get('output_match')}, "
-                          f"diff_lines={tres.get('diff_lines')})")
+                          f"stderr_match={tres.get('stderr_match')}, "
+                          f"diff_lines={tres.get('diff_lines')}, "
+                          f"stderr_diff_lines={tres.get('stderr_diff_lines')})")
 
     return summary
 

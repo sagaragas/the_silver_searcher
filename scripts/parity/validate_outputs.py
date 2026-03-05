@@ -52,7 +52,7 @@ REQUIRED_SUMMARY_FIELDS = [
 BASELINE_EXTENSIONS = [".stdout", ".stderr", ".norm", ".meta.json"]
 
 # Per-target required artifact extensions.
-TARGET_EXTENSIONS = [".stdout", ".stderr", ".norm", ".meta.json", ".diff"]
+TARGET_EXTENSIONS = [".stdout", ".stderr", ".norm", ".meta.json", ".diff", ".stderr.diff"]
 
 
 # ---------------------------------------------------------------------------
@@ -226,6 +226,19 @@ def validate_run(run_dir: Path) -> ValidationResult:
             f"Totals sum={expected_total}, actual comparisons={actual_comparisons}",
         )
 
+        # For schema v2+, verify stderr_match is recorded in every comparison.
+        schema_version = summary.get("schema_version", 1)
+        if schema_version >= 2:
+            for sc in scenarios:
+                sid = sc.get("scenario_id", "?")
+                for tname, tres in sc.get("targets", {}).items():
+                    if tres.get("parity") in ("pass", "fail", "error"):
+                        vr.check(
+                            f"stderr_match_recorded:{sid}/{tname}",
+                            "stderr_match" in tres,
+                            f"Missing stderr_match field in {sid}/{tname} (required for schema v2+)",
+                        )
+
     # Validate per-scenario artifact files.
     scenarios_dir = run_dir / "scenarios"
     if scenarios_dir.is_dir():
@@ -283,6 +296,7 @@ def validate_run(run_dir: Path) -> ValidationResult:
             for tname, tres in sc.get("targets", {}).items():
                 if tname == "ag" or tres.get("parity") == "skip":
                     continue
+                # Check stdout diff.
                 diff_path = sc_dir / f"{tname}.diff"
                 if diff_path.is_file():
                     try:
@@ -300,6 +314,22 @@ def validate_run(run_dir: Path) -> ValidationResult:
                             vr.check(f"diff_format:{sid}/{tname}", True, "Empty diff (match)")
                     except UnicodeDecodeError:
                         vr.check(f"diff_format:{sid}/{tname}", False, "Binary content in diff file")
+                # Check stderr diff.
+                stderr_diff_path = sc_dir / f"{tname}.stderr.diff"
+                if stderr_diff_path.is_file():
+                    try:
+                        content = stderr_diff_path.read_text(encoding="utf-8")
+                        if content.strip():
+                            has_headers = "---" in content and "+++" in content
+                            vr.check(
+                                f"stderr_diff_format:{sid}/{tname}",
+                                has_headers,
+                                "Non-empty stderr diff missing unified diff headers",
+                            )
+                        else:
+                            vr.check(f"stderr_diff_format:{sid}/{tname}", True, "Empty stderr diff (match)")
+                    except UnicodeDecodeError:
+                        vr.check(f"stderr_diff_format:{sid}/{tname}", False, "Binary content in stderr diff file")
     else:
         if summary.get("scenarios"):
             vr.check("scenarios_dir_exists", False, "No scenarios/ directory found")

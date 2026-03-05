@@ -12,7 +12,7 @@ Architectural decisions and patterns for this mission.
 
 2. **Rust Rewrite Layer**
    - Implements CLI/search behavior incrementally behind parity tests.
-   - Parity compares `stdout`/`stderr`/exit semantics against baseline.
+   - Parity compares `stdout`, `stderr`, and exit code against baseline (all three channels are compared and contribute to the pass/fail verdict as of summary schema v2).
 
 3. **Benchmark Harness Layer**
    - Runs scenario matrix across Rust rewrite + `ag` + `rg` + `ugrep`.
@@ -21,6 +21,26 @@ Architectural decisions and patterns for this mission.
 4. **Publication Layer**
    - Generates evidence-linked long-form memo for `ragas.dev/blogs`.
    - Enforces claim-evidence mapping, reconciliation, and license disclosure.
+
+## Parity Contract: Three-Channel Comparison
+
+The parity runner (`scripts/parity/run_matrix.py`) compares three channels between
+baseline (`ag`) and each target comparator:
+
+1. **stdout** (normalised) — ANSI-stripped, sorted-line normalisation; diff artifact
+   stored as `{target}.diff`. Mismatch → parity fail.
+2. **stderr** (normalised) — same normalisation as stdout; diff artifact stored as
+   `{target}.stderr.diff`. Mismatch → parity fail.
+3. **exit code** — exact integer comparison. Mismatch → parity fail.
+
+All three channels must match for a scenario comparison to pass. The parity verdict
+field is `"pass"` only when `output_match`, `stderr_match`, and `exit_code_match`
+are all `true`. This was introduced in summary schema version 2; schema version 1
+runs did not compare stderr content and may have `stderr_match` absent from results.
+
+The output validator (`scripts/parity/validate_outputs.py`) enforces the presence of
+`stderr_match` in all comparison results for schema v2+ runs and checks that
+`{target}.stderr.diff` artifacts are present and well-formed.
 
 ## Hard Constraints
 
