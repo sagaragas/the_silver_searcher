@@ -592,3 +592,168 @@ fn val_core_014_max_count_literal() {
         &fixture,
     );
 }
+
+// ---------------------------------------------------------------------------
+// Binary-enabled mode with -c/-l: should honor count/list semantics
+// (not print "Binary file X matches." when -c or -l is used)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn val_core_007_search_binary_with_count() {
+    // --search-binary -c should print path:count for binary files, not "Binary file X matches."
+    let fixture = repo_root().join("tests/edge-cases/binary-files");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--search-binary",
+            "-c",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_007_search_binary_with_files_with_matches() {
+    // --search-binary -l should print filenames only for binary files, not "Binary file X matches."
+    let fixture = repo_root().join("tests/edge-cases/binary-files");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--search-binary",
+            "-l",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_007_unrestricted_with_count() {
+    // -u -c should print path:count for binary files.
+    let fixture = repo_root().join("tests/edge-cases/binary-files");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "-u",
+            "-c",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_007_unrestricted_with_files_with_matches() {
+    // -u -l should print filenames only for binary files.
+    let fixture = repo_root().join("tests/edge-cases/binary-files");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "-u",
+            "-l",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Max-count diagnostics under invert-match (-v)
+// ag's max-count diagnostic is based on positive match count, not inverted count
+// ---------------------------------------------------------------------------
+
+#[test]
+fn val_core_014_max_count_invert_diagnostic_few_matches() {
+    // --max-count=3 -v on few-matches.txt: ag emits "Too many matches"
+    // because 3 positive NEEDLE matches reach the cap.
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--max-count=3",
+            "-v",
+            "NEEDLE",
+            "few-matches.txt",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_014_max_count_invert_many_matches() {
+    // --max-count=3 -v on many-matches.txt: ag emits diagnostic and
+    // outputs lines after the max-count cutoff as inverted output.
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--max-count=3",
+            "-v",
+            "NEEDLE",
+            "many-matches.txt",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_014_max_count_invert_mixed() {
+    // --max-count=3 -v on mixed.txt: ag emits diagnostic and shows
+    // non-matched lines before cutoff plus all lines after cutoff.
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--max-count=3",
+            "-v",
+            "NEEDLE",
+            "mixed.txt",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_014_max_count_invert_directory() {
+    // --max-count=3 -v on the whole max-count directory.
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--max-count=3",
+            "-v",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+}

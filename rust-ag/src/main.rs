@@ -67,13 +67,18 @@ fn main() {
 
         let display_path = display_path_for(file_path, strip_dot_prefix);
 
-        // Handle binary files: ag prints "Binary file X matches." to stdout
-        // when --search-binary or -u is used and the file has matches.
-        if result.is_binary {
-            if result.binary_has_match {
-                found_any = true;
-                println!("Binary file {display_path} matches.");
-            }
+        // Handle binary files.
+        // When -c or -l is set with --search-binary/-u, search_file returns
+        // real matches for binary files (no binary_has_match flag). Fall
+        // through to normal output handling.
+        // Without -c/-l, ag prints "Binary file X matches." to stdout.
+        if result.is_binary && result.binary_has_match {
+            found_any = true;
+            println!("Binary file {display_path} matches.");
+            continue;
+        }
+        if result.is_binary && result.matches.is_empty() && !result.binary_has_match {
+            // Binary file with no matches at all — skip silently.
             continue;
         }
 
