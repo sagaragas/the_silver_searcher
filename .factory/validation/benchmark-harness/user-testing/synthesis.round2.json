@@ -1,0 +1,24 @@
+{
+  "milestone": "benchmark-harness",
+  "round": 2,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "blocked": 0
+  },
+  "passedAssertions": [],
+  "failedAssertions": [
+    {
+      "id": "VAL-CROSS-007",
+      "reason": "Latest claim-gate artifact (run 20260305T172741Z) still links only the manual run ID, so local-vs-CI comparison and set-equality reports do not establish cross-run local/nightly/manual coverage alignment evidence."
+    }
+  ],
+  "blockedAssertions": [],
+  "appliedUpdates": [],
+  "previousRound": "/Users/ragas/code/missions/the_silver_searcher/.factory/validation/benchmark-harness/user-testing/synthesis.round1.json",
+  "flowReports": [
+    "/Users/ragas/code/missions/the_silver_searcher/.factory/validation/benchmark-harness/user-testing/flows/bench-cross007-rerun.json"
+  ]
+}
