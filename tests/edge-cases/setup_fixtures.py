@@ -166,6 +166,7 @@ def build_binary_files(base: Path) -> None:
         text-file.txt       -> plain text with matches
         binary-file.bin     -> binary content with embedded match pattern
         mixed-binary.dat    -> starts text, has NUL bytes
+        short-binary.dat    -> short (<32 byte) file with >10% suspicious bytes
     """
     _rmtree_safe(base)
     _ensure_dir(base)
@@ -180,6 +181,12 @@ def build_binary_files(base: Path) -> None:
     # Mixed: starts as text, has NUL byte in middle
     mixed_content = b"NEEDLE before null\x00NEEDLE after null\n"
     _write_bytes(base / "mixed-binary.dat", mixed_content)
+
+    # Short binary-like: <32 bytes with >10% suspicious bytes (no null).
+    # 15 bytes total, 3 suspicious (0x01, 0x02, 0x03) → 20% > 10% threshold.
+    # Baseline ag classifies this as binary; rust-ag must agree.
+    short_binary_content = b"NEEDLE\x01\x02\x03 rest\n"
+    _write_bytes(base / "short-binary.dat", short_binary_content)
 
     _write(base / ".gitignore", "")
 
@@ -589,7 +596,7 @@ REQUIRED_MARKERS: dict[str, list[str]] = {
     "ignore-source": ["visible.txt", ".gitignore", ".ignore"],
     "ignore-scope-leak": ["root.txt", "alpha/.gitignore", "beta/keep.txt"],
     "hidden-files": ["visible.txt", ".hidden-file.txt"],
-    "binary-files": ["text-file.txt", "binary-file.bin"],
+    "binary-files": ["text-file.txt", "binary-file.bin", "short-binary.dat"],
     "symlink-traversal": ["real-dir/real-file.txt"],
     "one-device": ["local-file.txt", "one-device-marker.json"],
     "large-file": ["normal.txt", "large.txt", "large.txt.sha256"],

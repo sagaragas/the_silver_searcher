@@ -766,7 +766,9 @@ pub fn is_binary_buf(buf: &[u8]) -> bool {
     }
 
     // Final ratio check after processing all bytes.
-    if total_bytes >= 32 && (suspicious_bytes * 100) / total_bytes > 10 {
+    // Baseline ag applies this check for all buffer lengths (no minimum),
+    // so short files with >10% suspicious bytes are classified as binary.
+    if (suspicious_bytes * 100) / total_bytes > 10 {
         return true;
     }
 

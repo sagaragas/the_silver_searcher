@@ -246,6 +246,103 @@ fn val_core_007_unrestricted_binary_behavior() {
 }
 
 // ---------------------------------------------------------------------------
+// VAL-CORE-007: Short-buffer binary detection parity
+// Short (<32 byte) files with >10% suspicious bytes must be classified
+// as binary, matching baseline ag's ratio check that applies to all
+// buffer lengths (not only buffers >= 32 bytes).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn val_core_007_short_binary_skipped_by_default() {
+    // short-binary.dat is 15 bytes with 20% suspicious bytes.
+    // Baseline ag classifies it as binary and skips it in default mode.
+    let fixture = repo_root().join("tests/edge-cases/binary-files");
+    let ag = run_cmd(
+        &ag_bin(),
+        &["--nocolor", "NEEDLE", "short-binary.dat"],
+        &fixture,
+    );
+    let rust = run_cmd(
+        &rust_ag_bin(),
+        &["--nocolor", "NEEDLE", "short-binary.dat"],
+        &fixture,
+    );
+    // ag skips this file (exit 1, no output).
+    assert_eq!(ag.exit_code, 1, "ag should skip short-binary.dat");
+    assert_eq!(
+        rust.exit_code, ag.exit_code,
+        "rust-ag should skip short-binary.dat like ag (exit {}), got exit {}",
+        ag.exit_code, rust.exit_code
+    );
+    assert_eq!(
+        normalise(&rust.stdout),
+        normalise(&ag.stdout),
+        "stdout mismatch on short-binary.dat"
+    );
+}
+
+#[test]
+fn val_core_007_short_binary_excluded_from_directory_results() {
+    // When searching the binary-files directory, short-binary.dat should
+    // be excluded from default results just like other binary files.
+    let fixture = repo_root().join("tests/edge-cases/binary-files");
+    let rust = run_cmd(
+        &rust_ag_bin(),
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+    let stdout = String::from_utf8_lossy(&rust.stdout);
+    assert!(
+        !stdout.contains("short-binary.dat"),
+        "Default mode should skip short-binary.dat: {stdout}"
+    );
+}
+
+#[test]
+fn val_core_007_short_binary_search_binary_message() {
+    // --search-binary on short-binary.dat should emit "Binary file X matches."
+    let fixture = repo_root().join("tests/edge-cases/binary-files");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--search-binary",
+            "NEEDLE",
+            "short-binary.dat",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_007_short_binary_files_with_matches_excluded() {
+    // --files-with-matches on the directory should not list short-binary.dat
+    // because it is binary and default mode skips binary files.
+    let fixture = repo_root().join("tests/edge-cases/binary-files");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "-l",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+}
+
+// ---------------------------------------------------------------------------
 // VAL-CORE-008: Symlink/device traversal rules are preserved
 // ---------------------------------------------------------------------------
 
