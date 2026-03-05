@@ -7,9 +7,9 @@
     "rg",
     "ugrep"
   ],
-  "corpus_manifest_hash": "1201aa4e4b009b92f7a2361f76a7c22bb3c8e072acbfb952ff6cbecaddd42ab6",
+  "corpus_manifest_hash": "f6b846c14d582557d17659d446417f3a6a5b2850254c1b36e6994e57475217da",
   "query_manifest_hash": "e902cb24fa4004e22228e6df5d2a45c276b35fdf3d3e75e2977fde33ff35d96c",
-  "manifest_hash": "5e6cf05451a7c0f7de51901ee45ac06452a28933fd3ac6006dd4ad8cdf1c49dd",
+  "manifest_hash": "a6d1fcc6b656ad3f56bfad420021c3af6a12d5873dc78bd6661d3af100aedf5e",
   "scenario_count": 30,
   "scenarios": [
     {
@@ -203,7 +203,9 @@
       "corpus": "tests/edge-cases/ignore-scope-leak",
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}"
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
       },
       "groups": [
         "edge-cases",
@@ -217,7 +219,9 @@
       "corpus": "tests/edge-cases/ignore-source",
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity -n -r {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -n -r {pattern} {corpus}"
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -n -r {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
       },
       "groups": [
         "edge-cases",
@@ -231,7 +235,9 @@
       "corpus": "tests/edge-cases/ignore-source",
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity -r -n {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -r -n {pattern} {corpus}"
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -r -n {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
       },
       "groups": [
         "edge-cases",
@@ -348,7 +354,9 @@
       "corpus": ".",
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity -g \"\\.rs$\" {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -g \"\\.rs$\" {pattern} {corpus}"
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -g \"\\.rs$\" {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never --glob \"*.rs\" -l {pattern} {corpus}",
+        "ugrep": "ugrep --color=never --include=\"*.rs\" -l {pattern} {corpus}"
       },
       "groups": [
         "cli-formatting"
@@ -361,7 +369,9 @@
       "corpus": ".",
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity -G \"\\.rs$\" {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -G \"\\.rs$\" {pattern} {corpus}"
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -G \"\\.rs$\" {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never --glob \"*.rs\" {pattern} {corpus}",
+        "ugrep": "ugrep --color=never --include=\"*.rs\" {pattern} {corpus}"
       },
       "groups": [
         "cli-formatting"
@@ -374,7 +384,9 @@
       "corpus": ".",
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity -C2 {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -C2 {pattern} {corpus}"
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -C2 {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never -C2 {pattern} {corpus}",
+        "ugrep": "ugrep --color=never -C2 {pattern} {corpus}"
       },
       "groups": [
         "cli-formatting"
@@ -387,7 +399,9 @@
       "corpus": ".",
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}"
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
       },
       "groups": [
         "cli-exit-errors"
@@ -400,7 +414,9 @@
       "corpus": ".",
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}"
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
       },
       "groups": [
         "cli-exit-errors"
@@ -413,7 +429,9 @@
       "corpus": "/nonexistent_parity_test_path_12345",
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}"
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
       },
       "groups": [
         "cli-exit-errors"
@@ -426,7 +444,9 @@
       "corpus": ".",
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity -v {pattern} {corpus}",
-        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -v {pattern} {corpus}"
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -v {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never -v {pattern} {corpus}",
+        "ugrep": "ugrep --color=never -v {pattern} {corpus}"
       },
       "groups": [
         "cli-exit-errors"

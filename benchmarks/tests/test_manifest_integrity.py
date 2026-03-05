@@ -67,28 +67,26 @@ class TestMatrixCompleteness:
                 f"Scenario '{scenario['id']}' missing 'commands' dict"
             )
 
-    def test_full_matrix_comparators_present(self, scenarios_manifest):
-        """Scenarios targeting all comparators must have all four present.
+    def test_every_scenario_has_all_canonical_comparators(self, scenarios_manifest):
+        """Every scenario must define command templates for all four
+        canonical comparators (ag, rust-ag, rg, ugrep).
 
-        Some scenarios are ag/rust-ag-only (e.g., edge-case parity tests),
-        but scenarios that include rg/ugrep must include all four.
+        The required comparator set is fixed per scenario — no scenario-local
+        subsets are allowed.
         """
-        full_comparator_scenarios = []
-        partial_scenarios = []
+        incomplete_scenarios = []
 
         for scenario in scenarios_manifest["scenarios"]:
             cmds = scenario.get("commands", {})
             comparators_present = set(cmds.keys())
-            if comparators_present == self.REQUIRED_COMPARATORS:
-                full_comparator_scenarios.append(scenario["id"])
-            else:
-                partial_scenarios.append(
-                    (scenario["id"], comparators_present)
+            missing = self.REQUIRED_COMPARATORS - comparators_present
+            if missing:
+                incomplete_scenarios.append(
+                    (scenario["id"], sorted(missing))
                 )
 
-        # There must be at least some scenarios with all comparators.
-        assert len(full_comparator_scenarios) > 0, (
-            "No scenarios found with all four comparators"
+        assert len(incomplete_scenarios) == 0, (
+            f"Scenarios missing canonical comparators: {incomplete_scenarios}"
         )
 
     def test_no_empty_command_templates(self, scenarios_manifest):
@@ -534,9 +532,10 @@ class TestRequiredComparatorEnforcement:
         ok = validate_run(run_dir)
         assert not ok, "Validation must fail when a required comparator cell is skipped"
 
-    def test_validate_manifest_passes_for_partial_scenario(self, tmp_path):
-        """Scenarios that only define ag/rust-ag commands should pass when
-        only those comparators have results (they are not required for rg/ugrep).
+    def test_validate_manifest_fails_for_partial_scenario(self, tmp_path):
+        """Scenarios that only define ag/rust-ag commands MUST fail validation
+        because the canonical comparator set (ag, rust-ag, rg, ugrep) is
+        required for every non-skipped scenario.
         """
         from validate_manifest import validate_run
 
@@ -545,7 +544,7 @@ class TestRequiredComparatorEnforcement:
 
         manifest = {
             "schema_version": 1,
-            "run_id": "test-partial-ok",
+            "run_id": "test-partial-fail",
             "run_type": "smoke",
             "timestamp": "2026-03-05T00:00:00Z",
             "commit_sha": "abc123",
@@ -571,7 +570,7 @@ class TestRequiredComparatorEnforcement:
                     "commands": {
                         "ag": "ag {pattern} {corpus}",
                         "rust-ag": "rust-ag {pattern} {corpus}",
-                        # No rg/ugrep commands — they are NOT required
+                        # No rg/ugrep commands — this MUST fail
                     },
                     "results": {
                         "ag": {"command": "ag NEEDLE .", "exit_code": 0, "elapsed_s": 0.1},
@@ -584,7 +583,7 @@ class TestRequiredComparatorEnforcement:
         _write_test_manifest(run_dir, manifest)
 
         ok = validate_run(run_dir)
-        assert ok, "Validation should pass when all defined-command comparators have results"
+        assert not ok, "Validation must fail when canonical comparators are missing templates"
 
     def test_harness_smoke_fails_on_missing_required_cell(self, tmp_path):
         """Harness smoke run must fail (non-zero exit) when a required comparator

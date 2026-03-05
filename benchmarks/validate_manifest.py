@@ -134,9 +134,11 @@ def validate_run(run_dir: Path) -> bool:
     )
 
     # --- VAL-BENCH-001: No missing scenario-comparator cells ---
-    # Required comparator enforcement: every comparator defined in a scenario's
-    # commands dict AND listed in the run's comparators list is REQUIRED.
-    # A required cell must have a valid (non-skipped, non-error) result entry.
+    # Canonical comparator enforcement: every non-skipped scenario must define
+    # command templates for ALL canonical comparators (ag, rust-ag, rg, ugrep).
+    # The required set is fixed, not scenario-local — missing templates are
+    # blocking failures.
+    CANONICAL_COMPARATORS = {"ag", "rust-ag", "rg", "ugrep"}
     scenarios = manifest.get("scenarios", [])
     run_comparators = set(manifest.get("comparators", []))
     check(
@@ -145,6 +147,7 @@ def validate_run(run_dir: Path) -> bool:
         f"found {len(scenarios)} scenarios",
     )
 
+    missing_templates: list[str] = []
     missing_cells: list[str] = []
     incomplete_cells: list[str] = []
     for scenario in scenarios:
@@ -154,12 +157,13 @@ def validate_run(run_dir: Path) -> bool:
         commands = scenario.get("commands", {})
         results = scenario.get("results", {})
 
-        # Required comparators for this scenario = intersection of
-        # scenario-defined commands and run-level comparators.
-        required = set(commands.keys()) & run_comparators
+        # Required comparators = canonical set intersected with run comparators.
+        required = CANONICAL_COMPARATORS & run_comparators
 
         for comp in required:
-            if comp not in results:
+            if comp not in commands:
+                missing_templates.append(f"{sid}/{comp}")
+            elif comp not in results:
                 missing_cells.append(f"{sid}/{comp}")
             else:
                 cell = results[comp]
@@ -175,7 +179,13 @@ def validate_run(run_dir: Path) -> bool:
                     )
 
     check(
-        "no missing required comparator cells",
+        "no missing command templates for canonical comparators",
+        len(missing_templates) == 0,
+        f"missing templates: {missing_templates}" if missing_templates else "",
+    )
+
+    check(
+        "no missing required comparator result cells",
         len(missing_cells) == 0,
         f"missing: {missing_cells}" if missing_cells else "",
     )

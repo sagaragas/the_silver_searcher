@@ -5,8 +5,8 @@
     "tests",
     "src"
   ],
-  "manifest_hash": "1201aa4e4b009b92f7a2361f76a7c22bb3c8e072acbfb952ff6cbecaddd42ab6",
-  "file_count": 124,
+  "manifest_hash": "f6b846c14d582557d17659d446417f3a6a5b2850254c1b36e6994e57475217da",
+  "file_count": 125,
   "files": [
     {
       "path": "src/decompress.c",
@@ -177,6 +177,11 @@
       "path": "tests/edge-cases/binary-files/mixed-binary.dat",
       "size": 37,
       "sha256": "8690dae6279c0883c4cecee17fe1059fb9e0f0479745edb382ba8193b333c028"
+    },
+    {
+      "path": "tests/edge-cases/binary-files/short-binary.dat",
+      "size": 15,
+      "sha256": "80ead1d34cddad1883a76ed331504eb400ee800f6b3bacd419bc1c68782c453e"
     },
     {
       "path": "tests/edge-cases/binary-files/text-file.txt",
@@ -375,8 +380,8 @@
     },
     {
       "path": "tests/edge-cases/setup_fixtures.py",
-      "size": 28951,
-      "sha256": "77c256a962bb90c1b66b29014ea11e653fc22a32f059845e1ccd26e29ea25b15"
+      "size": 29391,
+      "sha256": "56b7816b7c932dcf7d7ea84082fbee45b227c378bd766dd54f80cb6729c18a56"
     },
     {
       "path": "tests/edge-cases/symlink-traversal/.gitignore",

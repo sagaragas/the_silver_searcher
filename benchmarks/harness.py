@@ -605,8 +605,10 @@ def run_smoke(
         gate_status = "SKIPPED (module not available)"
 
     # --- Required comparator-set completeness check (VAL-BENCH-001) ---
-    # Every comparator defined in a scenario's commands dict that was also
-    # requested for this run must have a valid (non-skipped, non-error) result.
+    # Every non-skipped scenario must define command templates for ALL canonical
+    # comparators (ag, rust-ag, rg, ugrep), not just a scenario-local subset.
+    # Each canonical comparator requested for this run must have a valid
+    # (non-skipped, non-binary_not_found) result cell.
     required_failures: list[str] = []
     for scenario in scenario_results:
         if scenario.get("skipped"):
@@ -614,9 +616,16 @@ def run_smoke(
         sid = scenario.get("scenario_id", "?")
         commands = scenario.get("commands", {})
         results = scenario.get("results", {})
-        required = set(commands.keys()) & set(resolved_comparators)
+        # Canonical set: every comparator in ALL_COMPARATORS that was also
+        # requested for this run is required, regardless of whether the
+        # scenario defines a template for it.
+        required = set(ALL_COMPARATORS) & set(resolved_comparators)
         for comp in required:
-            if comp not in results:
+            if comp not in commands:
+                required_failures.append(
+                    f"{sid}/{comp} (no command template defined)"
+                )
+            elif comp not in results:
                 required_failures.append(f"{sid}/{comp} (no result)")
             else:
                 cell = results[comp]
@@ -984,6 +993,8 @@ def run_measured(
         sampling_status = "SKIPPED"
 
     # --- Required comparator-set completeness check (VAL-BENCH-001) ---
+    # Every non-skipped scenario must define command templates for ALL canonical
+    # comparators (ag, rust-ag, rg, ugrep), not just a scenario-local subset.
     required_failures: list[str] = []
     for scenario in scenario_results:
         if scenario.get("skipped"):
@@ -991,9 +1002,13 @@ def run_measured(
         sid = scenario.get("scenario_id", "?")
         commands = scenario.get("commands", {})
         results = scenario.get("results", {})
-        required = set(commands.keys()) & set(resolved_comparators)
+        required = set(ALL_COMPARATORS) & set(resolved_comparators)
         for comp in required:
-            if comp not in results:
+            if comp not in commands:
+                required_failures.append(
+                    f"{sid}/{comp} (no command template defined)"
+                )
+            elif comp not in results:
                 required_failures.append(f"{sid}/{comp} (no result)")
             else:
                 cell = results[comp]

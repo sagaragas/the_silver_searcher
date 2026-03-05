@@ -315,7 +315,6 @@ SCENARIOS: list[dict[str, Any]] = [
         "q-edge-needle",
         corpus="tests/edge-cases/ignore-scope-leak",
         groups=["edge-cases", "core-ignore-recursion"],
-        comparators=["ag", "rust-ag"],
     ),
     _scenario(
         "edge-recursion-n-r-precedence",
@@ -327,7 +326,6 @@ SCENARIOS: list[dict[str, Any]] = [
         },
         corpus="tests/edge-cases/ignore-source",
         groups=["edge-cases", "core-ignore-recursion"],
-        comparators=["ag", "rust-ag"],
     ),
     _scenario(
         "edge-recursion-r-n-precedence",
@@ -339,7 +337,6 @@ SCENARIOS: list[dict[str, Any]] = [
         },
         corpus="tests/edge-cases/ignore-source",
         groups=["edge-cases", "core-ignore-recursion"],
-        comparators=["ag", "rust-ag"],
     ),
     _scenario(
         "edge-binary-files",
@@ -421,8 +418,9 @@ SCENARIOS: list[dict[str, Any]] = [
         flags={
             "ag": '-g "\\.rs$"',
             "rust-ag": '-g "\\.rs$"',
+            "rg": '--glob "*.rs" -l',
+            "ugrep": '--include="*.rs" -l',
         },
-        comparators=["ag", "rust-ag"],
         groups=["cli-formatting"],
     ),
     _scenario(
@@ -432,8 +430,9 @@ SCENARIOS: list[dict[str, Any]] = [
         flags={
             "ag": '-G "\\.rs$"',
             "rust-ag": '-G "\\.rs$"',
+            "rg": '--glob "*.rs"',
+            "ugrep": '--include="*.rs"',
         },
-        comparators=["ag", "rust-ag"],
         groups=["cli-formatting"],
     ),
     _scenario(
@@ -443,8 +442,9 @@ SCENARIOS: list[dict[str, Any]] = [
         flags={
             "ag": "-C2",
             "rust-ag": "-C2",
+            "rg": "-C2",
+            "ugrep": "-C2",
         },
-        comparators=["ag", "rust-ag"],
         groups=["cli-formatting"],
     ),
     # --- CLI exit-code and error scenarios ---
@@ -452,14 +452,12 @@ SCENARIOS: list[dict[str, Any]] = [
         "cli-exit-nomatch",
         "No-match search to verify exit code 1",
         "q-exit-nomatch",
-        comparators=["ag", "rust-ag"],
         groups=["cli-exit-errors"],
     ),
     _scenario(
         "cli-exit-match",
         "Match-found search to verify exit code 0",
         "q-literal-word",
-        comparators=["ag", "rust-ag"],
         groups=["cli-exit-errors"],
     ),
     _scenario(
@@ -467,7 +465,6 @@ SCENARIOS: list[dict[str, Any]] = [
         "Nonexistent path to verify exit code 1 and error diagnostics",
         "q-literal-word",
         corpus="/nonexistent_parity_test_path_12345",
-        comparators=["ag", "rust-ag"],
         groups=["cli-exit-errors"],
     ),
     _scenario(
@@ -477,8 +474,9 @@ SCENARIOS: list[dict[str, Any]] = [
         flags={
             "ag": "-v",
             "rust-ag": "-v",
+            "rg": "-v",
+            "ugrep": "-v",
         },
-        comparators=["ag", "rust-ag"],
         groups=["cli-exit-errors"],
     ),
 ]
