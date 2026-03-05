@@ -249,6 +249,11 @@ impl Default for Opts {
 }
 
 impl Opts {
+    /// Default max-count cap (matches ag's internal limit for per-file
+    /// match scanning). ag treats `--max-count=0` as "no limit", so
+    /// we normalise 0 to this value after parsing.
+    const DEFAULT_MAX_COUNT: usize = 10_000;
+
     /// Parse command-line arguments into options.
     ///
     /// Returns `Err(msg)` if an unrecognised flag is encountered or a required
@@ -631,6 +636,13 @@ impl Opts {
         // If no paths specified, default to current directory.
         if opts.paths.is_empty() && opts.pattern.is_some() {
             opts.paths.push(".".to_string());
+        }
+
+        // ag treats --max-count=0 / -m0 as "no limit" (its internal default
+        // is 0 meaning unlimited, guarded by `> 0` checks in search.c).
+        // Normalise to the default cap so downstream code never sees 0.
+        if opts.max_count == 0 {
+            opts.max_count = Self::DEFAULT_MAX_COUNT;
         }
 
         Ok(opts)

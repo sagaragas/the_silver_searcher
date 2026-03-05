@@ -757,3 +757,142 @@ fn val_core_014_max_count_invert_directory() {
         &fixture,
     );
 }
+
+// ---------------------------------------------------------------------------
+// VAL-CORE-014: --max-count=0 means "no limit" (ag treats 0 as unlimited)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn val_core_014_max_count_zero_nomultiline_positive() {
+    // --nomultiline -m0 without -v: ag treats 0 as unlimited, all matches shown.
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--nomultiline",
+            "-m0",
+            "NEEDLE",
+            "few-matches.txt",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_014_max_count_zero_invert_nomultiline() {
+    // --nomultiline -m0 -v: ag treats 0 as unlimited, inverted matches shown.
+    // Must not panic (underflow) and must match ag output/exit behavior.
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--nomultiline",
+            "-m0",
+            "-v",
+            "NEEDLE",
+            "few-matches.txt",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_014_max_count_zero_invert_nomultiline_all_match() {
+    // --nomultiline -m0 -v on a file where all lines match: no inverted output.
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--nomultiline",
+            "-m0",
+            "-v",
+            "NEEDLE",
+            "many-matches.txt",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_014_max_count_zero_multiline_positive() {
+    // Multiline mode -m0 without -v: all matches shown.
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "-m0",
+            "NEEDLE",
+            "few-matches.txt",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_014_max_count_zero_multiline_invert() {
+    // Multiline mode -m0 -v: inverted matches shown.
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "-m0",
+            "-v",
+            "NEEDLE",
+            "few-matches.txt",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_014_max_count_zero_long_flag() {
+    // --max-count=0 long form: same as -m0.
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--nomultiline",
+            "--max-count=0",
+            "-v",
+            "NEEDLE",
+            "few-matches.txt",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_014_max_count_zero_directory() {
+    // -m0 on directory: unlimited matches, no spurious diagnostics.
+    let fixture = repo_root().join("tests/edge-cases/max-count");
+    assert_parity_with_stderr(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "-m0",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+}
