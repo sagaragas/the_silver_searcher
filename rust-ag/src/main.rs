@@ -63,31 +63,49 @@ fn main() {
     let mut found_any = false;
 
     for file_path in &files {
-        let matches = search::search_file(file_path, &re, &opts);
-
-        if !matches.is_empty() {
-            found_any = true;
-        }
+        let result = search::search_file(file_path, &re, &opts);
 
         let display_path = display_path_for(file_path, strip_dot_prefix);
 
+        // Handle binary files: ag prints "Binary file X matches." to stdout
+        // when --search-binary or -u is used and the file has matches.
+        if result.is_binary {
+            if result.binary_has_match {
+                found_any = true;
+                println!("Binary file {display_path} matches.");
+            }
+            continue;
+        }
+
+        if !result.matches.is_empty() {
+            found_any = true;
+        }
+
+        // Emit max-count truncation diagnostic to stderr, matching ag behavior.
+        // ag uses the raw file path (preserving "./" prefix) in stderr
+        // diagnostics, unlike stdout which strips the "./" prefix.
+        if result.max_count_hit {
+            let raw_path = file_path.to_string_lossy();
+            eprintln!("ERR: Too many matches in {raw_path}. Skipping the rest of this file.");
+        }
+
         if opts.count {
             // --count mode: print count per file.
-            if !matches.is_empty() || opts.invert_match {
+            if !result.matches.is_empty() || opts.invert_match {
                 if multi_file {
-                    println!("{}:{}", display_path, matches.len());
+                    println!("{}:{}", display_path, result.matches.len());
                 } else {
-                    println!("{}", matches.len());
+                    println!("{}", result.matches.len());
                 }
             }
         } else if opts.files_with_matches {
             // -l mode: print filename only.
-            if !matches.is_empty() {
+            if !result.matches.is_empty() {
                 println!("{display_path}");
             }
         } else {
             // Normal mode: print matching lines.
-            for m in &matches {
+            for m in &result.matches {
                 if multi_file {
                     println!("{}:{}:{}", display_path, m.line_number, m.line);
                 } else {

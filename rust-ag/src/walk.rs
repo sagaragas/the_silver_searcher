@@ -6,6 +6,8 @@
 /// - Skips VCS directories (.git, .hg, .svn)
 /// - Supports depth limiting (`--depth`)
 /// - Supports non-recursive mode (`-n`)
+/// - Supports `--one-device` to avoid crossing filesystem boundaries
+/// - Handles broken symlinks gracefully with error messages
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -28,11 +30,18 @@ pub fn walk_paths(opts: &Opts) -> Vec<PathBuf> {
             // Single file — always include.
             files.push(path.to_path_buf());
         } else if path.is_dir() {
+            // Capture root device ID for --one-device.
+            let root_dev = if opts.one_device {
+                get_device_id(path)
+            } else {
+                None
+            };
+
             let mut engine = IgnoreEngine::new(
                 opts.skip_vcs_ignores || opts.unrestricted,
                 &opts.ignore_patterns,
             );
-            walk_dir(path, path, opts, &mut engine, 0, &mut files);
+            walk_dir(path, path, opts, &mut engine, 0, root_dev, &mut files);
         } else {
             // Non-existent or special path — will be reported as an error
             // by the caller.
@@ -45,6 +54,19 @@ pub fn walk_paths(opts: &Opts) -> Vec<PathBuf> {
     files
 }
 
+/// Get the device ID for a path (Unix only).
+#[cfg(unix)]
+fn get_device_id(path: &Path) -> Option<u64> {
+    use std::os::unix::fs::MetadataExt;
+    fs::metadata(path).ok().map(|m| m.dev())
+}
+
+/// Get the device ID for a path (non-Unix stub).
+#[cfg(not(unix))]
+fn get_device_id(_path: &Path) -> Option<u64> {
+    None
+}
+
 /// Recursively walk a directory.
 fn walk_dir(
     dir: &Path,
@@ -52,6 +74,7 @@ fn walk_dir(
     opts: &Opts,
     engine: &mut IgnoreEngine,
     depth: usize,
+    root_dev: Option<u64>,
     out: &mut Vec<PathBuf>,
 ) {
     // Load ignore files for this directory.
@@ -76,8 +99,18 @@ fn walk_dir(
             None => continue,
         };
 
-        let is_dir = path.is_dir();
         let is_symlink = entry.file_type().map(|ft| ft.is_symlink()).unwrap_or(false);
+
+        // Handle broken symlinks: if the path doesn't exist (dangling symlink),
+        // report an error matching ag's behavior and skip.
+        if is_symlink && !path.exists() {
+            if opts.follow_symlinks {
+                eprintln!("ERR: Skipping {}: Error fstat()ing file.", path.display());
+            }
+            continue;
+        }
+
+        let is_dir = path.is_dir();
 
         // Skip VCS directories always.
         if is_dir && VCS_DIRS.contains(&file_name.as_str()) {
@@ -90,11 +123,18 @@ fn walk_dir(
         }
 
         // Skip symlinks unless --follow.
+        // ag skips both file and directory symlinks by default;
+        // only -f / --follow enables traversal through symlinks.
         if is_symlink && !opts.follow_symlinks {
-            // For files, still include (ag follows file symlinks).
-            // For directories, skip unless --follow.
-            if is_dir {
-                continue;
+            continue;
+        }
+
+        // One-device check: skip entries on a different filesystem device.
+        if let Some(dev) = root_dev {
+            if let Some(entry_dev) = get_device_id(&path) {
+                if entry_dev != dev {
+                    continue;
+                }
             }
         }
 
@@ -111,9 +151,13 @@ fn walk_dir(
             if depth >= opts.max_depth {
                 continue;
             }
-            walk_dir(&path, _root, opts, engine, depth + 1, out);
+            walk_dir(&path, _root, opts, engine, depth + 1, root_dev, out);
         } else {
-            // Check if it's a binary file (basic check).
+            // Don't filter out binary files in the walker; let search_file
+            // handle binary detection so it can report "Binary file X matches."
+            // The only remaining walker-level filter is for performance when
+            // not in binary-search mode—skip files detected as binary to
+            // avoid reading their full content for nothing.
             if !opts.search_binary && !opts.unrestricted && is_likely_binary(&path) {
                 continue;
             }

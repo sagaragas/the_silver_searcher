@@ -19,26 +19,73 @@ pub struct Match {
     pub line: String,
 }
 
+/// Result of searching a single file.
+#[derive(Debug)]
+pub struct FileSearchResult {
+    /// Matches found in the file.
+    pub matches: Vec<Match>,
+    /// Whether the file was detected as binary (contains null bytes).
+    pub is_binary: bool,
+    /// Whether the file had any regex matches (used for "Binary file X matches." output).
+    pub binary_has_match: bool,
+    /// Whether max-count was reached (triggers "Too many matches" diagnostic).
+    pub max_count_hit: bool,
+}
+
 /// Search a single file for the given pattern.
 ///
-/// Returns a vector of matches found. Respects `--max-count` per file.
-pub fn search_file(path: &Path, re: &Regex, opts: &Opts) -> Vec<Match> {
+/// Returns a `FileSearchResult` containing matches and metadata about
+/// binary detection and max-count truncation. This allows the caller
+/// to produce the correct `ag`-compatible output messages.
+pub fn search_file(path: &Path, re: &Regex, opts: &Opts) -> FileSearchResult {
     let content = match fs::read(path) {
         Ok(data) => data,
-        Err(_) => return Vec::new(),
-    };
-
-    // Binary check: if file contains null bytes, skip unless --search-binary.
-    if !opts.search_binary && !opts.unrestricted {
-        let check_len = content.len().min(512);
-        if content[..check_len].contains(&0) {
-            return Vec::new();
+        Err(_) => {
+            return FileSearchResult {
+                matches: Vec::new(),
+                is_binary: false,
+                binary_has_match: false,
+                max_count_hit: false,
+            };
         }
-    }
+    };
 
     // Skip empty files (ag skips 0-byte files).
     if content.is_empty() {
-        return Vec::new();
+        return FileSearchResult {
+            matches: Vec::new(),
+            is_binary: false,
+            binary_has_match: false,
+            max_count_hit: false,
+        };
+    }
+
+    // Binary check: detect null bytes in the first 512 bytes.
+    let check_len = content.len().min(512);
+    let has_null = content[..check_len].contains(&0);
+
+    if has_null {
+        if !opts.search_binary && !opts.unrestricted {
+            // Skip binary files entirely when not in binary-search mode.
+            return FileSearchResult {
+                matches: Vec::new(),
+                is_binary: true,
+                binary_has_match: false,
+                max_count_hit: false,
+            };
+        }
+
+        // In --search-binary or -u mode: check if the regex matches anywhere
+        // in the file, but don't return line-by-line matches. Instead, report
+        // "Binary file X matches." via the binary_has_match flag.
+        let text = String::from_utf8_lossy(&content);
+        let has_match = re.is_match(&text);
+        return FileSearchResult {
+            matches: Vec::new(),
+            is_binary: true,
+            binary_has_match: has_match,
+            max_count_hit: false,
+        };
     }
 
     let text = match std::str::from_utf8(&content) {
@@ -46,11 +93,29 @@ pub fn search_file(path: &Path, re: &Regex, opts: &Opts) -> Vec<Match> {
         Err(_) => {
             // Non-UTF8 file: try lossy conversion.
             let s = String::from_utf8_lossy(&content);
-            return search_text(&s, re, opts);
+            let matches = search_text(&s, re, opts);
+            let total = count_total_matches(&s, re, opts);
+            let max_count_hit = total >= opts.max_count;
+            return FileSearchResult {
+                matches,
+                is_binary: false,
+                binary_has_match: false,
+                max_count_hit,
+            };
         }
     };
 
-    search_text(text, re, opts)
+    let matches = search_text(text, re, opts);
+    // ag emits "Too many matches" when total matches >= max_count
+    // (i.e., even when the file has exactly max_count matches).
+    let total = count_total_matches(text, re, opts);
+    let max_count_hit = total >= opts.max_count;
+    FileSearchResult {
+        matches,
+        is_binary: false,
+        binary_has_match: false,
+        max_count_hit,
+    }
 }
 
 /// Search text content for matches.
@@ -285,4 +350,106 @@ pub fn build_regex(opts: &Opts) -> Result<Regex, String> {
         .map_err(|e| format!("Invalid regex pattern: {e}"))?;
 
     Ok(re)
+}
+
+/// Count the total number of reportable matches in the text (without
+/// the max-count cap). Used to determine whether `max_count` was exceeded.
+fn count_total_matches(text: &str, re: &Regex, opts: &Opts) -> usize {
+    if opts.multiline && !opts.no_multiline {
+        count_matches_multiline(text, re, opts)
+    } else {
+        count_matches_line_by_line(text, re, opts)
+    }
+}
+
+/// Count multiline matches.
+fn count_matches_multiline(text: &str, re: &Regex, opts: &Opts) -> usize {
+    let text_bytes = text.as_bytes();
+    let buf_len = text_bytes.len();
+
+    struct MatchRegion {
+        start: usize,
+        end: usize,
+    }
+    let mut regions = Vec::new();
+    let mut search_start = 0;
+    while let Some(m) = re.find_at(text, search_start) {
+        regions.push(MatchRegion {
+            start: m.start(),
+            end: m.end(),
+        });
+        if m.start() == m.end() {
+            if search_start >= buf_len {
+                break;
+            }
+            search_start = next_char_boundary(text, m.end());
+        } else {
+            search_start = m.end();
+            if search_start >= buf_len {
+                break;
+            }
+        }
+    }
+
+    if regions.is_empty() && !opts.invert_match {
+        return 0;
+    }
+
+    // Simulate the print state machine to count lines that would print.
+    let mut cur_match: usize = 0;
+    let mut in_a_match = false;
+    let mut lines_since_last_match: usize = usize::MAX;
+    let mut prev_line_offset: usize = 0;
+    let mut line_number: usize = 1;
+    let mut printed_lines: Vec<usize> = Vec::new();
+
+    let mut i: usize = 0;
+    while i <= buf_len && (cur_match < regions.len() || lines_since_last_match == 0) {
+        if cur_match < regions.len() && i == regions[cur_match].start {
+            in_a_match = true;
+            lines_since_last_match = 0;
+        }
+        if cur_match < regions.len() && i == regions[cur_match].end {
+            cur_match += 1;
+            in_a_match = false;
+        }
+        if i == buf_len || text_bytes[i] == b'\n' {
+            if lines_since_last_match == 0 && prev_line_offset < buf_len {
+                printed_lines.push(line_number);
+            }
+            prev_line_offset = i + 1;
+            line_number += 1;
+            if !in_a_match && lines_since_last_match < usize::MAX {
+                lines_since_last_match = lines_since_last_match.saturating_add(1);
+            }
+        }
+        i += 1;
+    }
+
+    if opts.invert_match {
+        let printed_set: std::collections::HashSet<usize> = printed_lines.iter().copied().collect();
+        text.lines()
+            .enumerate()
+            .filter(|(idx, _)| !printed_set.contains(&(idx + 1)))
+            .count()
+    } else {
+        printed_lines.len()
+    }
+}
+
+/// Count line-by-line matches.
+fn count_matches_line_by_line(text: &str, re: &Regex, opts: &Opts) -> usize {
+    let mut count = 0;
+    for line in text.lines() {
+        let has_match = re.is_match(line);
+        let report = if opts.invert_match {
+            !has_match
+        } else {
+            has_match
+        };
+        if report {
+            count += 1;
+        }
+    }
+    count
 }
