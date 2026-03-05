@@ -1,34 +1,35 @@
 {
   "featureId": "benchmark-publication-artifact-bundle",
-  "reviewedAt": "2026-03-05T15:57:08Z",
+  "reviewedAt": "2026-03-05T16:46:25Z",
   "commitId": "8b5e02f",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
   "status": "fail",
+  "confidence": "high",
   "codeReview": {
-    "summary": "Feature adds the requested packager, checksum verifier, tests, and service commands, but two blocking integrity gaps remain: required raw artifacts are not enforced as required, and checksum verification can be bypassed by dropping checksum entries from publication_manifest.json.",
+    "summary": "The feature delivers the requested bundling/checksum/ledger tooling, but two integrity gaps violate expected behavior for publication-grade completeness and verifiability.",
     "issues": [
       {
         "file": "benchmarks/package_publication_artifacts.py",
         "line": 287,
         "severity": "blocking",
-        "description": "Missing files from REQUIRED_RAW_ARTIFACTS only emit a warning and packaging continues. This can produce a publication bundle that omits required raw artifacts while still reporting success, violating expected behavior that publication manifests include required artifacts."
+        "description": "Required raw artifacts are treated as soft requirements: missing files only emit WARNING and packaging continues. This permits a successful publication bundle that omits required raw artifacts, violating the feature's expected completeness behavior."
       },
       {
         "file": "benchmarks/verify_checksums.py",
         "line": 73,
         "severity": "blocking",
-        "description": "Verifier trusts publication_manifest.checksums as the full verification set and does not validate checksum coverage against manifest artifacts/required artifacts. A tampered manifest with removed checksum entries can still return gate=pass, so integrity verification is incomplete."
+        "description": "Checksum verification only iterates publication_manifest.checksums and does not enforce checksum coverage for all manifest artifacts. If checksum entries are removed from the manifest, verification can still pass, leaving incomplete integrity checks."
       }
     ]
   },
   "sharedStateObservations": [
     {
       "area": "skills",
-      "observation": "benchmark-worker SKILL step 7 requires publication manifest completeness verification, but the procedure does not explicitly require negative tests for missing required artifacts or checksum-map coverage tampering.",
-      "evidence": ".factory/skills/benchmark-worker/SKILL.md (Work Procedure step 7) and benchmarks/tests/test_publication_artifacts.py (no failing-path test for missing REQUIRED_RAW_ARTIFACTS; no test for removed checksum entries in publication_manifest.json)."
+      "observation": "The benchmark-worker procedure asks workers to verify publication manifest completeness, but does not explicitly require adversarial/negative tests for missing required artifacts or checksum-coverage tampering.",
+      "evidence": ".factory/skills/benchmark-worker/SKILL.md step 7; commit 8b5e02f tests validate mismatch/missing-file paths but not checksum-coverage removal from publication_manifest.json or hard-fail behavior for missing REQUIRED_RAW_ARTIFACTS."
     }
   ],
   "addressesFailureFrom": null,
-  "summary": "Reviewed feature benchmark-publication-artifact-bundle at commit 8b5e02f, including handoff, diff, transcript skeleton, and shared-state docs. Core functionality exists, but blocking completeness/integrity gaps mean the feature should not pass scrutiny yet."
+  "summary": "Review of benchmark-publication-artifact-bundle (commit 8b5e02f) found implementation breadth is good, but blocking integrity/completeness flaws require fail status."
 }

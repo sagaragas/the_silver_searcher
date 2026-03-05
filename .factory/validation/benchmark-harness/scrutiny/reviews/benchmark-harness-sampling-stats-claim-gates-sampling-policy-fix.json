@@ -1,15 +1,29 @@
 {
   "featureId": "benchmark-harness-sampling-stats-claim-gates-sampling-policy-fix",
-  "reviewedAt": "2026-03-05T16:26:18Z",
+  "reviewedAt": "2026-03-05T16:46:38Z",
   "commitId": "4d3b779",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
   "status": "pass",
+  "confidence": "high",
   "codeReview": {
-    "summary": "The fix commit directly addresses the two sampling-policy blockers from the prior failed review: order-bias validation now enforces declared schedule semantics and seed/entry integrity, and measured CLI now exits non-zero when sampling validation fails. Added tests cover schedule-type mismatch, null seed, empty entries, overall gate propagation, and compliant sampling pass behavior.",
-    "issues": []
+    "summary": "This fix closes the two sampling-policy blockers from the prior failed review: order-bias validation now enforces declared schedule semantics and seed/entry integrity, and measured CLI now exits non-zero on sampling gate failure. Core feature requirements are met.",
+    "issues": [
+      {
+        "file": "benchmarks/harness.py",
+        "line": 964,
+        "severity": "non_blocking",
+        "description": "`run_manifest.json` is written before `sampling_gate_failure` is added (line 986), and there is no subsequent write in `run_measured`. CLI exit behavior is correct in-process, but the persisted manifest does not carry the added failure details."
+      },
+      {
+        "file": "benchmarks/tests/test_sampling_stats.py",
+        "line": 459,
+        "severity": "non_blocking",
+        "description": "`TestMeasuredCLISamplingGate` does not exercise CLI exit-code behavior; it validates `validate_sampling` directly. The non-zero measured CLI behavior is currently covered by manual command evidence rather than an automated CLI-level test."
+      }
+    ]
   },
   "sharedStateObservations": [],
   "addressesFailureFrom": ".factory/validation/benchmark-harness/scrutiny/reviews/benchmark-harness-sampling-stats-claim-gates.json",
-  "summary": "Reviewed prior failure report, fix handoff/transcript skeleton, and both feature diffs (84fb53a0161aff53b7a128fb60fe766c249d7e16 and 4d3b779). The sampling-policy fix is adequate for its scope: VAL-BENCH-010 enforcement is tightened in benchmarks/validate_sampling.py and measured CLI failure propagation is implemented in benchmarks/harness.py, with behavior validated by added tests and recorded command evidence."
+  "summary": "Reviewed the prior failed review, worker handoff, transcript skeleton, benchmark-worker skill, and commit diff for 4d3b779. The implementation satisfies the assigned sampling-policy fix scope (VAL-BENCH-010 hardening plus measured CLI failure propagation), with only non-blocking auditability/test-coverage nits noted above."
 }

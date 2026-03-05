@@ -1,40 +1,64 @@
 {
   "featureId": "benchmark-harness-sampling-stats-claim-gates",
-  "reviewedAt": "2026-03-05T15:56:26Z",
+  "reviewedAt": "2026-03-05T16:46:54Z",
   "commitId": "84fb53a0161aff53b7a128fb60fe766c249d7e16",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
+  "confidence": "high",
   "status": "fail",
   "codeReview": {
-    "summary": "The feature adds substantial policy/claim-gate machinery and tests, but several contract-critical checks are either missing or too weak to enforce the stated guarantees across local/nightly/manual evidence.",
+    "summary": "Core scaffolding is substantial, but contract-critical enforcement is incomplete: claim gating can pass without manifest consistency or per-run-type threshold conformance, and sampling/order controls are not strictly enforced at CLI/gate boundaries.",
     "issues": [
       {
         "file": "benchmarks/claim_gate.py",
-        "line": 122,
+        "line": 121,
         "severity": "blocking",
-        "description": "VAL-BENCH-012 requires evidence to be on the same commit and manifests, but the gate validates only commit SHA consistency and never validates manifest-hash consistency across runs (despite ingesting manifest_hashes). This can pass mixed-manifest evidence sets."
+        "description": "VAL-BENCH-012 requires local/nightly/manual evidence on the same commit and manifests, but the gate checks only commit SHA consistency and never validates manifest-hash equality across runs (manifest_hashes is loaded but unused for gating). Mixed-manifest evidence can incorrectly pass."
       },
       {
         "file": "benchmarks/claim_gate.py",
         "line": 177,
         "severity": "blocking",
-        "description": "Claim-threshold evaluation is derived from local-run stats only (primary_stats = local) and cross-run logic only checks direction agreement (<1.0), not threshold satisfaction per run type. This does not enforce that threshold rules pass for local + nightly + manual runs as required by VAL-BENCH-012."
+        "description": "Threshold evaluation is anchored to local-only primary_stats, while non-local runs are used only for direction agreement. This does not enforce that declared claim thresholds pass for each required run type (local + nightly + manual), as required by VAL-BENCH-012."
+      },
+      {
+        "file": "benchmarks/claim_gate.py",
+        "line": 247,
+        "severity": "blocking",
+        "description": "Overall gate result excludes scenario threshold outcomes (pair_evaluations/claim_allowed) and depends only on run-type, commit, parity, and reproducibility checks. Threshold failures can therefore still return gate=pass."
       },
       {
         "file": "benchmarks/validate_sampling.py",
         "line": 279,
         "severity": "blocking",
-        "description": "Order-bias validation marks pass whenever execution_schedule exists, without enforcing declared schedule semantics (e.g., interleaved_random) or validating seed/entry integrity against policy. Fixed-order schedules can incorrectly pass VAL-BENCH-010."
+        "description": "Order-bias validation passes whenever execution_schedule exists, without enforcing policy schedule type, seed presence/integrity, or schedule-vs-execution semantics. This is too weak for VAL-BENCH-010 enforcement."
       },
       {
         "file": "benchmarks/harness.py",
         "line": 1145,
         "severity": "blocking",
-        "description": "The measured CLI exits non-zero only on cell execution errors; it does not fail when sampling validation returns FAIL. This weakens policy enforcement because non-compliant warmup/sample/order runs can still exit successfully."
+        "description": "The measured subcommand exits non-zero only on cell execution errors and ignores sampling validation failure status, allowing policy-violating runs to exit successfully instead of enforcing VAL-BENCH-006/010 at CLI level."
+      },
+      {
+        "file": "benchmarks/tests/test_claim_gate.py",
+        "line": 324,
+        "severity": "non_blocking",
+        "description": "Regression coverage is incomplete for gate semantics: tests assert overall fail for missing run types but do not assert overall fail for threshold violations or mixed-manifest evidence, which allowed the above enforcement gaps to ship undetected."
       }
     ]
   },
-  "sharedStateObservations": [],
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "benchmark-worker procedure is too high-level for claim-gate strictness; it does not explicitly require manifest-hash equality checks and per-required-run-type threshold enforcement, despite those being contract-critical.",
+      "evidence": ".factory/skills/benchmark-worker/SKILL.md:20-22 defines generic enforcement; worker transcript marks followedProcedure=true, yet benchmarks/claim_gate.py:121-125,177-227,247-253 omit manifest equality and per-run-type threshold gating."
+    },
+    {
+      "area": "conventions",
+      "observation": "Shared mission docs emphasize local/nightly/manual evidence but under-specify same-manifest and strict threshold semantics compared to the validation contract, creating room for partial implementations.",
+      "evidence": "AGENTS.md:26 and .factory/library/benchmarking.md:11 require run-type coverage; validation-contract.md:145-147 additionally requires same commit and manifests plus threshold-rule pass across the run set."
+    }
+  ],
   "addressesFailureFrom": null,
-  "summary": "Reviewed handoff, commit diff, transcript skeleton, and benchmark-worker skill. Marked FAIL due to missing manifest-consistency enforcement and incomplete cross-run threshold enforcement in claim gating, plus insufficient order-bias enforcement and measured-command non-failing behavior on sampling gate failures."
+  "summary": "Reviewed feature metadata, handoff, commit diff, transcript skeleton, and skill instructions. Marked FAIL with high confidence due to missing manifest-consistency enforcement, incomplete cross-run threshold gating, weak order-bias enforcement, and measured CLI not failing on sampling-policy violations."
 }

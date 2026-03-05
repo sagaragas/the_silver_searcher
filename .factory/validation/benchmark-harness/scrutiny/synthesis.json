@@ -1,6 +1,6 @@
 {
   "milestone": "benchmark-harness",
-  "round": 2,
+  "round": 3,
   "status": "fail",
   "validatorsRun": {
     "test": {
@@ -20,39 +20,42 @@
     }
   },
   "reviewsSummary": {
-    "total": 4,
-    "passed": 3,
+    "total": 8,
+    "passed": 7,
     "failed": 1,
     "failedFeatures": [
-      "benchmark-harness-scenario-matrix-equivalence-fix"
+      "benchmark-harness-manifests-correctness-env"
     ]
   },
   "blockingIssues": [
     {
-      "featureId": "benchmark-harness-scenario-matrix-equivalence-fix",
+      "featureId": "benchmark-harness-manifests-correctness-env",
       "severity": "blocking",
-      "description": "Required cells are computed as scenario command keys intersected with run comparators. If a scenario omits rg/ugrep command templates, those missing comparator cells are never treated as required, so validation still passes incomplete per-scenario matrices."
-    },
-    {
-      "featureId": "benchmark-harness-scenario-matrix-equivalence-fix",
-      "severity": "blocking",
-      "description": "Harness enforcement mirrors the same subset logic (also at line 994), while comparator/template absences are still represented as skipped 'No command template' cells (lines 536 and 877). This preserves the prior failure mode for omitted comparator templates."
-    },
-    {
-      "featureId": "benchmark-harness-scenario-matrix-equivalence-fix",
-      "severity": "blocking",
-      "description": "The fix codifies partial-scenario acceptance via test_validate_manifest_passes_for_partial_scenario (including explicit 'No rg/ugrep commands — they are NOT required' and assert-ok behavior), which conflicts with the original review failure and VAL-BENCH-001 full-matrix semantics."
+      "description": "Correctness gate result is computed in harness flows but not used to fail smoke/run command exit status. A failing correctness gate can still return success, so VAL-BENCH-004 is not hard-enforced end-to-end."
     }
   ],
   "appliedUpdates": [],
   "suggestedGuidanceUpdates": [
     {
       "target": "benchmark-worker skill",
-      "suggestion": "Make comparator completeness policy explicit: each benchmark scenario must define and execute the full required comparator set (ag, rust-ag, rg, ugrep), and missing comparator templates/cells are always blocking failures.",
-      "evidence": "Fix review benchmark-harness-scenario-matrix-equivalence-fix found implementation/tests permitting partial scenario comparator subsets, conflicting with VAL-BENCH-001 and existing library comparator-set language.",
+      "suggestion": "Require explicit fail-state propagation tests for correctness-gate failures (smoke/run CLI must exit non-zero when correctness gate fails), not just gate artifact generation.",
+      "evidence": "Review of benchmark-harness-manifests-correctness-env found correctness-gate status recorded but not propagated to harness smoke/run failure status.",
       "isSystemic": true
     }
   ],
-  "rejectedObservations": [],
-  "previousRound": ".factory/validation/benchmark-harness/scrutiny/synthesis.round1.json"
+  "rejectedObservations": [
+    {
+      "observation": "Comparator completeness policy should be made explicit in worker guidance.",
+      "reason": "already-addressed by the accepted scenario-matrix-equivalence-fix and prior scrutiny guidance"
+    },
+    {
+      "observation": "Sampling/claim-gate strictness recommendations from legacy sampling feature review.",
+      "reason": "superseded by completed fixes benchmark-harness-sampling-stats-claim-gates-sampling-policy-fix and benchmark-harness-sampling-stats-claim-gates-claim-consistency-fix"
+    },
+    {
+      "observation": "Publication bundle checksum/integrity recommendation from base feature review.",
+      "reason": "superseded by completed fix benchmark-publication-artifact-bundle-integrity-fix"
+    }
+  ],
+  "previousRound": ".factory/validation/benchmark-harness/scrutiny/synthesis.round2.json"
 }
