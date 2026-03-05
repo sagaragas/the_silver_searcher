@@ -9,6 +9,8 @@ Checks:
   5. Scenario manifest references valid fixture paths.
   6. Symlink/one-device fixtures have platform applicability notes.
   7. Required edge scenario IDs are present (coverage shrinkage gate).
+  8. Scenario-to-category mapping is in sync with fixture builders
+     (no unknown categories, no orphan builders).
 
 Usage:
     python3 scripts/parity/validate_fixture_integrity.py
@@ -595,6 +597,105 @@ def validate_one_device_fixtures(result: IntegrityResult, verbose: bool) -> None
         )
 
 
+def validate_scenario_category_sync(result: IntegrityResult, verbose: bool) -> None:
+    """Validate that every edge scenario's corpus-derived category exists as a fixture.
+
+    Ensures no silent drift between the scenario manifest and the fixture
+    builder categories.  Each edge scenario's corpus path encodes the fixture
+    category it depends on (``tests/edge-cases/<category>/``); this check
+    verifies:
+
+    1. Every edge scenario corpus path resolves to a known fixture builder
+       category (from setup_fixtures.py BUILDERS).
+    2. Every fixture builder category is referenced by at least one edge
+       scenario (no orphan categories).
+    """
+    scenarios_path = MANIFESTS_DIR / "scenarios.json"
+    if not scenarios_path.is_file():
+        result.warn("scenarios.json not found; skipping scenario-category sync")
+        return
+
+    # Import BUILDERS from setup_fixtures to get the authoritative category set.
+    setup_script = EDGE_CASES_DIR / "setup_fixtures.py"
+    if not setup_script.is_file():
+        result.warn("setup_fixtures.py not found; skipping scenario-category sync")
+        return
+
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("setup_fixtures", setup_script)
+    if spec is None or spec.loader is None:
+        result.warn("Could not import setup_fixtures; skipping scenario-category sync")
+        return
+
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    builder_categories: set[str] = set(mod.BUILDERS.keys())
+
+    with open(scenarios_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    edge_corpus_prefix = "tests/edge-cases/"
+    derived_categories: set[str] = set()
+    scenario_to_category: dict[str, str] = {}
+
+    for scenario in data.get("scenarios", []):
+        sid = scenario.get("id", "")
+        corpus = scenario.get("corpus", "")
+        if sid.startswith("edge-") and corpus.startswith(edge_corpus_prefix):
+            remainder = corpus[len(edge_corpus_prefix):]
+            category = remainder.split("/")[0] if remainder else ""
+            if category:
+                scenario_to_category[sid] = category
+                derived_categories.add(category)
+
+    # Check 1: Every scenario-derived category must be a known builder category.
+    unknown_categories = derived_categories - builder_categories
+    result.check(
+        "scenario_category_sync:all_known",
+        len(unknown_categories) == 0,
+        (
+            f"Scenario corpus paths reference unknown fixture categories: "
+            f"{sorted(unknown_categories)}"
+            if unknown_categories
+            else f"All {len(derived_categories)} scenario-derived categories "
+                 f"are known fixture builders"
+        ),
+    )
+
+    # Check 2: Every builder category should be referenced by at least one
+    # edge scenario (no orphan builders that silently lose test coverage).
+    orphan_categories = builder_categories - derived_categories
+    result.check(
+        "scenario_category_sync:no_orphans",
+        len(orphan_categories) == 0,
+        (
+            f"Fixture builder categories not referenced by any edge scenario: "
+            f"{sorted(orphan_categories)}"
+            if orphan_categories
+            else f"All {len(builder_categories)} builder categories are "
+                 f"referenced by edge scenarios"
+        ),
+    )
+
+    # Per-category checks for clear diagnostic output.
+    for cat in sorted(derived_categories):
+        result.check(
+            f"scenario_category_sync:known:{cat}",
+            cat in builder_categories,
+            f"Category '{cat}' derived from scenario corpus is "
+            + ("a known builder" if cat in builder_categories else "NOT a known builder"),
+        )
+
+    if verbose:
+        print(
+            f"  Scenario-category sync: {len(derived_categories)} derived, "
+            f"{len(builder_categories)} builders, "
+            f"{len(unknown_categories)} unknown, "
+            f"{len(orphan_categories)} orphans"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -664,6 +765,11 @@ def main() -> None:
     if args.verbose:
         print("\nStage 9: One-device fixture")
     validate_one_device_fixtures(result, args.verbose)
+
+    # Stage 10: Scenario-to-category sync validation.
+    if args.verbose:
+        print("\nStage 10: Scenario-category sync")
+    validate_scenario_category_sync(result, args.verbose)
 
     # Output results.
     if args.json:

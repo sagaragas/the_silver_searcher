@@ -347,6 +347,38 @@ def compute_diff(baseline_text: str, target_text: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _build_scenario_to_category_map() -> dict[str, str]:
+    """Derive edge-scenario → fixture-category mapping from the scenario manifest.
+
+    The mapping is extracted from each edge-case scenario's ``corpus`` field
+    which follows the pattern ``tests/edge-cases/<category>/…``.  Deriving
+    the mapping at runtime from the manifest eliminates silent drift between
+    a hardcoded lookup table and the actual scenario definitions.
+
+    Returns a dict mapping scenario ID → category name for every scenario
+    whose ID starts with ``edge-`` and whose corpus references a path under
+    ``tests/edge-cases/``.
+    """
+    edge_corpus_prefix = "tests/edge-cases/"
+    mapping: dict[str, str] = {}
+
+    if not SCENARIOS_PATH.exists():
+        return mapping
+
+    scenarios_manifest = _load_json(SCENARIOS_PATH)
+    for scenario in scenarios_manifest.get("scenarios", []):
+        sid = scenario.get("id", "")
+        corpus = scenario.get("corpus", "")
+        if sid.startswith(EDGE_CASE_PREFIX) and corpus.startswith(edge_corpus_prefix):
+            # Extract category: strip prefix, take first path component.
+            remainder = corpus[len(edge_corpus_prefix):]
+            category = remainder.split("/")[0] if remainder else ""
+            if category:
+                mapping[sid] = category
+
+    return mapping
+
+
 def _resolve_needed_edge_categories(
     scenario_ids: list[str] | None,
     group: str | None,
@@ -356,36 +388,31 @@ def _resolve_needed_edge_categories(
     Returns a list of category names (e.g. ``["ignore-source", "large-file"]``)
     when the run touches edge-case scenarios, or ``None`` when no edge-case
     scenarios are selected (so preflight can be skipped entirely).
+
+    The scenario → category mapping is derived from the scenario manifest's
+    corpus paths rather than a hardcoded table, so new edge-case scenarios
+    are automatically included without requiring manual sync.
     """
-    # Map scenario IDs to the fixture category they reference.
-    # Corpus paths follow the pattern ``tests/edge-cases/<category>/…``.
-    _SCENARIO_TO_CATEGORY = {
-        "edge-ignore-source": "ignore-source",
-        "edge-hidden-files": "hidden-files",
-        "edge-binary-files": "binary-files",
-        "edge-symlink-traversal": "symlink-traversal",
-        "edge-one-device": "one-device",
-        "edge-large-file": "large-file",
-        "edge-zero-length-regex": "zero-length-regex",
-        "edge-max-count": "max-count",
-    }
+    scenario_to_category = _build_scenario_to_category_map()
 
     if scenario_ids:
-        # Explicit scenario list — pick only matching categories.
-        cats = [
-            _SCENARIO_TO_CATEGORY[sid]
-            for sid in scenario_ids
-            if sid in _SCENARIO_TO_CATEGORY
-        ]
+        # Explicit scenario list — pick only matching categories (deduplicated).
+        seen: set[str] = set()
+        cats: list[str] = []
+        for sid in scenario_ids:
+            cat = scenario_to_category.get(sid)
+            if cat and cat not in seen:
+                seen.add(cat)
+                cats.append(cat)
         return cats if cats else None
 
     if group == "edge-cases":
         # Running the whole edge-cases group — need all categories.
-        return list(_SCENARIO_TO_CATEGORY.values())
+        return list(dict.fromkeys(scenario_to_category.values()))
 
     if group == "all" or group is None:
         # Running everything — need all edge categories.
-        return list(_SCENARIO_TO_CATEGORY.values())
+        return list(dict.fromkeys(scenario_to_category.values()))
 
     # Other groups (e.g. "smoke") don't reference edge-case fixtures.
     return None
