@@ -8,7 +8,7 @@ use std::path::Path;
 
 use regex::Regex;
 
-use crate::opts::{CaseMode, Opts};
+use crate::opts::{CaseMode, MultilineMode, Opts};
 
 /// A single match result.
 #[derive(Debug)]
@@ -124,7 +124,7 @@ pub fn search_file(path: &Path, re: &Regex, opts: &Opts) -> FileSearchResult {
 /// content and maps match regions back to line numbers. When multiline is
 /// disabled (`--nomultiline`), searches line-by-line.
 fn search_text(text: &str, re: &Regex, opts: &Opts) -> Vec<Match> {
-    if opts.multiline && !opts.no_multiline {
+    if opts.multiline_mode == MultilineMode::Enabled {
         search_text_multiline(text, re, opts)
     } else {
         search_text_line_by_line(text, re, opts)
@@ -355,7 +355,7 @@ pub fn build_regex(opts: &Opts) -> Result<Regex, String> {
 /// Count the total number of reportable matches in the text (without
 /// the max-count cap). Used to determine whether `max_count` was exceeded.
 fn count_total_matches(text: &str, re: &Regex, opts: &Opts) -> usize {
-    if opts.multiline && !opts.no_multiline {
+    if opts.multiline_mode == MultilineMode::Enabled {
         count_matches_multiline(text, re, opts)
     } else {
         count_matches_line_by_line(text, re, opts)

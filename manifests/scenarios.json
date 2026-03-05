@@ -390,6 +390,32 @@
       }
     },
     {
+      "id": "core-matching-nomultiline-then-multiline",
+      "description": "Conflicting flags: --nomultiline --multiline last-wins → multiline enabled",
+      "query_id": "q-multiline-span",
+      "corpus": "tests/edge-cases/multiline",
+      "groups": [
+        "core-matching"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --nomultiline --multiline {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --nomultiline --multiline {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "core-matching-multiline-then-nomultiline",
+      "description": "Conflicting flags: --multiline --nomultiline last-wins → multiline disabled",
+      "query_id": "q-multiline-span",
+      "corpus": "tests/edge-cases/multiline",
+      "groups": [
+        "core-matching"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --multiline --nomultiline {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --multiline --nomultiline {pattern} {corpus}"
+      }
+    },
+    {
       "id": "core-matching-word-boundary",
       "description": "Word-boundary matching with -w",
       "query_id": "q-word-boundary",

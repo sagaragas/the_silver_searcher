@@ -19,6 +19,19 @@ pub enum CaseMode {
     Sensitive,
 }
 
+/// Tracks which multiline flag was set last for "last wins" precedence.
+///
+/// In `ag`, conflicting multiline flags are resolved by the last one specified
+/// on the command line. For example, `--nomultiline --multiline` enables
+/// multiline (last wins), while `--multiline --nomultiline` disables it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MultilineMode {
+    /// Multiline matching enabled (default).
+    Enabled,
+    /// Multiline matching disabled (`--nomultiline`).
+    Disabled,
+}
+
 /// Parsed options for a single invocation.
 #[derive(Debug, Clone)]
 pub struct Opts {
@@ -135,6 +148,10 @@ pub struct Opts {
     /// No multiline.
     pub no_multiline: bool,
 
+    /// The resolved multiline mode after applying "last wins" flag precedence.
+    /// This is the authoritative field for determining multiline behavior.
+    pub multiline_mode: MultilineMode,
+
     /// Numbers (line numbers).
     pub numbers: bool,
 
@@ -200,6 +217,7 @@ impl Default for Opts {
             search_all_files: false,
             multiline: true,
             no_multiline: false,
+            multiline_mode: MultilineMode::Enabled,
             numbers: false,
             no_numbers: false,
             no_filename: false,
@@ -330,8 +348,14 @@ impl Opts {
                         opts.smart_case = true;
                         opts.case_mode = CaseMode::Smart;
                     }
-                    "--nomultiline" => opts.no_multiline = true,
-                    "--multiline" => opts.multiline = true,
+                    "--nomultiline" => {
+                        opts.no_multiline = true;
+                        opts.multiline_mode = MultilineMode::Disabled;
+                    }
+                    "--multiline" => {
+                        opts.multiline = true;
+                        opts.multiline_mode = MultilineMode::Enabled;
+                    }
                     "--numbers" => opts.numbers = true,
                     "--nonumbers" => opts.no_numbers = true,
                     "--nofilename" => opts.no_filename = true,

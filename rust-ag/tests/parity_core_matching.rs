@@ -264,6 +264,66 @@ fn val_core_006_nomultiline() {
 }
 
 #[test]
+fn val_core_006_nomultiline_then_multiline_last_wins() {
+    // --nomultiline --multiline: last flag wins → multiline enabled.
+    // Cross-line pattern should match (same as default multiline).
+    let fixture = repo_root().join("tests/edge-cases/multiline");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--nomultiline",
+            "--multiline",
+            r"one\nline",
+            ".",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_006_multiline_then_nomultiline_last_wins() {
+    // --multiline --nomultiline: last flag wins → multiline disabled.
+    // Cross-line pattern should NOT match.
+    let fixture = repo_root().join("tests/edge-cases/multiline");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--multiline",
+            "--nomultiline",
+            r"one\nline",
+            ".",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_006_triple_multiline_precedence() {
+    // --nomultiline --multiline --nomultiline: last wins → disabled.
+    let fixture = repo_root().join("tests/edge-cases/multiline");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--nomultiline",
+            "--multiline",
+            "--nomultiline",
+            r"one\nline",
+            ".",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
 fn val_core_006_multiline_single_line_pattern() {
     // Single-line pattern in multiline mode should still work normally.
     let fixture = repo_root().join("tests/edge-cases/multiline");
