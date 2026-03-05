@@ -280,11 +280,16 @@ def run_command(
 ) -> dict[str, Any]:
     """Execute a single command and capture output.
 
-    When *stdin_data* is provided the data is piped to the process's stdin.
-    This enables stream-mode scenarios where the comparator reads from stdin
-    instead of searching files.
+    When *stdin_data* is provided the data is piped to the process's stdin
+    and the ``{corpus}`` placeholder is stripped from the expanded command so
+    that no corpus file positional argument is passed (stdin-driven search).
     """
-    cmd_str = cmd_template.replace("{pattern}", pattern).replace("{corpus}", corpus)
+    if stdin_data is not None:
+        # Strip corpus arg for stdin-driven scenarios.
+        cmd_str = cmd_template.replace("{pattern}", pattern).replace("{corpus}", "")
+        cmd_str = " ".join(cmd_str.split())
+    else:
+        cmd_str = cmd_template.replace("{pattern}", pattern).replace("{corpus}", corpus)
     parts = tokenize_command(cmd_str)
 
     # Resolve the binary name to an actual executable path.

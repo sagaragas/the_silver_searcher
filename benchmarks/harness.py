@@ -315,12 +315,23 @@ def execute_scenario_cell(
     pattern: str,
     corpus: str,
     timeout: int = 30,
+    stdin_data: str | None = None,
 ) -> dict[str, Any]:
     """Execute a single scenario-comparator cell and capture results.
+
+    When *stdin_data* is provided the data is piped to the process's stdin
+    and the ``{corpus}`` placeholder is stripped from the expanded command so
+    that no corpus file positional argument is passed (stdin-driven search).
 
     Returns a dict with command, exit_code, elapsed_s, stdout_hash, etc.
     """
     cmd_str = expand_command(cmd_template, pattern, corpus)
+    # For stdin_data scenarios, remove the corpus positional arg so the tool
+    # reads from stdin instead of searching files.
+    if stdin_data is not None:
+        cmd_str = expand_command(cmd_template, pattern, "")
+        # Clean up trailing/double whitespace from removed corpus arg.
+        cmd_str = " ".join(cmd_str.split())
     parts = tokenize_command(cmd_str)
 
     # Resolve the binary.
@@ -332,6 +343,7 @@ def execute_scenario_cell(
     try:
         result = subprocess.run(
             parts,
+            input=stdin_data.encode("utf-8") if stdin_data is not None else None,
             capture_output=True,
             cwd=REPO_ROOT,
             env=_build_env(),
@@ -522,6 +534,8 @@ def run_smoke(
         pattern = query["pattern"]
         corpus = scenario["corpus"]
         commands = scenario.get("commands", {})
+        # Retrieve optional stdin_data for stream-mode scenarios.
+        stdin_data: str | None = scenario.get("stdin_data")
 
         results: dict[str, Any] = {}
 
@@ -538,7 +552,8 @@ def run_smoke(
                 continue
 
             cell = execute_scenario_cell(
-                comp, template, pattern, corpus, timeout=timeout
+                comp, template, pattern, corpus, timeout=timeout,
+                stdin_data=stdin_data,
             )
             results[comp] = cell
             executed_cells += 1
@@ -857,6 +872,8 @@ def run_measured(
         pattern = query["pattern"]
         corpus = scenario["corpus"]
         commands = scenario.get("commands", {})
+        # Retrieve optional stdin_data for stream-mode scenarios.
+        stdin_data: str | None = scenario.get("stdin_data")
 
         cell_raw: dict[str, list[dict[str, Any]]] = {c: [] for c in resolved_comparators}
 
@@ -874,7 +891,10 @@ def run_measured(
                     skipped_cells += 1
                     continue
 
-                cell = execute_scenario_cell(comp, template, pattern, corpus, timeout=timeout)
+                cell = execute_scenario_cell(
+                    comp, template, pattern, corpus, timeout=timeout,
+                    stdin_data=stdin_data,
+                )
                 cell["iteration"] = iteration
                 cell["warmup"] = is_warmup
                 cell_raw[comp].append(cell)
