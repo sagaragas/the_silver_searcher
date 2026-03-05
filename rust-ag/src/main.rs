@@ -84,10 +84,13 @@ fn main() {
 
     if search_stream {
         // Stream mode: read all of stdin and search it.
-        let mut input = String::new();
+        // Use byte-tolerant reading to avoid panicking on non-UTF8 input
+        // (baseline ag handles arbitrary byte streams without crashing).
+        let mut raw = Vec::new();
         std::io::stdin()
-            .read_to_string(&mut input)
+            .read_to_end(&mut raw)
             .expect("failed to read stdin");
+        let input = String::from_utf8_lossy(&raw).into_owned();
 
         // Resolve line number display for stream mode:
         // In stream mode, ag defaults to no line numbers unless --numbers
@@ -446,11 +449,23 @@ fn is_stdin_pipe() -> bool {
 }
 
 /// Stream count mode: output per-line match counts for matching lines.
-fn search_stream_count(input: &str, re: &regex::Regex, _opts: &opts::Opts) -> bool {
+///
+/// In baseline ag, stream mode with `-c` calls `search_buf` per line,
+/// which applies invert-match after finding matches. So:
+/// - Without `-v`: print the match count for each line that has matches.
+/// - With `-v`: for each non-matching line, print `1` (the inverted
+///   "match" count — one inverted region per non-matching line).
+fn search_stream_count(input: &str, re: &regex::Regex, opts: &opts::Opts) -> bool {
     let mut found = false;
     for line in input.lines() {
         let count = search::count_line_matches(line, re);
-        if count > 0 {
+        if opts.invert_match {
+            // Inverted: non-matching lines produce 1 inverted match each.
+            if count == 0 {
+                found = true;
+                println!("1");
+            }
+        } else if count > 0 {
             found = true;
             println!("{count}");
         }

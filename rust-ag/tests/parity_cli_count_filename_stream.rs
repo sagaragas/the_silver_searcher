@@ -33,6 +33,11 @@ fn run_ag(args: &[&str]) -> (String, String, i32) {
 
 /// Helper: run rust-ag with stdin piped and return (stdout, stderr, exit_code).
 fn run_ag_stdin(args: &[&str], stdin_data: &str) -> (String, String, i32) {
+    run_ag_stdin_bytes(args, stdin_data.as_bytes())
+}
+
+/// Helper: run rust-ag with raw bytes piped to stdin.
+fn run_ag_stdin_bytes(args: &[&str], stdin_data: &[u8]) -> (String, String, i32) {
     let mut child = Command::new(rust_ag_bin())
         .args(args)
         .stdin(Stdio::piped())
@@ -42,7 +47,7 @@ fn run_ag_stdin(args: &[&str], stdin_data: &str) -> (String, String, i32) {
         .expect("failed to spawn rust-ag");
 
     if let Some(ref mut stdin) = child.stdin {
-        stdin.write_all(stdin_data.as_bytes()).unwrap();
+        stdin.write_all(stdin_data).unwrap();
     }
     // Drop stdin to signal EOF.
     drop(child.stdin.take());
@@ -399,4 +404,93 @@ fn val_cli_003_filename_count_single_file() {
     let (stdout, _stderr, exit) = run_ag(&["--filename", "-c", "hello", f.to_str().unwrap()]);
     assert_eq!(stdout.trim(), "2");
     assert_eq!(exit, 0);
+}
+
+// ============================================================
+// Stream -c -v parity (invert-match in stream count mode)
+// ============================================================
+
+#[test]
+fn val_cli_001_count_stream_invert_basic() {
+    // ag -c -v hello on "hello hello\nworld\nfoo\n":
+    // Line 1 matches → skipped (inverted). Lines 2,3 don't match → each prints "1".
+    let (stdout, _stderr, exit) = run_ag_stdin(&["-c", "-v", "hello"], "hello hello\nworld\nfoo\n");
+    let lines: Vec<&str> = stdout.trim().lines().collect();
+    assert_eq!(lines.len(), 2, "should have 2 non-matching lines");
+    assert_eq!(lines[0], "1");
+    assert_eq!(lines[1], "1");
+    assert_eq!(exit, 0);
+}
+
+#[test]
+fn val_cli_001_count_stream_invert_all_match() {
+    // ag -c -v hello on "hello\nhello\n": all lines match → no inverted output.
+    let (stdout, _stderr, exit) = run_ag_stdin(&["-c", "-v", "hello"], "hello\nhello\n");
+    assert_eq!(stdout.trim(), "", "all matching → no inverted output");
+    assert_eq!(exit, 1, "no inverted matches → exit 1");
+}
+
+#[test]
+fn val_cli_001_count_stream_invert_none_match() {
+    // ag -c -v hello on "foo\nbar\nbaz\n": no lines match → all inverted.
+    let (stdout, _stderr, exit) = run_ag_stdin(&["-c", "-v", "hello"], "foo\nbar\nbaz\n");
+    let lines: Vec<&str> = stdout.trim().lines().collect();
+    assert_eq!(lines.len(), 3, "should have 3 inverted lines");
+    for l in &lines {
+        assert_eq!(*l, "1");
+    }
+    assert_eq!(exit, 0);
+}
+
+#[test]
+fn val_cli_001_count_stream_invert_mixed() {
+    // ag -c -v hello on "hello hello\nworld\nhello\nfoo\n":
+    // Lines 1,3 match → skipped. Lines 2,4 don't → each prints "1".
+    let (stdout, _stderr, exit) =
+        run_ag_stdin(&["-c", "-v", "hello"], "hello hello\nworld\nhello\nfoo\n");
+    let lines: Vec<&str> = stdout.trim().lines().collect();
+    assert_eq!(lines.len(), 2, "2 non-matching lines");
+    assert_eq!(lines[0], "1");
+    assert_eq!(lines[1], "1");
+    assert_eq!(exit, 0);
+}
+
+// ============================================================
+// Non-UTF8 stdin handling (byte-tolerant stream mode)
+// ============================================================
+
+#[test]
+fn val_cli_003_stream_non_utf8_normal() {
+    // Pipe non-UTF8 bytes: \xFFhello\nworld\n
+    // ag matches "hello" on line 1 and outputs the line (with replacement char).
+    let mut input: Vec<u8> = vec![0xFF];
+    input.extend_from_slice(b"hello\nworld\n");
+    let (stdout, _stderr, exit) = run_ag_stdin_bytes(&["hello"], &input);
+    // Should not panic. Should find the match on line 1.
+    assert!(
+        stdout.contains("hello"),
+        "should find hello in non-UTF8 stream"
+    );
+    assert_eq!(exit, 0, "match found → exit 0");
+}
+
+#[test]
+fn val_cli_003_stream_non_utf8_count() {
+    // Pipe non-UTF8 bytes with -c: \xFFhello\nworld\n
+    let mut input: Vec<u8> = vec![0xFF];
+    input.extend_from_slice(b"hello\nworld\n");
+    let (stdout, _stderr, exit) = run_ag_stdin_bytes(&["-c", "hello"], &input);
+    // Should not panic. Line 1 has 1 match.
+    assert_eq!(stdout.trim(), "1", "stream -c should count 1 match");
+    assert_eq!(exit, 0);
+}
+
+#[test]
+fn val_cli_003_stream_non_utf8_no_panic() {
+    // Ensure non-UTF8 stdin does not cause a panic (exit code != 101).
+    let input: Vec<u8> = vec![0xFF, 0xFE, b'\n', 0x80, 0x81, b'\n'];
+    let (_stdout, _stderr, exit) = run_ag_stdin_bytes(&["hello"], &input);
+    // No match expected, but must not panic.
+    assert_ne!(exit, 101, "must not panic on non-UTF8 stdin");
+    assert_eq!(exit, 1, "no match → exit 1");
 }
