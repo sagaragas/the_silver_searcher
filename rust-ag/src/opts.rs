@@ -467,8 +467,8 @@ impl Opts {
                         opts.file_search_regex = Some(val.as_ref().to_string());
                     }
                     "--path-to-ignore" => {
-                        // Accept, not yet fully implemented.
-                        let _val = iter.next();
+                        // Accept and consume value; not yet fully implemented.
+                        let _val = iter.next().ok_or("--path-to-ignore requires a value")?;
                     }
                     _ => {
                         return Err(format!("Unknown option: {a}"));
@@ -611,10 +611,14 @@ impl Opts {
                             }
                         }
                         'p' => {
-                            // --path-to-ignore shorthand
-                            let _rest: String = chars[i + 1..].iter().collect();
-                            if _rest.is_empty() {
-                                let _val = iter.next();
+                            // --path-to-ignore shorthand; consumes rest of
+                            // combined flags or next argument as value.
+                            let rest: String = chars[i + 1..].iter().collect();
+                            if !rest.is_empty() {
+                                // Value is the remainder of the combined flag
+                                // (e.g. -p/tmp/ignore).
+                            } else {
+                                let _val = iter.next().ok_or("-p requires a value")?;
                             }
                             i = chars.len();
                             continue;

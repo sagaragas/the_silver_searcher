@@ -329,3 +329,106 @@ fn val_cli_009_invalid_option_class_vs_regex_class_distinct_exits() {
         "Invalid option and invalid regex should have different exit codes"
     );
 }
+
+// =======================================================================
+// --path-to-ignore / -p missing-value diagnostics
+// =======================================================================
+
+#[test]
+fn val_cli_009_path_to_ignore_missing_value_exit_1() {
+    // Baseline ag: `ag --path-to-ignore` (no value) exits 1 with
+    // stderr "ag: option `--path-to-ignore' requires an argument"
+    // and usage on stdout.
+    let (_stdout, _stderr, exit) = run_ag(&["--path-to-ignore"]);
+    assert_eq!(
+        exit, 1,
+        "--path-to-ignore without value should exit 1 (invalid-option class)"
+    );
+}
+
+#[test]
+fn val_cli_009_path_to_ignore_missing_value_stderr_diagnostic() {
+    let (_stdout, stderr, exit) = run_ag(&["--path-to-ignore"]);
+    assert_eq!(exit, 1);
+    assert!(
+        !stderr.is_empty(),
+        "--path-to-ignore without value should produce stderr diagnostic"
+    );
+    assert!(
+        stderr.contains("--path-to-ignore") || stderr.contains("path-to-ignore"),
+        "--path-to-ignore stderr should mention the option: {stderr}"
+    );
+}
+
+#[test]
+fn val_cli_009_path_to_ignore_missing_value_stdout_has_usage() {
+    let (stdout, _stderr, exit) = run_ag(&["--path-to-ignore"]);
+    assert_eq!(exit, 1);
+    assert!(
+        stdout.contains("Usage"),
+        "--path-to-ignore without value should print usage to stdout: stdout={stdout}"
+    );
+}
+
+#[test]
+fn val_cli_009_short_p_missing_value_exit_1() {
+    // Baseline ag: `ag -p` (no value) exits 1 with
+    // stderr "ag: option requires an argument -- p"
+    // and usage on stdout.
+    let (_stdout, _stderr, exit) = run_ag(&["-p"]);
+    assert_eq!(
+        exit, 1,
+        "-p without value should exit 1 (invalid-option class)"
+    );
+}
+
+#[test]
+fn val_cli_009_short_p_missing_value_stderr_diagnostic() {
+    let (_stdout, stderr, exit) = run_ag(&["-p"]);
+    assert_eq!(exit, 1);
+    assert!(
+        !stderr.is_empty(),
+        "-p without value should produce stderr diagnostic"
+    );
+    assert!(
+        stderr.contains("-p") || stderr.contains("path-to-ignore"),
+        "-p stderr should mention the option: {stderr}"
+    );
+}
+
+#[test]
+fn val_cli_009_short_p_missing_value_stdout_has_usage() {
+    let (stdout, _stderr, exit) = run_ag(&["-p"]);
+    assert_eq!(exit, 1);
+    assert!(
+        stdout.contains("Usage"),
+        "-p without value should print usage to stdout: stdout={stdout}"
+    );
+}
+
+#[test]
+fn val_cli_009_path_to_ignore_with_value_accepted() {
+    // When --path-to-ignore has a value, it should NOT error.
+    // (It won't find anything useful since the file likely doesn't exist, but
+    // it should proceed to the "no pattern" error, not an invalid-option error.)
+    let (_stdout, stderr, exit) = run_ag(&["--path-to-ignore", "/tmp/test_ignore_file"]);
+    // Without a search pattern, ag prints "ERR: What do you want to search for?"
+    // which exits 1 but does NOT produce usage text.
+    assert_eq!(exit, 1);
+    // The error should be about missing pattern, not about the option itself
+    assert!(
+        !stderr.contains("--path-to-ignore"),
+        "--path-to-ignore with value should not error about the option: {stderr}"
+    );
+}
+
+#[test]
+fn val_cli_009_short_p_with_value_accepted() {
+    // -p with a value should proceed normally (no invalid-option error).
+    let (_stdout, stderr, exit) = run_ag(&["-p", "/tmp/test_ignore_file"]);
+    assert_eq!(exit, 1);
+    assert!(
+        !stderr.contains("-p"),
+        "-p with value should not error about the option: {stderr}"
+    );
+}
