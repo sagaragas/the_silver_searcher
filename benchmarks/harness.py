@@ -597,10 +597,18 @@ def run_smoke(
     _write_json(output_dir / "environment_metadata.json", full_env)
 
     # Run correctness gate (VAL-BENCH-004).
+    correctness_gate_failed = False
     try:
         from correctness_gate import check_correctness
         gate_result = check_correctness(run_manifest, output_dir)
         gate_status = gate_result["gate"].upper()
+        if gate_result["gate"] != "pass":
+            correctness_gate_failed = True
+            run_manifest["correctness_gate_failure"] = {
+                "gate": gate_result["gate"],
+                "scenarios_failed": gate_result.get("scenarios_failed", 0),
+                "scenarios_checked": gate_result.get("scenarios_checked", 0),
+            }
     except ImportError:
         gate_status = "SKIPPED (module not available)"
 
@@ -638,6 +646,9 @@ def run_smoke(
                         f"{sid}/{comp} (binary not found)"
                     )
 
+    # Re-write the run manifest with correctness gate result included.
+    _write_json(output_dir / "run_manifest.json", run_manifest)
+
     # Print summary.
     print(f"\nSmoke run complete: {run_id}")
     print(f"  Output: {output_dir}")
@@ -646,6 +657,12 @@ def run_smoke(
     print(f"  Command equiv:     {output_dir / 'command_equivalence.json'}")
     print(f"  Env metadata:      {output_dir / 'environment_metadata.json'}")
     print(f"  Correctness gate:  {gate_status}")
+
+    if correctness_gate_failed:
+        print(f"\n  FATAL: Correctness gate FAILED")
+        failure_info = run_manifest.get("correctness_gate_failure", {})
+        print(f"    scenarios_failed: {failure_info.get('scenarios_failed', '?')}")
+        print(f"    scenarios_checked: {failure_info.get('scenarios_checked', '?')}")
 
     if required_failures:
         print(f"\n  FATAL: Required comparator cells incomplete:")
@@ -967,11 +984,19 @@ def run_measured(
     full_env = _collect_full_environment_metadata()
     _write_json(output_dir / "environment_metadata.json", full_env)
 
-    # Correctness gate (uses last iteration's hashes).
+    # Correctness gate (uses last iteration's hashes) (VAL-BENCH-004).
+    correctness_gate_failed = False
     try:
         from correctness_gate import check_correctness
         gate_result = check_correctness(run_manifest, output_dir)
         gate_status = gate_result["gate"].upper()
+        if gate_result["gate"] != "pass":
+            correctness_gate_failed = True
+            run_manifest["correctness_gate_failure"] = {
+                "gate": gate_result["gate"],
+                "scenarios_failed": gate_result.get("scenarios_failed", 0),
+                "scenarios_checked": gate_result.get("scenarios_checked", 0),
+            }
     except ImportError:
         gate_status = "SKIPPED"
 
@@ -1021,11 +1046,20 @@ def run_measured(
                         f"{sid}/{comp} (binary not found)"
                     )
 
+    # Re-write the run manifest with all gate results included.
+    _write_json(output_dir / "run_manifest.json", run_manifest)
+
     print(f"\nMeasured run complete: {run_id}")
     print(f"  Output: {output_dir}")
     print(f"  Cells: {executed_cells} executed, {skipped_cells} skipped, {error_cells} errors")
     print(f"  Correctness gate: {gate_status}")
     print(f"  Sampling validation: {sampling_status}")
+
+    if correctness_gate_failed:
+        print(f"\n  FATAL: Correctness gate FAILED")
+        failure_info = run_manifest.get("correctness_gate_failure", {})
+        print(f"    scenarios_failed: {failure_info.get('scenarios_failed', '?')}")
+        print(f"    scenarios_checked: {failure_info.get('scenarios_checked', '?')}")
 
     if sampling_gate_failed:
         print(f"\n  FATAL: Sampling validation gate FAILED")
@@ -1188,7 +1222,10 @@ def main() -> None:
             scenario_ids=args.scenarios,
             timeout=args.timeout,
         )
-        # Exit with error if any cells had errors or required cells are incomplete.
+        # Exit with error if any cells had errors, required cells are
+        # incomplete, or the correctness gate failed (VAL-BENCH-004).
+        if manifest.get("correctness_gate_failure"):
+            sys.exit(1)
         if manifest.get("required_comparator_failures"):
             sys.exit(1)
         if manifest["cell_totals"]["errors"] > 0:
@@ -1220,6 +1257,10 @@ def main() -> None:
             if out.exists():
                 _write_json(out / "run_manifest.json", manifest)
 
+        # Exit with error if correctness gate failed (VAL-BENCH-004),
+        # required cells are incomplete, or any cell had errors.
+        if manifest.get("correctness_gate_failure"):
+            sys.exit(1)
         if manifest.get("required_comparator_failures"):
             sys.exit(1)
         if manifest["cell_totals"]["errors"] > 0:
@@ -1237,6 +1278,8 @@ def main() -> None:
             timeout=args.timeout,
             run_type=args.run_type,
         )
+        if manifest.get("correctness_gate_failure"):
+            sys.exit(1)
         if manifest.get("required_comparator_failures"):
             sys.exit(1)
         if manifest.get("sampling_gate_failure"):

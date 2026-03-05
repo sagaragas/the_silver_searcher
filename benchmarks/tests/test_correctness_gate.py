@@ -353,3 +353,205 @@ class TestCorrectnessGateManifestHashes:
         check_correctness(manifest, tmp_path)
         data = json.loads((tmp_path / "correctness_gate.json").read_text())
         assert data["commit_sha"] == "abc123"
+
+
+# ---------------------------------------------------------------------------
+# VAL-BENCH-004: Correctness gate propagation to harness CLI exit status
+# ---------------------------------------------------------------------------
+
+
+class TestCorrectnessGateHarnessPropagation:
+    """Verify that correctness-gate failures propagate to harness exit code.
+
+    VAL-BENCH-004: smoke and run commands must exit non-zero whenever the
+    correctness gate fails, even if cell error counts are zero.
+    """
+
+    def test_run_smoke_returns_correctness_gate_failure_in_manifest(self, tmp_path):
+        """run_smoke() must include correctness_gate_failure key in the returned
+        manifest when the correctness gate fails.
+
+        We mock correctness_gate.check_correctness to simulate a gate failure
+        with zero cell errors.
+        """
+        from unittest import mock
+
+        from harness import run_smoke, resolve_binary
+
+        # Check that all comparators are available.
+        for comp in ["ag", "rust-ag", "rg", "ugrep"]:
+            if resolve_binary(comp) is None:
+                pytest.skip(f"Missing comparator {comp}")
+
+        # Mock the correctness gate to always report failure.
+        fake_gate = {
+            "gate": "fail",
+            "scenarios_checked": 1,
+            "scenarios_passed": 0,
+            "scenarios_failed": 1,
+            "scenarios_skipped": 0,
+            "scenarios": [{"scenario_id": "literal-simple", "result": "fail"}],
+            "parity_pair": ["ag", "rust-ag"],
+            "schema_version": 1,
+            "timestamp": "2026-03-05T00:00:00+00:00",
+            "commit_sha": "abc123",
+            "run_id": "test",
+            "manifest_hashes": {},
+        }
+
+        with mock.patch.dict("sys.modules", {}):
+            import importlib
+            import correctness_gate as cg_mod
+
+            original_fn = cg_mod.check_correctness
+
+            def mock_check_correctness(run_manifest, output_dir):
+                # Write the artifact like the real function does.
+                result = dict(fake_gate)
+                result["run_id"] = run_manifest.get("run_id", "unknown")
+                from harness import _write_json
+                _write_json(output_dir / "correctness_gate.json", result)
+                return result
+
+            with mock.patch.object(cg_mod, "check_correctness", side_effect=mock_check_correctness):
+                manifest = run_smoke(
+                    comparators=["ag", "rust-ag", "rg", "ugrep"],
+                    output_dir=tmp_path,
+                    scenario_ids=["literal-simple"],
+                    timeout=30,
+                )
+
+        assert "correctness_gate_failure" in manifest, (
+            "run_smoke must set correctness_gate_failure when gate fails"
+        )
+        assert manifest["correctness_gate_failure"]["gate"] == "fail"
+        assert manifest["correctness_gate_failure"]["scenarios_failed"] == 1
+
+    def test_run_smoke_no_correctness_gate_failure_on_pass(self, tmp_path):
+        """run_smoke() must NOT include correctness_gate_failure when gate passes."""
+        from harness import run_smoke, resolve_binary
+
+        for comp in ["ag", "rust-ag", "rg", "ugrep"]:
+            if resolve_binary(comp) is None:
+                pytest.skip(f"Missing comparator {comp}")
+
+        manifest = run_smoke(
+            comparators=["ag", "rust-ag", "rg", "ugrep"],
+            output_dir=tmp_path,
+            scenario_ids=["literal-simple"],
+            timeout=30,
+        )
+
+        assert "correctness_gate_failure" not in manifest, (
+            "run_smoke must not set correctness_gate_failure when gate passes"
+        )
+
+    def test_correctness_gate_failure_with_zero_cell_errors_exits_nonzero(self, tmp_path):
+        """When correctness gate fails but cell error count is zero, the harness
+        CLI smoke subcommand must still exit non-zero (VAL-BENCH-004).
+
+        This is the key scenario: all cells execute successfully (no timeouts,
+        no binary_not_found), but the parity check between ag and rust-ag fails.
+        """
+        from unittest import mock
+
+        from harness import run_smoke, resolve_binary
+
+        for comp in ["ag", "rust-ag", "rg", "ugrep"]:
+            if resolve_binary(comp) is None:
+                pytest.skip(f"Missing comparator {comp}")
+
+        # Build a manifest with zero cell errors but correctness gate failure.
+        fake_gate = {
+            "gate": "fail",
+            "scenarios_checked": 1,
+            "scenarios_passed": 0,
+            "scenarios_failed": 1,
+            "scenarios_skipped": 0,
+            "scenarios": [{"scenario_id": "literal-simple", "result": "fail"}],
+            "parity_pair": ["ag", "rust-ag"],
+            "schema_version": 1,
+            "timestamp": "2026-03-05T00:00:00+00:00",
+            "commit_sha": "abc123",
+            "run_id": "test",
+            "manifest_hashes": {},
+        }
+
+        import correctness_gate as cg_mod
+
+        def mock_check_correctness(run_manifest, output_dir):
+            result = dict(fake_gate)
+            result["run_id"] = run_manifest.get("run_id", "unknown")
+            from harness import _write_json
+            _write_json(output_dir / "correctness_gate.json", result)
+            return result
+
+        with mock.patch.object(cg_mod, "check_correctness", side_effect=mock_check_correctness):
+            manifest = run_smoke(
+                comparators=["ag", "rust-ag", "rg", "ugrep"],
+                output_dir=tmp_path,
+                scenario_ids=["literal-simple"],
+                timeout=30,
+            )
+
+        # Verify the manifest has zero cell errors.
+        assert manifest["cell_totals"]["errors"] == 0, (
+            "Test setup: cell errors should be zero"
+        )
+        # But correctness gate failure is set.
+        assert "correctness_gate_failure" in manifest
+        # The CLI exit logic should detect this.
+        # (We test the manifest key; the CLI main() checks this key and
+        # exits non-zero.)
+
+    def test_correctness_gate_failure_recorded_in_output_manifest(self, tmp_path):
+        """When correctness gate fails, the on-disk run_manifest.json must
+        contain the correctness_gate_failure key so downstream validators
+        can detect it.
+        """
+        from unittest import mock
+
+        from harness import run_smoke, resolve_binary
+
+        for comp in ["ag", "rust-ag", "rg", "ugrep"]:
+            if resolve_binary(comp) is None:
+                pytest.skip(f"Missing comparator {comp}")
+
+        fake_gate = {
+            "gate": "fail",
+            "scenarios_checked": 1,
+            "scenarios_passed": 0,
+            "scenarios_failed": 1,
+            "scenarios_skipped": 0,
+            "scenarios": [],
+            "parity_pair": ["ag", "rust-ag"],
+            "schema_version": 1,
+            "timestamp": "2026-03-05T00:00:00+00:00",
+            "commit_sha": "abc123",
+            "run_id": "test",
+            "manifest_hashes": {},
+        }
+
+        import correctness_gate as cg_mod
+
+        def mock_check_correctness(run_manifest, output_dir):
+            result = dict(fake_gate)
+            result["run_id"] = run_manifest.get("run_id", "unknown")
+            from harness import _write_json
+            _write_json(output_dir / "correctness_gate.json", result)
+            return result
+
+        with mock.patch.object(cg_mod, "check_correctness", side_effect=mock_check_correctness):
+            run_smoke(
+                comparators=["ag", "rust-ag", "rg", "ugrep"],
+                output_dir=tmp_path,
+                scenario_ids=["literal-simple"],
+                timeout=30,
+            )
+
+        # Check the on-disk manifest.
+        on_disk = json.loads((tmp_path / "run_manifest.json").read_text())
+        assert "correctness_gate_failure" in on_disk, (
+            "On-disk run_manifest.json must contain correctness_gate_failure"
+        )
+        assert on_disk["correctness_gate_failure"]["gate"] == "fail"
