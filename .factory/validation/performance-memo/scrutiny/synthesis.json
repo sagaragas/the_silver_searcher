@@ -1,6 +1,6 @@
 {
   "milestone": "performance-memo",
-  "round": 1,
+  "round": 2,
   "status": "fail",
   "validatorsRun": {
     "test": {
@@ -20,84 +20,51 @@
     }
   },
   "reviewsSummary": {
-    "total": 3,
-    "passed": 0,
-    "failed": 3,
+    "total": 2,
+    "passed": 1,
+    "failed": 1,
     "failedFeatures": [
-      "publication-memo-methods-claims-metrics",
-      "publication-memo-regressions-limitations-license-quality",
-      "release-traceability-public-fork-package"
+      "performance-memo-traceability-lineage-clean-checkout-fix"
     ]
   },
   "blockingIssues": [
     {
-      "featureId": "publication-memo-methods-claims-metrics",
+      "featureId": "performance-memo-traceability-lineage-clean-checkout-fix",
       "severity": "blocking",
-      "description": "Memo includes numeric factual claims without claim-ID linkage (e.g. scenario count statement), violating claim-evidence linkage expectations."
-    },
-    {
-      "featureId": "publication-memo-methods-claims-metrics",
-      "severity": "blocking",
-      "description": "publication/check_claims.py numeric-claim regex does not cover bare numeric claims, allowing unsupported numeric statements to pass publication gate checks."
-    },
-    {
-      "featureId": "publication-memo-regressions-limitations-license-quality",
-      "severity": "blocking",
-      "description": "Memo adversarial Q&A IQR range claim (0.10–0.53 ms) is inconsistent with cited sampling_validation artifact values (0.148–0.377 ms)."
-    },
-    {
-      "featureId": "publication-memo-regressions-limitations-license-quality",
-      "severity": "blocking",
-      "description": "publication/claim_evidence_map.json CLM-ADV-003 repeats the incorrect IQR range, propagating inaccurate evidence-linked claim data."
-    },
-    {
-      "featureId": "release-traceability-public-fork-package",
-      "severity": "blocking",
-      "description": "publication/traceability_check.py reads parity commit SHA but does not enforce parity/memo/benchmark commit equality, leaving lineage gaps undetected."
-    },
-    {
-      "featureId": "release-traceability-public-fork-package",
-      "severity": "blocking",
-      "description": "Traceability reproducibility validation only checks file presence and does not execute a clean-checkout smoke reproducibility run on the cited commit."
+      "description": "publication/run_clean_checkout_smoke.py verifies commit existence with git cat-file but executes smoke checks in the current working tree without verifying an actual checkout/clone of the cited commit, so clean-checkout provenance is not enforced."
     }
   ],
   "appliedUpdates": [
     {
       "target": "services.yaml",
-      "description": "Added publication validator command aliases for validate_metrics_tables, style_gate, and license_audit to standardize scrutiny/user-testing command references.",
-      "sourceFeature": "publication-memo-methods-claims-metrics"
+      "description": "Added publication_clean_checkout_smoke command alias requiring PUBLICATION_COMMIT_SHA to run publication/run_clean_checkout_smoke.py consistently across workers.",
+      "sourceFeature": "performance-memo-traceability-lineage-clean-checkout-fix"
     },
     {
       "target": "library",
-      "description": "Updated .factory/library/publication.md to document sampling_validation.json as authoritative evidence source for uncertainty stats (IQR/CI) in memo/Q&A claims.",
-      "sourceFeature": "release-traceability-public-fork-package"
+      "description": "Extended .factory/library/publication.md with clean-checkout evidence contract fields and commit-SHA equality requirements for publication reproducibility evidence.",
+      "sourceFeature": "performance-memo-traceability-lineage-clean-checkout-fix"
     }
   ],
   "suggestedGuidanceUpdates": [
     {
       "target": "publication-worker skill",
-      "suggestion": "Require an explicit ordered step to generate/update publication/license_inventory.json before running publication/license_audit.py, and fail fast when inventory is missing/stale.",
-      "evidence": "Feature publication-memo-regressions-limitations-license-quality reported sequencing ambiguity in skill feedback and relied on manual ordering.",
+      "suggestion": "Explicitly require sampling_validation.json as the authoritative source for memo/Q&A uncertainty claims (IQR/CI), and forbid hand-entered uncertainty values.",
+      "evidence": "Review performance-memo-publication-claim-integrity-fix identified missing skill-level instruction despite prior failures caused by uncertainty-value drift.",
       "isSystemic": true
     },
     {
       "target": "publication-worker skill",
-      "suggestion": "Add a mandatory clean-checkout smoke reproducibility execution step (not just package file presence checks) for the cited public commit.",
-      "evidence": "Feature release-traceability-public-fork-package failed review because check_reproducibility_package validated only artifact presence, while AGENTS guidance requires clean-checkout smoke reproducibility.",
-      "isSystemic": true
-    },
-    {
-      "target": "publication-worker skill",
-      "suggestion": "Encode a strict traceability assertion that parity, benchmark, and memo evidence must resolve to the same cited commit SHA for publication claims.",
-      "evidence": "Feature release-traceability-public-fork-package reported parity commit loaded but not compared, allowing lineage drift to pass checks.",
+      "suggestion": "Require clean-checkout smoke reproducibility to execute against an actual checkout/clone of the cited commit, not only commit existence plus current-tree execution.",
+      "evidence": "Review performance-memo-traceability-lineage-clean-checkout-fix found remaining blocker where run_clean_checkout_smoke.py uses git cat-file but does not verify execution context matches cited commit.",
       "isSystemic": true
     }
   ],
   "rejectedObservations": [
     {
-      "observation": "Separate services observations requested adding publication validators individually (metrics/license/style).",
-      "reason": "duplicate"
+      "observation": "Shared-state recommendation to duplicate strict commit-SHA equality guidance in skills.",
+      "reason": "already-documented"
     }
   ],
-  "previousRound": null
+  "previousRound": ".factory/validation/performance-memo/scrutiny/synthesis.round1.json"
 }

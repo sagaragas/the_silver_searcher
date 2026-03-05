@@ -1,0 +1,21 @@
+{
+  "featureId": "performance-memo-publication-claim-integrity-fix",
+  "reviewedAt": "2026-03-05T20:21:21Z",
+  "commitId": "6a596d46d1ebfea2858e36d2850ae91c5b416486",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix commit fully addresses both prior blocking failures: numeric factual claims without CLM linkage are now enforced by broader numeric-pattern detection in publication/check_claims.py, and adversarial-Q&A IQR/gap claims were corrected in both memo prose and claim map to match authoritative sampling_validation evidence across local/nightly/manual runs.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The publication-worker skill still does not explicitly require using sampling_validation.json as the authoritative source for IQR/CI values, even though this mismatch caused prior review failures.",
+      "evidence": "Fix handoff skillFeedback.suggestedChanges requests this exact clarification; .factory/skills/publication-worker/SKILL.md Work Procedure does not mention sampling_validation.json, while .factory/library/publication.md explicitly does."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/performance-memo/scrutiny/reviews/publication-memo-methods-claims-metrics.json, .factory/validation/performance-memo/scrutiny/reviews/publication-memo-regressions-limitations-license-quality.json",
+  "summary": "Reviewed fix feature transcript skeleton, fix diff, both original failed-feature diffs (48774a9 and a340b0b), and both prior fail reviews. The implemented changes resolve the prior blocking defects and satisfy the fix feature's expected behavior; review status is pass."
+}

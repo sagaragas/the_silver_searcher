@@ -11,3 +11,5 @@ Worker-facing guidance for the final long-form memo/blog output.
 - For uncertainty stats (IQR/CI) used in memo/Q&A claims, treat `benchmarks/out/<run>/sampling_validation.json` as the authoritative evidence artifact.
 - Narrative must include regressions and caveats; no winner-only reporting.
 - Public publication commit must be traceable to parity and benchmark evidence commits.
+- Clean-checkout evidence artifact is `publication/clean_checkout_reproducibility.json` and must include `executed`, `commit_sha`, `result`, and `checks` fields.
+- Clean-checkout evidence `commit_sha` must match the memo-cited publication commit SHA exactly; all checks in the artifact must pass.
