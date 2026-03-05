@@ -801,3 +801,33 @@ def _write_test_manifest(run_dir: Path, manifest: dict) -> None:
     }
     with open(run_dir / "command_equivalence.json", "w") as f:
         json.dump(equiv, f, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# Hash drift regression test (on-disk hash matching)
+# ---------------------------------------------------------------------------
+
+
+def test_verify_on_disk_hashes_match():
+    """Latest benchmark run manifest hashes must match current on-disk manifests.
+
+    This is a regression gate ensuring that whenever scenario/query/corpus
+    manifests evolve, a fresh canonical benchmark run is regenerated so the
+    on-disk hashes and recorded run-manifest hashes stay in sync.
+
+    Covers VAL-BENCH-003 (manifest immutability) from the on-disk perspective.
+    """
+    from manifest_pinning import verify_manifest_hashes_on_disk
+
+    latest = REPO_ROOT / "benchmarks" / "out" / "latest" / "run_manifest.json"
+    if not latest.exists():
+        pytest.skip("No latest benchmark run available")
+
+    with open(latest.resolve(), "r", encoding="utf-8") as f:
+        manifest = json.load(f)
+
+    result = verify_manifest_hashes_on_disk(manifest, MANIFESTS_DIR)
+    assert result["result"] == "pass", (
+        f"On-disk manifest hash drift detected — regenerate a canonical "
+        f"benchmark run. Mismatches: {result.get('mismatches')}"
+    )
