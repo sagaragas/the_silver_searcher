@@ -1,44 +1,20 @@
 {
   "featureId": "rust-cli-filename-filter-path-prefix-fix",
-  "reviewedAt": "2026-03-05T14:20:44Z",
-  "commitId": "225745739b571b40a59fe5e2b83c07b98665923f",
+  "reviewedAt": "2026-03-05T14:38:50Z",
+  "commitId": "dfbdca78d993c179c6d9d7cbbb07efa92ede6136",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
-  "status": "fail",
+  "status": "pass",
   "codeReview": {
-    "summary": "The commit fixes displayed path formatting for the parity scenario, but it regresses `-g` filename-regex matching semantics by matching against normalized paths instead of baseline raw paths; this violates the feature's no-regression requirement.",
-    "issues": [
-      {
-        "file": "rust-ag/src/main.rs",
-        "line": 294,
-        "severity": "blocking",
-        "description": "`-g` regex matching now runs on `display_path_for(f)` (normalized output path) via `file_re.is_match(&display)`. Baseline ag matches against raw `dir_full_path` (`src/search.c:629`) and only normalizes when printing (`src/print.c:361`). Regression evidence: `./ag --nocolor --workers=1 --parallel --noaffinity -g '^\\./rust-ag/src/main\\.rs$' foo .` prints `rust-ag/src/main.rs` and exits 0, while `target/debug/rust-ag --nocolor --workers=1 --parallel --noaffinity -g '^\\./rust-ag/src/main\\.rs$' foo .` exits 1 with no stdout."
-      },
-      {
-        "file": "rust-ag/tests/parity_cli_context_color_filters.rs",
-        "line": 404,
-        "severity": "non_blocking",
-        "description": "New tests added for this fix assert only that output lines do not start with `./`, but they use absolute temp-dir paths (`run_ag(&[\"-g\", \"\\.rs$\", dir_path])`) and do not exercise `.`-rooted paths or `-g` regex matching semantics. They would not catch the blocking regression above."
-      }
-    ]
+    "summary": "Re-review confirms the fix commit and current HEAD match baseline semantics: `-g` regex matching now evaluates raw traversal paths (`f.to_string_lossy()`), while `display_path_for()` normalization is used only for printed output. The prior blocking issue is resolved, and the added tests correctly cover both the `^\\./...$` positive case and `^...$` negative case when searching from `.`.",
+    "issues": []
   },
   "sharedStateObservations": [
     {
       "area": "conventions",
-      "observation": "CLI formatting tests for `-g` can pass while changing filename-regex semantics because they assert output formatting only; the test convention does not require semantic guards for regex matching against raw vs normalized paths.",
-      "evidence": "manifests/scenarios.json:345-352 defines `cli-filename-filter-g` with corpus `.` and pattern placeholder; rust-ag/tests/parity_cli_context_color_filters.rs:404-452 only checks prefix formatting on temp-dir outputs."
-    },
-    {
-      "area": "skills",
-      "observation": "`rewrite-worker` mandates red-first tests, but this run edited implementation before adding new tests; skill feedback still marked followedProcedure=true.",
-      "evidence": "Skill requirement at .factory/skills/rewrite-worker/SKILL.md:19; transcript skeleton (worker-transcripts.jsonl line 37) shows `Tool: Edit` on `rust-ag/src/main.rs` before the later step 'Now let me add a test for this specific behavior.'"
-    },
-    {
-      "area": "knowledge",
-      "observation": "A critical baseline nuance is undocumented in shared library docs: `-g` regex is evaluated on raw paths, while printed paths are normalized separately. Missing this nuance makes regressions likely in future path-format fixes.",
-      "evidence": "Baseline behavior in src/search.c:629 (`pcre_exec(... dir_full_path ...)`) and src/print.c:361 (`normalize_path` before printing); no matching guidance found in .factory/library/*.md for `normalize_path` or `-g` path-matching semantics."
+      "observation": "The shared parity matrix scenario for `-g` still uses a broad `\\.rs$` filename pattern and does not directly exercise `^\\./...$` anchored semantics; this specific regression mode is currently guarded by Rust parity tests rather than matrix coverage.",
+      "evidence": "manifests/scenarios.json:345-352 (`cli-filename-filter-g` uses `-g \"\\.rs$\"`); anchored raw-path coverage is in rust-ag/tests/parity_cli_context_color_filters.rs:461-516."
     }
   ],
-  "addressesFailureFrom": ".factory/validation/rust-cli-parity/scrutiny/reviews/rust-cli-context-color-filter-help-version.json",
-  "summary": "Review failed: output formatting parity was fixed, but the implementation now matches `-g` regex against normalized display paths, breaking baseline-compatible filename-filter semantics for patterns that depend on leading `./`."
+  "summary": "Pass: the prior blocking issue is fully addressed in dfbdca7/current HEAD, with code and tests aligned to baseline behavior for raw-path matching vs normalized output in `-g` mode."
 }
