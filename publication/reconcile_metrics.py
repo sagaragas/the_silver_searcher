@@ -172,6 +172,11 @@ def extract_memo_speedup_values(memo_text: str) -> list[dict]:
         r"(\w[\w-]*)\s+(?:vs|is\s+.*?faster\s+than)\s+(\w[\w-]*)",
         re.IGNORECASE,
     )
+    # Pattern for "A ... speedup over ... B" phrasing
+    speedup_over_pattern = re.compile(
+        r"(\w[\w-]*)(?:\s+\w+)*?\s+[\d.]+[×x]\s+speedup\s+over\s+(?:the\s+)?(?:original\s+)?(\w[\w-]*)",
+        re.IGNORECASE,
+    )
     # Pattern for claim-evidence index rows: | CLM-PERF-NNN | ... | A ≈N.Nx faster than B |
     clm_table_pattern = re.compile(
         r"\|\s*CLM-\w+-\d+\s*\|.*?\|\s*(\w[\w-]*)\s+[≈~]?([\d.]+)[×x]\s+faster\s+than\s+(\w[\w-]*)\s*\|",
@@ -192,7 +197,7 @@ def extract_memo_speedup_values(memo_text: str) -> list[dict]:
                 faster = clm_match.group(1)
                 slower = clm_match.group(3)
             else:
-                # Try narrative pair extraction
+                # Try narrative pair extraction: "A vs B" or "A is ... faster than B"
                 for pm in pair_pattern.finditer(line):
                     f_candidate = pm.group(1)
                     s_candidate = pm.group(2)
@@ -200,6 +205,16 @@ def extract_memo_speedup_values(memo_text: str) -> list[dict]:
                         faster = f_candidate
                         slower = s_candidate
                         break
+
+                # If no pair found yet, try "A ... speedup over ... B"
+                if not faster or not slower:
+                    for sm in speedup_over_pattern.finditer(line):
+                        f_candidate = sm.group(1)
+                        s_candidate = sm.group(2)
+                        if f_candidate in known_tools and s_candidate in known_tools:
+                            faster = f_candidate
+                            slower = s_candidate
+                            break
 
             speedups.append(
                 {
@@ -415,14 +430,20 @@ def reconcile_speedups(
 
         if not faster or not slower:
             # Cannot validate claims without identified tool pairs;
-            # record as skipped, not as errors
+            # treat as a reconciliation failure (not skipped)
+            errors.append(
+                f"  Speedup claim line {line_num}: "
+                f"tool pair not identified from context — "
+                f"faster={faster}, slower={slower}, "
+                f"memo_ratio={memo_ratio}×"
+            )
             evidence.append(
                 {
                     "line_num": line_num,
                     "memo_ratio": memo_ratio,
                     "faster": faster,
                     "slower": slower,
-                    "result": "skipped",
+                    "result": "fail",
                     "reason": "tool pair not identified from context",
                     "context": context,
                 }
@@ -434,13 +455,18 @@ def reconcile_speedups(
             # Try reversed pair
             pair_key = (slower, faster)
             if pair_key not in primary_ratios:
+                errors.append(
+                    f"  Speedup claim line {line_num}: "
+                    f"pair ({faster}, {slower}) not found in {primary_type} run data — "
+                    f"memo_ratio={memo_ratio}×"
+                )
                 evidence.append(
                     {
                         "line_num": line_num,
                         "memo_ratio": memo_ratio,
                         "faster": faster,
                         "slower": slower,
-                        "result": "skipped",
+                        "result": "fail",
                         "reason": f"pair ({faster}, {slower}) not found in {primary_type} run data",
                         "context": context,
                     }
@@ -861,6 +887,12 @@ def main() -> int:
         "result": "pass" if not all_errors else "fail",
     }
 
+    # Always write reconciliation report before returning (pass or fail)
+    report_path = repo_root / "publication" / "reconciliation_report.json"
+    with open(report_path, "w") as f:
+        json.dump(report, f, indent=2)
+        f.write("\n")
+
     print(f"Metrics reconciliation: {'PASS' if not all_errors else 'FAIL'}")
     print(f"  Runs checked: {runs_checked}")
     print(f"  Memo table values extracted: {len(memo_table_values)}")
@@ -870,6 +902,7 @@ def main() -> int:
     print(f"  Narrative speedup claims: {narrative_validated} pass, {narrative_failed} fail, {narrative_skipped} skipped")
     print(f"  Speedup table checks: {table_validated} pass, {table_failed} fail")
     print(f"  Speedup claim reconciliation: {'PASS' if report['speedup_claim_reconciliation']['result'] == 'pass' else 'FAIL'}")
+    print(f"  Report written to: {report_path}")
 
     if all_errors:
         print("\nRECONCILIATION FAILURES:")
@@ -878,14 +911,6 @@ def main() -> int:
         return 1
 
     print("\nAll memo values reconcile with benchmark artifacts.")
-
-    # Write reconciliation report
-    report_path = repo_root / "publication" / "reconciliation_report.json"
-    with open(report_path, "w") as f:
-        json.dump(report, f, indent=2)
-        f.write("\n")
-    print(f"Report written to: {report_path}")
-
     return 0
 
 

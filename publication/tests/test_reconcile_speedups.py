@@ -117,11 +117,29 @@ class TestExtractMemoSpeedupValues:
         assert result[0]["faster"] == "rust-ag"
         assert result[0]["slower"] == "ag"
 
-    def test_skips_non_tool_pairs(self):
+    def test_extracts_speedup_over_phrasing(self):
         memo = "While rust-ag achieved a 2.0× speedup over the original ag, it is"
         result = extract_memo_speedup_values(memo)
         assert len(result) == 1
-        # This line doesn't have a recognized "A vs B" pattern
+        assert result[0]["ratio"] == 2.0
+        assert result[0]["faster"] == "rust-ag"
+        assert result[0]["slower"] == "ag"
+
+    def test_extracts_speedup_over_simple(self):
+        memo = "rg showed a 2.5× speedup over ag in this scenario."
+        result = extract_memo_speedup_values(memo)
+        assert len(result) == 1
+        assert result[0]["ratio"] == 2.5
+        assert result[0]["faster"] == "rg"
+        assert result[0]["slower"] == "ag"
+
+    def test_speedup_over_non_tool_words_no_pair(self):
+        """Claims with 'speedup over' but no recognisable tool names should
+        still extract the ratio but leave the pair unresolved."""
+        memo = "We measured a 3.0× speedup over the baseline implementation."
+        result = extract_memo_speedup_values(memo)
+        assert len(result) == 1
+        assert result[0]["ratio"] == 3.0
         assert result[0]["faster"] is None
         assert result[0]["slower"] is None
 
@@ -254,8 +272,8 @@ class TestReconcileSpeedups:
         assert len(errors) > 0
         assert ok_count == 0
 
-    def test_unidentified_pair_is_skipped(self):
-        """Claims without identified tool pairs are skipped, not errors."""
+    def test_unidentified_pair_is_failure(self):
+        """Claims without identified tool pairs are treated as failures, not skipped."""
         stats = _make_run_stats(19.64, 9.69, 7.74, 4.02)
         claims = [
             {
@@ -269,9 +287,28 @@ class TestReconcileSpeedups:
         errors, evidence, ok_count = reconcile_speedups(
             claims, {"local": stats}, "literal-simple", tolerance=0.15
         )
-        assert len(errors) == 0
+        assert len(errors) > 0
         assert ok_count == 0
-        assert evidence[0]["result"] == "skipped"
+        assert evidence[0]["result"] == "fail"
+
+    def test_missing_benchmark_pair_is_failure(self):
+        """Claims with pair identified but no matching benchmark data should fail."""
+        stats = _make_run_stats(19.64, 9.69, 7.74, 4.02)
+        claims = [
+            {
+                "ratio": 2.0,
+                "faster": "rust-ag",
+                "slower": "unknown-tool",
+                "line_num": 1,
+                "context": "some claim referencing unknown tool",
+            }
+        ]
+        errors, evidence, ok_count = reconcile_speedups(
+            claims, {"local": stats}, "literal-simple", tolerance=0.15
+        )
+        assert len(errors) > 0
+        assert ok_count == 0
+        assert evidence[0]["result"] == "fail"
 
     def test_missing_scenario_returns_error(self):
         """Missing scenario in run data should produce an error."""
@@ -537,3 +574,108 @@ class TestEndToEndReconciliation:
         )
         assert len(errors) == 0, f"Reconciliation errors: {errors}"
         assert ok_count > 0
+
+
+# ---------------------------------------------------------------------------
+# Tests: Report persistence and failure evidence
+# ---------------------------------------------------------------------------
+
+
+class TestReportPersistence:
+    """Tests that reconciliation_report.json is always written, even on failure."""
+
+    @pytest.fixture
+    def repo_data_available(self):
+        """Check if benchmark data is available for integration tests."""
+        claim_map_path = REPO_ROOT / "publication" / "claim_evidence_map.json"
+        memo_path = REPO_ROOT / "publication" / "ragas_blog_memo.md"
+        if not claim_map_path.exists() or not memo_path.exists():
+            pytest.skip("Repository benchmark data not available")
+        return True
+
+    def test_report_written_on_pass(self, repo_data_available, tmp_path):
+        """Report should be written when reconciliation passes."""
+        import subprocess
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "publication" / "reconcile_metrics.py"),
+                "--memo",
+                str(REPO_ROOT / "publication" / "ragas_blog_memo.md"),
+                "--summary",
+                str(REPO_ROOT / "benchmarks" / "out" / "latest" / "summary.json"),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+        )
+        report_path = REPO_ROOT / "publication" / "reconciliation_report.json"
+        assert report_path.exists(), "reconciliation_report.json should exist after pass"
+        report = json.loads(report_path.read_text())
+        assert "result" in report
+
+    def test_report_written_on_fail(self, repo_data_available, tmp_path):
+        """Report should be written even when reconciliation fails (e.g.,
+        with --speedup-tolerance 0, so any small diff triggers failure)."""
+        import subprocess
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "publication" / "reconcile_metrics.py"),
+                "--memo",
+                str(REPO_ROOT / "publication" / "ragas_blog_memo.md"),
+                "--summary",
+                str(REPO_ROOT / "benchmarks" / "out" / "latest" / "summary.json"),
+                "--speedup-tolerance",
+                "0",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+        )
+        # With tolerance=0, almost certainly some claims fail
+        report_path = REPO_ROOT / "publication" / "reconciliation_report.json"
+        assert report_path.exists(), "reconciliation_report.json should exist after fail"
+        report = json.loads(report_path.read_text())
+        assert report["result"] == "fail"
+        assert "speedup_claim_reconciliation" in report
+        # Evidence should include failure diagnostics
+        sc = report["speedup_claim_reconciliation"]
+        assert "narrative_claims" in sc
+        assert "evidence" in sc["narrative_claims"]
+
+    def test_fail_report_includes_speedup_failure_evidence(self, repo_data_available):
+        """Failed reconciliation reports should include explicit speedup-claim
+        failure evidence and diagnostics suitable for publication review."""
+        import subprocess
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "publication" / "reconcile_metrics.py"),
+                "--memo",
+                str(REPO_ROOT / "publication" / "ragas_blog_memo.md"),
+                "--summary",
+                str(REPO_ROOT / "benchmarks" / "out" / "latest" / "summary.json"),
+                "--speedup-tolerance",
+                "0",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+        )
+        report_path = REPO_ROOT / "publication" / "reconciliation_report.json"
+        assert report_path.exists()
+        report = json.loads(report_path.read_text())
+        if report["result"] == "fail":
+            sc = report["speedup_claim_reconciliation"]
+            # Check that failure evidence is diagnostic
+            for ev in sc["narrative_claims"]["evidence"]:
+                if ev["result"] == "fail":
+                    assert "memo_ratio" in ev
+                    assert "computed_ratio" in ev
+                    assert "diff" in ev
+                    assert "tolerance" in ev
+                    assert "context" in ev

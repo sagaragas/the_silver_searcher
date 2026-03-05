@@ -8,9 +8,9 @@
   "speedup_claim_reconciliation": {
     "narrative_claims": {
       "total": 13,
-      "validated_pass": 12,
+      "validated_pass": 13,
       "validated_fail": 0,
-      "skipped": 1,
+      "skipped": 0,
       "tolerance": 0.15,
       "evidence": [
         {
@@ -76,10 +76,13 @@
         {
           "line_num": 365,
           "memo_ratio": 2.0,
-          "faster": null,
-          "slower": null,
-          "result": "skipped",
-          "reason": "tool pair not identified from context",
+          "computed_ratio": 2.0268,
+          "faster": "rust-ag",
+          "slower": "ag",
+          "run_type": "local",
+          "diff": 0.0268,
+          "tolerance": 0.15,
+          "result": "pass",
           "context": "While rust-ag achieved a 2.0\u00d7 speedup over the original ag, it is"
         },
         {
