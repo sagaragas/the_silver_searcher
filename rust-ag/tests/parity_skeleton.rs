@@ -111,14 +111,27 @@ fn val_core_004_hidden_file_behavior() {
 }
 
 #[test]
-#[ignore = "requires search implementation (rust-search-core milestone)"]
 fn val_core_005_case_sensitivity() {
     // VAL-CORE-005: Case-sensitivity semantics are preserved.
-    let _output = rust_ag_bin()
-        .args(["-i", "test_pattern", "."])
+    // Full parity tests in parity_core_matching.rs.
+    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("tests/edge-cases/case-sensitivity");
+    let output = rust_ag_bin()
+        .args(["--nocolor", "--workers=1", "-i", "Hello", "."])
+        .current_dir(&fixture)
         .output()
         .expect("failed to execute rust-ag");
-    // TODO: Assert case-insensitive matching with -i.
+    assert!(
+        output.status.success(),
+        "Case-insensitive search should find matches (exit 0)"
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("hello world"),
+        "Should match case-insensitively"
+    );
 }
 
 // ---------------------------------------------------------------------------

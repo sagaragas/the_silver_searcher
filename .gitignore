@@ -34,3 +34,4 @@ parity-artifacts/
 target/
 tests/edge-cases/*/.git/
 tests/edge-cases/large-file/large.txt
+__pycache__

@@ -10,7 +10,7 @@
   "corpus_manifest_hash": "d2b70aa3de31f0f8fa88e307d83a45a5eeac65d2b030226a8f152b17fa8467f3",
   "query_manifest_hash": "644958b7d4abfa6291abbd1585003208a04f1e890db83d81f1d02ae7c573b71d",
   "manifest_hash": "602662b425bcfedf7bf10a1e5542b804c96ba4f03bd4d0fff920252b0f29474e",
-  "scenario_count": 20,
+  "scenario_count": 31,
   "scenarios": [
     {
       "id": "literal-simple",
@@ -262,6 +262,136 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --max-count=3 {pattern} {corpus}",
         "rg": "rg --no-heading --color=never --max-count=3 {pattern} {corpus}",
         "ugrep": "ugrep --color=never --max-count=3 {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "core-matching-smart-case-lower",
+      "description": "Smart-case with all-lowercase pattern (case-insensitive)",
+      "query_id": "q-case-smart-lower",
+      "corpus": "tests/edge-cases/case-sensitivity",
+      "groups": ["core-matching"],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never --smart-case {pattern} {corpus}",
+        "ugrep": "ugrep --color=never --smart-case {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "core-matching-smart-case-upper",
+      "description": "Smart-case with uppercase pattern (case-sensitive)",
+      "query_id": "q-case-smart-upper",
+      "corpus": "tests/edge-cases/case-sensitivity",
+      "groups": ["core-matching"],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never --smart-case {pattern} {corpus}",
+        "ugrep": "ugrep --color=never --smart-case {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "core-matching-case-flag-s-i",
+      "description": "Case-flag precedence: -s -i (last wins → insensitive)",
+      "query_id": "q-case-smart-lower",
+      "corpus": "tests/edge-cases/case-sensitivity",
+      "groups": ["core-matching"],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -s -i {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -s -i {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never -i {pattern} {corpus}",
+        "ugrep": "ugrep --color=never -i {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "core-matching-case-flag-i-s",
+      "description": "Case-flag precedence: -i -s (last wins → sensitive)",
+      "query_id": "q-case-smart-lower",
+      "corpus": "tests/edge-cases/case-sensitivity",
+      "groups": ["core-matching"],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -i -s {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -i -s {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never -s {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "core-matching-multiline-span",
+      "description": "Multiline regex spanning two lines",
+      "query_id": "q-multiline-span",
+      "corpus": "tests/edge-cases/multiline",
+      "groups": ["core-matching"],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never --multiline {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "core-matching-nomultiline",
+      "description": "Nomultiline: cross-line pattern should not match",
+      "query_id": "q-multiline-span",
+      "corpus": "tests/edge-cases/multiline",
+      "groups": ["core-matching"],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --nomultiline {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --nomultiline {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "core-matching-word-boundary",
+      "description": "Word-boundary matching with -w",
+      "query_id": "q-word-boundary",
+      "corpus": "tests/edge-cases/word-boundary",
+      "groups": ["core-matching"],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -w {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -w {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never -w {pattern} {corpus}",
+        "ugrep": "ugrep --color=never -w {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "core-matching-literal-escape",
+      "description": "Literal mode escapes regex metacharacters",
+      "query_id": "q-word-boundary",
+      "corpus": "tests/edge-cases/word-boundary",
+      "groups": ["core-matching"],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -Q \"foo.bar\" {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -Q \"foo.bar\" {corpus}",
+        "rg": "rg --no-heading --color=never -F \"foo.bar\" {corpus}",
+        "ugrep": "ugrep --color=never -F \"foo.bar\" {corpus}"
+      }
+    },
+    {
+      "id": "core-matching-zero-len-x-opt",
+      "description": "Zero-length optional pattern x? completes safely",
+      "query_id": "q-zero-len-x-opt",
+      "corpus": "tests/edge-cases/zero-length-regex",
+      "groups": ["core-matching"],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "core-matching-zero-len-dot-star",
+      "description": "Zero-length .* pattern completes safely with multiline",
+      "query_id": "q-zero-len-dot-star",
+      "corpus": "tests/edge-cases/zero-length-regex",
+      "groups": ["core-matching"],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
       }
     }
   ]

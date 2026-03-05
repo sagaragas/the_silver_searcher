@@ -4,6 +4,21 @@
 //! This avoids pulling in a heavy CLI framework and gives us precise control
 //! over flag precedence and interaction rules.
 
+/// Tracks which case flag was set last for "last wins" precedence.
+///
+/// In `ag`, conflicting case flags are resolved by the last one specified
+/// on the command line. For example, `-i -s` is case-sensitive (last wins),
+/// while `-s -i` is case-insensitive (last wins).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CaseMode {
+    /// Smart-case (default): insensitive if pattern is all lowercase.
+    Smart,
+    /// Explicitly case-insensitive (`-i`).
+    Insensitive,
+    /// Explicitly case-sensitive (`-s`).
+    Sensitive,
+}
+
 /// Parsed options for a single invocation.
 #[derive(Debug, Clone)]
 pub struct Opts {
@@ -21,6 +36,10 @@ pub struct Opts {
 
     /// Smart-case: case-insensitive unless pattern has uppercase (default).
     pub smart_case: bool,
+
+    /// The resolved case mode after applying "last wins" flag precedence.
+    /// This is the authoritative field for determining case behavior.
+    pub case_mode: CaseMode,
 
     /// Print only count of matches per file (`-c` / `--count`).
     pub count: bool,
@@ -149,6 +168,7 @@ impl Default for Opts {
             case_insensitive: false,
             case_sensitive: false,
             smart_case: true,
+            case_mode: CaseMode::Smart,
             count: false,
             files_with_matches: false,
             invert_match: false,
@@ -298,9 +318,18 @@ impl Opts {
                     "--invert-match" => opts.invert_match = true,
                     "--all-types" => opts.all_types = true,
                     "--all-text" => opts.all_text = true,
-                    "--ignore-case" => opts.case_insensitive = true,
-                    "--case-sensitive" => opts.case_sensitive = true,
-                    "--smart-case" => opts.smart_case = true,
+                    "--ignore-case" => {
+                        opts.case_insensitive = true;
+                        opts.case_mode = CaseMode::Insensitive;
+                    }
+                    "--case-sensitive" => {
+                        opts.case_sensitive = true;
+                        opts.case_mode = CaseMode::Sensitive;
+                    }
+                    "--smart-case" => {
+                        opts.smart_case = true;
+                        opts.case_mode = CaseMode::Smart;
+                    }
                     "--nomultiline" => opts.no_multiline = true,
                     "--multiline" => opts.multiline = true,
                     "--numbers" => opts.numbers = true,
@@ -386,9 +415,18 @@ impl Opts {
                 while i < chars.len() {
                     match chars[i] {
                         'h' => opts.help = true,
-                        'i' => opts.case_insensitive = true,
-                        's' => opts.case_sensitive = true,
-                        'S' => opts.smart_case = true,
+                        'i' => {
+                            opts.case_insensitive = true;
+                            opts.case_mode = CaseMode::Insensitive;
+                        }
+                        's' => {
+                            opts.case_sensitive = true;
+                            opts.case_mode = CaseMode::Sensitive;
+                        }
+                        'S' => {
+                            opts.smart_case = true;
+                            opts.case_mode = CaseMode::Smart;
+                        }
                         'c' => opts.count = true,
                         'l' => opts.files_with_matches = true,
                         'v' => opts.invert_match = true,

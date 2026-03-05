@@ -1,13 +1,14 @@
 /// Search engine for rust-ag.
 ///
-/// Implements line-by-line search through files, producing matches
-/// in `ag`-compatible output format.
+/// Implements file search with multiline support, producing matches
+/// in `ag`-compatible output format. By default, `ag` uses multiline
+/// matching (regex can span `\n`), and `--nomultiline` disables this.
 use std::fs;
 use std::path::Path;
 
 use regex::Regex;
 
-use crate::opts::Opts;
+use crate::opts::{CaseMode, Opts};
 
 /// A single match result.
 #[derive(Debug)]
@@ -35,20 +36,180 @@ pub fn search_file(path: &Path, re: &Regex, opts: &Opts) -> Vec<Match> {
         }
     }
 
+    // Skip empty files (ag skips 0-byte files).
+    if content.is_empty() {
+        return Vec::new();
+    }
+
     let text = match std::str::from_utf8(&content) {
         Ok(s) => s,
         Err(_) => {
             // Non-UTF8 file: try lossy conversion.
             let s = String::from_utf8_lossy(&content);
-            return search_text(path, &s, re, opts);
+            return search_text(&s, re, opts);
         }
     };
 
-    search_text(path, text, re, opts)
+    search_text(text, re, opts)
 }
 
 /// Search text content for matches.
-fn search_text(_path: &Path, text: &str, re: &Regex, opts: &Opts) -> Vec<Match> {
+///
+/// When multiline is enabled (default), uses the regex against the whole file
+/// content and maps match regions back to line numbers. When multiline is
+/// disabled (`--nomultiline`), searches line-by-line.
+fn search_text(text: &str, re: &Regex, opts: &Opts) -> Vec<Match> {
+    if opts.multiline && !opts.no_multiline {
+        search_text_multiline(text, re, opts)
+    } else {
+        search_text_line_by_line(text, re, opts)
+    }
+}
+
+/// Multiline search: run regex against the whole file content, simulating
+/// `ag`'s print-state-machine to determine which lines to report.
+///
+/// In `ag`, the regex matches are found first (against the whole buffer with
+/// `PCRE_MULTILINE`), then a byte-by-byte print loop decides which lines to
+/// display based on match positions. The print loop maintains:
+/// - `in_a_match`: whether the current byte position is inside a match region
+/// - `lines_since_last_match`: reset to 0 when entering a match, incremented
+///   at end-of-line when not inside a match
+/// - A line is printed when `lines_since_last_match == 0` at end-of-line
+///
+/// This function faithfully reproduces that state machine.
+fn search_text_multiline(text: &str, re: &Regex, opts: &Opts) -> Vec<Match> {
+    let text_bytes = text.as_bytes();
+    let buf_len = text_bytes.len();
+
+    // First pass: collect all match regions.
+    struct MatchRegion {
+        start: usize,
+        end: usize,
+    }
+    let mut regions = Vec::new();
+
+    let mut search_start = 0;
+    while let Some(m) = re.find_at(text, search_start) {
+        regions.push(MatchRegion {
+            start: m.start(),
+            end: m.end(),
+        });
+
+        if m.start() == m.end() {
+            if search_start >= buf_len {
+                break;
+            }
+            search_start = next_char_boundary(text, m.end());
+        } else {
+            search_start = m.end();
+            if search_start >= buf_len {
+                break;
+            }
+        }
+    }
+
+    if regions.is_empty() && !opts.invert_match {
+        return Vec::new();
+    }
+
+    // Second pass: simulate ag's print state machine to decide which
+    // lines to output.
+    let mut cur_match: usize = 0;
+    let mut in_a_match = false;
+    let mut lines_since_last_match: usize = usize::MAX;
+    let mut prev_line_offset: usize = 0;
+    let mut line_number: usize = 1;
+
+    // Track which lines should be printed (for invert-match, we also need
+    // to know which lines were matched).
+    let mut printed_lines: Vec<(usize, usize, usize)> = Vec::new(); // (line_number, start, end)
+
+    let mut i: usize = 0;
+    while i <= buf_len && (cur_match < regions.len() || lines_since_last_match == 0) {
+        // Check if we've entered a match region.
+        if cur_match < regions.len() && i == regions[cur_match].start {
+            in_a_match = true;
+            lines_since_last_match = 0;
+        }
+
+        // Check if we've exited a match region.
+        if cur_match < regions.len() && i == regions[cur_match].end {
+            cur_match += 1;
+            in_a_match = false;
+        }
+
+        // End of line (newline or end of buffer).
+        if i == buf_len || text_bytes[i] == b'\n' {
+            // Only print lines with actual content. Skip the phantom empty
+            // line that appears when the file ends with a newline (i.e.,
+            // prev_line_offset == buf_len means the "line" is empty and
+            // exists only because of a trailing newline).
+            if lines_since_last_match == 0 && prev_line_offset < buf_len {
+                printed_lines.push((line_number, prev_line_offset, i));
+            }
+
+            prev_line_offset = i + 1;
+            line_number += 1;
+
+            if !in_a_match && lines_since_last_match < usize::MAX {
+                lines_since_last_match = lines_since_last_match.saturating_add(1);
+            }
+        }
+
+        i += 1;
+    }
+
+    // Build the output matches.
+    if opts.invert_match {
+        // For invert-match: report lines that were NOT in printed_lines.
+        let printed_set: std::collections::HashSet<usize> =
+            printed_lines.iter().map(|&(ln, _, _)| ln).collect();
+
+        let mut matches = Vec::new();
+        let mut match_count = 0;
+        for (idx, line) in text.lines().enumerate() {
+            if !printed_set.contains(&(idx + 1)) {
+                match_count += 1;
+                if match_count > opts.max_count {
+                    break;
+                }
+                matches.push(Match {
+                    line_number: idx + 1,
+                    line: line.to_string(),
+                });
+            }
+        }
+        matches
+    } else {
+        let mut matches = Vec::new();
+        let mut match_count = 0;
+        for &(ln, start, end) in &printed_lines {
+            match_count += 1;
+            if match_count > opts.max_count {
+                break;
+            }
+            let line_text = &text[start..end];
+            matches.push(Match {
+                line_number: ln,
+                line: line_text.to_string(),
+            });
+        }
+        matches
+    }
+}
+
+/// Get the next UTF-8 character boundary after `pos`.
+fn next_char_boundary(text: &str, pos: usize) -> usize {
+    let mut next = pos + 1;
+    while next < text.len() && !text.is_char_boundary(next) {
+        next += 1;
+    }
+    next
+}
+
+/// Line-by-line search (used when `--nomultiline` is set).
+fn search_text_line_by_line(text: &str, re: &Regex, opts: &Opts) -> Vec<Match> {
     let mut matches = Vec::new();
     let mut match_count = 0;
 
@@ -78,6 +239,10 @@ fn search_text(_path: &Path, text: &str, re: &Regex, opts: &Opts) -> Vec<Match> 
 }
 
 /// Build a regex from the pattern and options.
+///
+/// Applies case-mode resolution using "last wins" flag precedence via
+/// `opts.case_mode`, multiline mode (dot-matches-newline when multiline
+/// is active), and literal/word-boundary wrapping.
 pub fn build_regex(opts: &Opts) -> Result<Regex, String> {
     let pattern = match &opts.pattern {
         Some(p) => p.clone(),
@@ -96,20 +261,26 @@ pub fn build_regex(opts: &Opts) -> Result<Regex, String> {
         regex_str = format!("\\b{regex_str}\\b");
     }
 
-    // Determine case sensitivity.
-    let case_insensitive = if opts.case_sensitive {
-        false
-    } else if opts.case_insensitive {
-        true
-    } else if opts.smart_case {
-        // Smart case: case-insensitive unless pattern has uppercase.
-        !pattern.chars().any(|c| c.is_uppercase())
-    } else {
-        false
+    // Determine case sensitivity using "last wins" precedence.
+    let case_insensitive = match opts.case_mode {
+        CaseMode::Insensitive => true,
+        CaseMode::Sensitive => false,
+        CaseMode::Smart => {
+            // Smart case: case-insensitive unless the *original* pattern
+            // (before escaping) has uppercase characters.
+            !pattern.chars().any(|c| c.is_uppercase())
+        }
     };
 
+    // ag's multiline mode uses PCRE_MULTILINE: ^ and $ match at line
+    // boundaries, but . does NOT match \n (PCRE_DOTALL is not set).
+    // The pattern can still contain literal \n to span lines.
+    // When --nomultiline is set, we search line-by-line so \n in the
+    // pattern cannot match.
     let re = regex::RegexBuilder::new(&regex_str)
         .case_insensitive(case_insensitive)
+        .multi_line(true) // ^ and $ match at line boundaries
+        .dot_matches_new_line(false) // . does NOT match \n (matches ag/PCRE)
         .build()
         .map_err(|e| format!("Invalid regex pattern: {e}"))?;
 

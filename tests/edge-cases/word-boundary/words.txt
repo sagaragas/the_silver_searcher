@@ -1,0 +1,7 @@
+foobar
+foo bar
+foo.bar
+hellofooworld
+hello foo world
+foo
+barfoo
