@@ -1,0 +1,119 @@
+{
+  "milestone": "rust-search-core",
+  "groupId": "core-edge-cases",
+  "assignedAssertions": [
+    "VAL-CORE-007",
+    "VAL-CORE-008",
+    "VAL-CORE-011",
+    "VAL-CORE-014"
+  ],
+  "results": [
+    {
+      "id": "VAL-CORE-007",
+      "status": "pass",
+      "reason": "Binary handling parity validated: default mode skipped binary files and binary-enabled mode surfaced binary matches with baseline-compatible behavior.",
+      "evidence": [
+        {
+          "command": "cargo test --manifest-path /Users/ragas/code/missions/the_silver_searcher/rust-ag/Cargo.toml --test parity_core_edge_cases val_core_007 -- --nocapture",
+          "exitCode": 0,
+          "observation": "Targeted parity suite passed (9 passed, 0 failed)."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/ag --nocolor --workers=1 --parallel --noaffinity NEEDLE /Users/ragas/code/missions/the_silver_searcher/tests/edge-cases/binary-files",
+          "exitCode": 0,
+          "observation": "Baseline default output returned only text-file.txt match; no binary-file.bin or mixed-binary.dat match lines."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/target/debug/rust-ag --nocolor --workers=1 --parallel --noaffinity --search-binary NEEDLE /Users/ragas/code/missions/the_silver_searcher/tests/edge-cases/binary-files",
+          "exitCode": 0,
+          "observation": "Rewrite emitted expected \"Binary file ... matches.\" lines for binary-file.bin and mixed-binary.dat and retained text-file.txt match output."
+        }
+      ]
+    },
+    {
+      "id": "VAL-CORE-008",
+      "status": "pass",
+      "reason": "Symlink traversal and one-device behavior matched baseline policy on this platform, including broken-symlink diagnostics and platform applicability metadata.",
+      "evidence": [
+        {
+          "command": "cargo test --manifest-path /Users/ragas/code/missions/the_silver_searcher/rust-ag/Cargo.toml --test parity_core_edge_cases val_core_008 -- --nocapture",
+          "exitCode": 0,
+          "observation": "Targeted parity suite passed (6 passed, 0 failed), covering default symlink behavior, -f traversal, --one-device, and platform marker checks."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/ag --nocolor --workers=1 --parallel --noaffinity -f NEEDLE /Users/ragas/code/missions/the_silver_searcher/tests/edge-cases/symlink-traversal",
+          "exitCode": 0,
+          "observation": "Baseline included link-to-file, real-dir/real-file.txt, and link-to-dir/real-file.txt; stderr contained broken-link ERR diagnostic."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/target/debug/rust-ag --nocolor --workers=1 --parallel --noaffinity --one-device NEEDLE /Users/ragas/code/missions/the_silver_searcher/tests/edge-cases/one-device",
+          "exitCode": 0,
+          "observation": "Rewrite returned the same two one-device fixture matches as baseline (local-file.txt and subdir/nested.txt), with no stderr errors."
+        },
+        {
+          "command": "python3 - <<'PY' ... read tests/edge-cases/platform_metadata.json fixture_applicability[\"one-device\"] ... PY",
+          "exitCode": 0,
+          "observation": "Metadata reports one-device cross-device applicability as unsupported on this macOS host (supported=false, Linux-specific /dev/shm note), satisfying platform applicability evidence requirement."
+        }
+      ]
+    },
+    {
+      "id": "VAL-CORE-011",
+      "status": "pass",
+      "reason": "Large-file behavior matched baseline for regex and literal paths, with expected deep-line matches present and no diagnostics.",
+      "evidence": [
+        {
+          "command": "cargo test --manifest-path /Users/ragas/code/missions/the_silver_searcher/rust-ag/Cargo.toml --test parity_core_edge_cases val_core_011 -- --nocapture",
+          "exitCode": 0,
+          "observation": "Targeted parity suite passed (3 passed, 0 failed)."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/ag --nocolor --workers=1 --parallel --noaffinity NEEDLE /Users/ragas/code/missions/the_silver_searcher/tests/edge-cases/large-file",
+          "exitCode": 0,
+          "observation": "Baseline regex path returned expected large.txt line positions 1, 10001, 20001, 30001 plus normal.txt match; stderr empty."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/target/debug/rust-ag --nocolor --workers=1 --parallel --noaffinity -Q NEEDLE /Users/ragas/code/missions/the_silver_searcher/tests/edge-cases/large-file",
+          "exitCode": 0,
+          "observation": "Rewrite literal path returned the same five match lines and no stderr diagnostics."
+        }
+      ]
+    },
+    {
+      "id": "VAL-CORE-014",
+      "status": "pass",
+      "reason": "Max-count semantics, diagnostics, and --max-count=0 unlimited behavior were parity-validated against baseline for both normal and inverted search paths.",
+      "evidence": [
+        {
+          "command": "cargo test --manifest-path /Users/ragas/code/missions/the_silver_searcher/rust-ag/Cargo.toml --test parity_core_edge_cases val_core_014 -- --nocapture",
+          "exitCode": 0,
+          "observation": "Targeted parity suite passed (21 passed, 0 failed), including max-count truncation, diagnostics, invert mode, and -m0 unlimited edge cases."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/ag --nocolor --workers=1 --parallel --noaffinity --max-count=3 NEEDLE /Users/ragas/code/missions/the_silver_searcher/tests/edge-cases/max-count",
+          "exitCode": 0,
+          "observation": "Baseline truncated per file at 3 matches and emitted per-file \"Too many matches\" diagnostics on stderr."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/target/debug/rust-ag --nocolor --workers=1 --parallel --noaffinity --max-count=3 NEEDLE /Users/ragas/code/missions/the_silver_searcher/tests/edge-cases/max-count",
+          "exitCode": 0,
+          "observation": "Rewrite matched baseline truncation and diagnostics behavior (line ordering differences are normalized by parity tests)."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/target/debug/rust-ag --nocolor --workers=1 --parallel --noaffinity --nomultiline -m0 -v NEEDLE /Users/ragas/code/missions/the_silver_searcher/tests/edge-cases/max-count/all-match-12050.txt",
+          "exitCode": 1,
+          "observation": "Rewrite produced 0 stdout lines and 0 stderr lines with exit 1, matching baseline unlimited (-m0) invert semantics on all-match high-count fixture."
+        }
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "cargo test",
+    "ag",
+    "rust-ag",
+    "python3"
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 4 assigned core edge-case assertions on CLI surface: 4 passed, 0 failed, 0 blocked."
+}
