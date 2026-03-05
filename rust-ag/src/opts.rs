@@ -104,6 +104,9 @@ pub struct Opts {
     /// Disable colour output (`--nocolor`).
     pub no_color: bool,
 
+    /// Enable colour output (`--color`).
+    pub color: bool,
+
     /// Number of worker threads (`--workers=N`). Accepted but currently unused.
     pub workers: Option<usize>,
 
@@ -220,6 +223,7 @@ impl Default for Opts {
             recurse_mode: RecurseMode::Recurse,
             max_depth: 25,
             no_color: false,
+            color: false,
             workers: None,
             parallel: false,
             no_affinity: false,
@@ -357,8 +361,14 @@ impl Opts {
                         opts.recurse = true;
                         opts.recurse_mode = RecurseMode::Recurse;
                     }
-                    "--nocolor" | "--no-color" => opts.no_color = true,
-                    "--color" => opts.no_color = false,
+                    "--nocolor" | "--no-color" => {
+                        opts.no_color = true;
+                        opts.color = false;
+                    }
+                    "--color" => {
+                        opts.color = true;
+                        opts.no_color = false;
+                    }
                     "--parallel" => opts.parallel = true,
                     "--noaffinity" => opts.no_affinity = true,
                     "--literal" => opts.literal = true,
@@ -631,17 +641,27 @@ impl Opts {
             positional.push(a.to_string());
         }
 
-        // Assign positional args: first is pattern, rest are paths.
-        if let Some(pat) = positional.first() {
-            opts.pattern = Some(pat.clone());
-        }
-        if positional.len() > 1 {
-            opts.paths = positional[1..].to_vec();
-            opts.paths_were_explicit = true;
+        // Assign positional args.
+        // When -g is set, all positional args are paths (no content pattern needed).
+        // Otherwise, first positional is the pattern, rest are paths.
+        if opts.filename_pattern.is_some() {
+            // -g mode: all positional args are paths.
+            if !positional.is_empty() {
+                opts.paths = positional;
+                opts.paths_were_explicit = true;
+            }
+        } else {
+            if let Some(pat) = positional.first() {
+                opts.pattern = Some(pat.clone());
+            }
+            if positional.len() > 1 {
+                opts.paths = positional[1..].to_vec();
+                opts.paths_were_explicit = true;
+            }
         }
 
         // If no paths specified, default to current directory.
-        if opts.paths.is_empty() && opts.pattern.is_some() {
+        if opts.paths.is_empty() && (opts.pattern.is_some() || opts.filename_pattern.is_some()) {
             opts.paths.push(".".to_string());
             // paths_were_explicit remains false — no paths were given
         }
