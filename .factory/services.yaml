@@ -15,7 +15,10 @@ commands:
   edge_fixtures_setup_verify: python3 tests/edge-cases/setup_fixtures.py --verify
   benchmark_smoke: python3 benchmarks/harness.py smoke --comparators rust ag rg ugrep
   benchmark_validate_latest: python3 benchmarks/validate_manifest.py --run latest
-  benchmark_tests: python3 -m pytest benchmarks/tests/test_manifest_integrity.py -v
+  benchmark_tests: python3 -m pytest benchmarks/tests/ -v
+  benchmark_correctness_gate: python3 benchmarks/correctness_gate.py --run latest
+  benchmark_validate_env_metadata: python3 benchmarks/validate_env_metadata.py --run latest
+  benchmark_verify_manifest_hashes: python3 benchmarks/manifest_pinning.py verify --run latest
   publication_gate: python3 publication/check_claims.py --memo publication/ragas_blog_memo.md
 
 services: {}

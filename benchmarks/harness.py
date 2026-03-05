@@ -273,7 +273,7 @@ def _build_env() -> dict[str, str]:
 
 
 def _collect_environment_metadata() -> dict[str, Any]:
-    """Collect environment metadata for the run."""
+    """Collect basic environment metadata for inline run manifest."""
     return {
         "timestamp": _now_iso(),
         "platform": {
@@ -284,6 +284,22 @@ def _collect_environment_metadata() -> dict[str, Any]:
         },
         "commit_sha": _git_sha(),
     }
+
+
+def _collect_full_environment_metadata() -> dict[str, Any]:
+    """Collect full environment metadata (VAL-BENCH-005).
+
+    Delegates to validate_env_metadata module for comprehensive capture
+    including CPU, memory, and toolchain info.
+    """
+    try:
+        from validate_env_metadata import collect_full_environment_metadata
+        return collect_full_environment_metadata()
+    except ImportError:
+        # Fallback to basic metadata if module not available.
+        meta = _collect_environment_metadata()
+        meta["schema_version"] = 1
+        return meta
 
 
 # ---------------------------------------------------------------------------
@@ -322,11 +338,14 @@ def execute_scenario_cell(
         elapsed = time.monotonic() - start
         stdout_bytes = result.stdout
         stderr_text = result.stderr.decode("utf-8", errors="replace")
+        # Sorted hash for order-independent correctness comparison.
+        sorted_lines = b"\n".join(sorted(stdout_bytes.split(b"\n")))
         return {
             "command": cmd_str,
             "exit_code": result.returncode,
             "elapsed_s": round(elapsed, 6),
             "stdout_hash": hashlib.sha256(stdout_bytes).hexdigest(),
+            "stdout_sorted_hash": hashlib.sha256(sorted_lines).hexdigest(),
             "stdout_bytes": len(stdout_bytes),
             "stderr_excerpt": stderr_text[:500] if stderr_text else "",
             "timed_out": False,
@@ -571,12 +590,26 @@ def run_smoke(
     # Write tools metadata as separate artifact.
     _write_json(output_dir / "tools_metadata.json", tools_meta)
 
+    # Write full environment metadata artifact (VAL-BENCH-005).
+    full_env = _collect_full_environment_metadata()
+    _write_json(output_dir / "environment_metadata.json", full_env)
+
+    # Run correctness gate (VAL-BENCH-004).
+    try:
+        from correctness_gate import check_correctness
+        gate_result = check_correctness(run_manifest, output_dir)
+        gate_status = gate_result["gate"].upper()
+    except ImportError:
+        gate_status = "SKIPPED (module not available)"
+
     # Print summary.
     print(f"\nSmoke run complete: {run_id}")
     print(f"  Output: {output_dir}")
     print(f"  Cells: {executed_cells} executed, {skipped_cells} skipped, {error_cells} errors")
-    print(f"  Tools metadata: {output_dir / 'tools_metadata.json'}")
-    print(f"  Command equiv:  {output_dir / 'command_equivalence.json'}")
+    print(f"  Tools metadata:    {output_dir / 'tools_metadata.json'}")
+    print(f"  Command equiv:     {output_dir / 'command_equivalence.json'}")
+    print(f"  Env metadata:      {output_dir / 'environment_metadata.json'}")
+    print(f"  Correctness gate:  {gate_status}")
 
     # Print version summary.
     print(f"\n  Comparator versions:")
