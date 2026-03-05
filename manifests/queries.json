@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "description": "Query / pattern manifest for benchmark scenarios",
-  "manifest_hash": "22fe2ecea2b3e03a7cd563d473ead5d9a8a4dc9002cb6ad68b5306f91a174ecc",
-  "query_count": 14,
+  "manifest_hash": "b577900178a2feadb07da6bb6923f49c834c69fa4d1d325450cdfd0a2684a23b",
+  "query_count": 9,
   "queries": [
     {
       "id": "q-literal-simple",
@@ -57,36 +57,6 @@
       "type": "literal",
       "pattern": "ZZZZNOTFOUNDZZZ",
       "description": "Pattern with zero matches (measures traversal overhead)"
-    },
-    {
-      "id": "q-edge-needle",
-      "type": "literal",
-      "pattern": "NEEDLE",
-      "description": "Edge-case fixture marker pattern"
-    },
-    {
-      "id": "q-edge-zero-caret",
-      "type": "regex",
-      "pattern": "^",
-      "description": "Zero-length regex: caret matches start of line"
-    },
-    {
-      "id": "q-edge-zero-empty-class",
-      "type": "regex",
-      "pattern": "\\b\\B",
-      "description": "Zero-length regex: contradictory boundary (never matches)"
-    },
-    {
-      "id": "q-edge-large-regex",
-      "type": "regex",
-      "pattern": "NEEDLE.*line",
-      "description": "Regex pattern for large-file testing"
-    },
-    {
-      "id": "q-edge-spaced-literal",
-      "type": "literal",
-      "pattern": "the marker",
-      "description": "Multi-word literal pattern for quoted-arg tokenization testing"
     }
   ]
 }

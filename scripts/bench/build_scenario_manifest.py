@@ -7,6 +7,16 @@ commands for all comparators (ag, rust-ag, rg, ugrep).  Emits:
   - manifests/corpus.json      – corpus file inventory with hashes
   - manifests/queries.json     – query / pattern inventory with hashes
 
+Reproducibility strategy:
+    Only git-tracked files are included in the corpus manifest.  Build-
+    generated artifacts (object files, autoconf outputs, dependency caches,
+    etc.) are excluded via a two-layer filter:
+      1. ``git ls-files`` restricts the file set to version-controlled
+         content (the authoritative "clean checkout" view).
+      2. An explicit EXCLUDE set catches tracked-but-generated files and
+         transient outputs.
+    Broken symlinks are silently skipped.
+
 Usage:
     python3 scripts/bench/build_scenario_manifest.py          # generate
     python3 scripts/bench/build_scenario_manifest.py --verify  # verify existing
@@ -18,6 +28,7 @@ import argparse
 import hashlib
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -250,6 +261,42 @@ SCENARIOS: list[dict[str, Any]] = [
 ]
 
 # ---------------------------------------------------------------------------
+# Exclude rules – explicit patterns for build-generated / volatile files.
+#
+# These mirror the rules in build_fixture_manifest.py so both manifests
+# use the same reproducibility strategy.
+# ---------------------------------------------------------------------------
+
+# Directories to exclude (matched against every path component).
+EXCLUDE_DIRS: set[str] = {
+    ".deps",
+    "__pycache__",
+    ".pytest_cache",
+    ".git",
+}
+
+# File extensions to exclude.
+EXCLUDE_EXTENSIONS: set[str] = {
+    ".o",
+    ".pyc",
+    ".pyo",
+    ".err",
+    ".trs",
+    ".log",
+    ".dSYM",
+    ".Po",
+}
+
+# Exact filenames to exclude (matched against the basename).
+EXCLUDE_FILENAMES: set[str] = {
+    ".dirstamp",
+    ".DS_Store",
+    "stamp-h1",
+    "config.h",
+}
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -272,30 +319,85 @@ def _content_hash(obj: Any) -> str:
     return _sha256_string(blob)
 
 
+def _should_skip(rel: str) -> bool:
+    """Return True if the relative path should be excluded from the manifest."""
+    parts = rel.replace("\\", "/").split("/")
+    basename = parts[-1]
+
+    # Directory-component match.
+    if any(p in EXCLUDE_DIRS for p in parts[:-1]):
+        return True
+
+    # Extension match.
+    _, ext = os.path.splitext(basename)
+    if ext in EXCLUDE_EXTENSIONS:
+        return True
+
+    # Exact filename match.
+    if basename in EXCLUDE_FILENAMES:
+        return True
+
+    return False
+
+
+def _git_tracked_files(directories: list[str]) -> set[str]:
+    """Return the set of git-tracked relative paths under *directories*.
+
+    Uses ``git ls-files`` so that build-generated files absent from version
+    control are automatically excluded.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "--cached", "--"] + directories,
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            return set()
+        return {line for line in result.stdout.splitlines() if line}
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return set()
+
+
 def _collect_corpus(corpus_dirs: list[str]) -> list[dict[str, Any]]:
-    """Walk corpus directories and collect file entries with hashes."""
+    """Walk corpus directories and collect file entries with hashes.
+
+    Only git-tracked files that pass the EXCLUDE rules are included.
+    Broken symlinks and unreadable files are silently skipped.
+    """
+    tracked = _git_tracked_files(corpus_dirs)
     entries: list[dict[str, Any]] = []
-    skip = {".deps", ".dirstamp", "__pycache__", ".o", ".pyc"}
     for cdir in corpus_dirs:
         base = REPO_ROOT / cdir
         if not base.is_dir():
             continue
         for root_str, dirs, files in os.walk(base, followlinks=False):
             root = Path(root_str)
-            dirs[:] = sorted(d for d in dirs if d not in skip)
+            dirs[:] = sorted(d for d in dirs if d not in EXCLUDE_DIRS)
             for fname in sorted(files):
                 fpath = root / fname
-                # Skip object files and other build artifacts.
-                if fpath.suffix in {".o", ".pyc"}:
-                    continue
                 rel = str(fpath.relative_to(REPO_ROOT))
-                entries.append(
-                    {
-                        "path": rel,
-                        "size": fpath.stat().st_size,
-                        "sha256": _sha256_file(fpath),
-                    }
-                )
+                rel_posix = rel.replace("\\", "/")
+                if _should_skip(rel_posix):
+                    continue
+                # Only include git-tracked files.
+                if tracked and rel_posix not in tracked:
+                    continue
+                # Skip broken symlinks.
+                if fpath.is_symlink() and not fpath.exists():
+                    continue
+                try:
+                    entries.append(
+                        {
+                            "path": rel,
+                            "size": fpath.stat().st_size,
+                            "sha256": _sha256_file(fpath),
+                        }
+                    )
+                except OSError:
+                    continue
     entries.sort(key=lambda e: e["path"])
     return entries
 
