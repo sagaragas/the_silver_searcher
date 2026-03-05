@@ -1,22 +1,28 @@
 {
   "featureId": "rust-core-binary-symlink-largefile-maxcount-fix",
-  "reviewedAt": "2026-03-05T11:54:01Z",
-  "commitId": "4df8c502e81c996e8f323dc1c74b966521054941",
+  "reviewedAt": "2026-03-05T12:13:17Z",
+  "commitId": "e624bd03b9f2c92ed05925f0bae45046699e9c1f",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
   "status": "fail",
   "codeReview": {
-    "summary": "The fix addresses the two originally reported parity gaps (binary -c/-l handling and invert-match max-count basis), but introduces a new blocking max-count edge-case regression in --nomultiline + -v when --max-count=0.",
+    "summary": "The rerun fixes the prior underflow panic path for small fixtures, but the new implementation still fails parity for `--max-count=0` by treating 0 as a hard 10,000 cap instead of unlimited behavior, so the feature remains blocking.",
     "issues": [
       {
-        "file": "rust-ag/src/search.rs",
-        "line": 351,
+        "file": "rust-ag/src/opts.rs",
+        "line": 645,
         "severity": "blocking",
-        "description": "In search_text_line_by_line(), scan_end uses .nth(opts.max_count - 1), which underflows at --max-count=0. This causes a debug panic (`attempt to subtract with overflow`) and release-mode parity break. Repro: `cargo run -q -p rust-ag -- --nocolor --nomultiline -m0 -v NEEDLE tests/edge-cases/max-count/few-matches.txt` panics, while baseline `./ag --nocolor --nomultiline -m0 -v ...` exits 0 with only non-matching lines and no ERR diagnostic."
+        "description": "`Opts::parse()` normalizes `--max-count=0` to `DEFAULT_MAX_COUNT` (10,000), which diverges from ag semantics where 0 means unlimited. This still breaks `--nomultiline -m0 -v` on high-match files: with a 12,050-line all-match file, `./ag --nocolor --nomultiline -m0 -v NEEDLE /tmp/max0_all_match.txt` exits 1 with empty stdout/stderr, but `cargo run -q -p rust-ag -- --nocolor --nomultiline -m0 -v NEEDLE /tmp/max0_all_match.txt` exits 0, prints 2,050 lines, and emits `ERR: Too many matches...` due to the 10,000 cutoff."
       }
     ]
   },
-  "sharedStateObservations": [],
-  "addressesFailureFrom": ".factory/validation/rust-search-core/scrutiny/reviews/rust-core-binary-symlink-largefile-maxcount.json",
-  "summary": "Reviewed fix transcript skeleton plus both diffs (89d4bad and 4df8c50). Original failures are targeted, but the fix is not ready to pass due to a new blocking max-count=0 invert-match regression in line-by-line mode."
+  "sharedStateObservations": [
+    {
+      "area": "knowledge",
+      "observation": "Baseline max-count semantics are easy to misread because help text and implementation differ; this should be captured in shared library notes for parity work.",
+      "evidence": "`src/options.c:97` says max-count default is 10,000, but `src/options.c:157` initializes `opts.max_matches_per_file = 0` and `src/search.c:109`/`132`/`164` gate truncation behind `opts.max_matches_per_file > 0`, making 0 effectively unlimited."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/rust-search-core/scrutiny/reviews/rust-core-binary-symlink-largefile-maxcount-fix.json",
+  "summary": "Reviewed fix transcript skeleton and both relevant diffs (4df8c50 prior failed fix, e624bd0 rerun). The rerun removes the underflow panic but still fails parity because `-m0` is capped at 10,000 instead of unlimited; review remains fail."
 }

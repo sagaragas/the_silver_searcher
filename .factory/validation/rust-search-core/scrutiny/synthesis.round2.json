@@ -1,6 +1,6 @@
 {
   "milestone": "rust-search-core",
-  "round": 3,
+  "round": 2,
   "status": "fail",
   "validatorsRun": {
     "test": {
@@ -20,8 +20,8 @@
     }
   },
   "reviewsSummary": {
-    "total": 1,
-    "passed": 0,
+    "total": 3,
+    "passed": 2,
     "failed": 1,
     "failedFeatures": [
       "rust-core-binary-symlink-largefile-maxcount-fix"
@@ -31,17 +31,34 @@
     {
       "featureId": "rust-core-binary-symlink-largefile-maxcount-fix",
       "severity": "blocking",
-      "description": "`Opts::parse()` maps `--max-count=0` to `DEFAULT_MAX_COUNT` (10,000), but baseline ag treats max-count 0 as unlimited; high-match `--nomultiline -m0 -v` runs still diverge (rust-ag emits `ERR: Too many matches...` and exits 0 while baseline exits 1 without diagnostics)."
+      "description": "`search_text_line_by_line()` computes `.nth(opts.max_count - 1)` for invert-match scan bounds, which underflows at `--max-count=0` and causes panic/parity break in `--nomultiline -v` flows."
     }
   ],
   "appliedUpdates": [
     {
-      "target": "library",
-      "description": "Recorded baseline max-count semantics note (`-m0` effectively unlimited) in `.factory/library/architecture.md` to prevent future parity misreads.",
-      "sourceFeature": "rust-core-binary-symlink-largefile-maxcount-fix"
+      "target": "services.yaml",
+      "description": "Added `parity_core_ignore_recursion_rust` command for rust parity matrix validation.",
+      "sourceFeature": "rust-core-recursion-ignore-hidden-fix"
+    },
+    {
+      "target": "services.yaml",
+      "description": "Added `parity_core_matching_rust` command for rust core-matching parity runs.",
+      "sourceFeature": "rust-core-case-multiline-word-boundary-fix"
     }
   ],
-  "suggestedGuidanceUpdates": [],
-  "rejectedObservations": [],
-  "previousRound": ".factory/validation/rust-search-core/scrutiny/synthesis.round2.json"
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "rewrite-worker skill",
+      "suggestion": "Require explicit handoff evidence of red-to-green test-first flow (failing test signal before implementation edits) for fix features.",
+      "evidence": "Review `rust-core-case-multiline-word-boundary-fix` observed implementation edits before parity test additions despite test-first guidance in skill/AGENTS.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Add rust parity commands to services.yaml.",
+      "reason": "duplicate"
+    }
+  ],
+  "previousRound": ".factory/validation/rust-search-core/scrutiny/synthesis.round1.json"
 }

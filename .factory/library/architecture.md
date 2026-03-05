@@ -27,3 +27,7 @@ Architectural decisions and patterns for this mission.
 - No undocumented behavior changes from baseline in parity scope.
 - No performance claim without claim-gate artifacts.
 - Public publication commit must be traceable to measured evidence artifacts.
+
+## Baseline Semantics Notes
+
+- `ag` treats `--max-count=0` as effectively unlimited because truncation in `src/search.c` is gated on `opts.max_matches_per_file > 0`, even though help text mentions a default max-count of 10,000.
