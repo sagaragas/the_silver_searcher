@@ -1,0 +1,34 @@
+{
+  "featureId": "rust-core-binary-symlink-largefile-maxcount",
+  "reviewedAt": "2026-03-05T11:16:06Z",
+  "commitId": "89d4badfb2bca5262353a3f28fbbb198291dc6b4",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "Implementation covers core happy paths, but two blocking parity regressions remain: binary-match output ignores -c/-l semantics in binary-enabled mode, and max-count diagnostics are computed from reportable lines (affected by -v) instead of baseline match-count behavior.",
+    "issues": [
+      {
+        "file": "rust-ag/src/main.rs",
+        "line": 72,
+        "severity": "blocking",
+        "description": "Binary files are handled before mode-specific output logic, so --search-binary/-u with -c or -l prints 'Binary file X matches.' instead of ag-parity count/filename output (reproduced on tests/edge-cases/binary-files with --search-binary -c and --search-binary -l)."
+      },
+      {
+        "file": "rust-ag/src/search.rs",
+        "line": 357,
+        "severity": "blocking",
+        "description": "max_count_hit uses count_total_matches() based on reportable lines and invert-match branching, which diverges from ag diagnostics for -v (e.g., --max-count=3 -v NEEDLE few-matches.txt emits ERR in ag but not in rust-ag)."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "rewrite-worker procedure does not explicitly remind workers to update scenario grouping/manifests when introducing new parity matrix groups.",
+      "evidence": "handoff.skillFeedback.suggestedChanges includes: 'The rewrite-worker skill could mention updating manifest hashes when adding scenario groups to scenarios.json'; commit also updates manifests/scenarios.json with core-edge-cases tags."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed transcript skeleton and commit diff for rust-core-binary-symlink-largefile-maxcount. Found two blocking parity gaps in binary-enabled mode handling and max-count diagnostics under invert-match, so this feature review fails pending fixes."
+}
