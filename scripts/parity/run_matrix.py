@@ -63,6 +63,9 @@ BASELINE_TARGETS = {"ag", "baseline"}
 # Every comparator that the manifest can define.
 ALL_COMPARATORS = {"ag", "rust-ag", "rg", "ugrep"}
 
+# Convenience aliases for target names.
+TARGET_ALIASES = {"baseline": "ag", "rust": "rust-ag"}
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -121,10 +124,12 @@ def _resolve_binary(name: str) -> str | None:
             return str(local)
         return shutil.which("ag")
     if name == "rust-ag":
-        # Try cargo target dir first, then PATH.
+        # Try cargo target dir first (release then debug), then PATH.
         for candidate in [
             REPO_ROOT / "target" / "release" / "rust-ag",
+            REPO_ROOT / "target" / "debug" / "rust-ag",
             REPO_ROOT / "rust-ag" / "target" / "release" / "rust-ag",
+            REPO_ROOT / "rust-ag" / "target" / "debug" / "rust-ag",
         ]:
             if candidate.is_file() and os.access(candidate, os.X_OK):
                 return str(candidate)
@@ -347,10 +352,9 @@ def run_matrix(
     # Resolve targets.
     resolved_targets: list[str] = []
     for t in targets:
-        if t == "baseline":
-            resolved_targets.append("ag")
-        elif t in ALL_COMPARATORS:
-            resolved_targets.append(t)
+        resolved = TARGET_ALIASES.get(t, t)
+        if resolved in ALL_COMPARATORS:
+            resolved_targets.append(resolved)
         else:
             print(f"ERROR: Unknown target '{t}'", file=sys.stderr)
             sys.exit(1)
