@@ -78,13 +78,20 @@ def _collect_entries(fixture_dirs: list[str]) -> list[dict[str, Any]]:
                 rel = str(fpath.relative_to(REPO_ROOT))
                 if _should_skip(rel):
                     continue
-                entries.append(
-                    {
-                        "path": rel,
-                        "size": fpath.stat().st_size,
-                        "sha256": _sha256_file(fpath),
-                    }
-                )
+                # Skip broken symlinks (they can't be stat'd or hashed).
+                if fpath.is_symlink() and not fpath.exists():
+                    continue
+                try:
+                    entries.append(
+                        {
+                            "path": rel,
+                            "size": fpath.stat().st_size,
+                            "sha256": _sha256_file(fpath),
+                        }
+                    )
+                except OSError:
+                    # Skip files that can't be read (permissions, broken links, etc.)
+                    continue
     # Final sort by path for deterministic output regardless of walk order.
     entries.sort(key=lambda e: e["path"])
     return entries

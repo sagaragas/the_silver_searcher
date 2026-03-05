@@ -31,3 +31,5 @@ tests/big/*.err
 tests/big/big_file.txt
 the_silver_searcher.spec
 parity-artifacts/
+tests/edge-cases/*/.git/
+tests/edge-cases/large-file/large.txt

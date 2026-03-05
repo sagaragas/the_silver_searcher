@@ -8,9 +8,9 @@
     "ugrep"
   ],
   "corpus_manifest_hash": "59a804f244ddfe4a2a3d5932fb85f2e2cbf166da6cd30bb1a138e9183984144a",
-  "query_manifest_hash": "b577900178a2feadb07da6bb6923f49c834c69fa4d1d325450cdfd0a2684a23b",
-  "manifest_hash": "356b418aed618820218202ccbbdc6d6994d0eeaa4aa36c9e8873e4e2a7a9d6b8",
-  "scenario_count": 12,
+  "query_manifest_hash": "2ecebb6e3bb8953f18a0bfad614e3b48e1964b8d235eba8d279973a6587036c6",
+  "manifest_hash": "e3989d4f1b3cc94a9205a4f14c1fa1b471f027e99a5eff47881fe7dfdc6aae5c",
+  "scenario_count": 27,
   "scenarios": [
     {
       "id": "literal-simple",
@@ -22,7 +22,10 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rg": "rg --no-heading --color=never {pattern} {corpus}",
         "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "smoke"
+      ]
     },
     {
       "id": "literal-word",
@@ -34,7 +37,10 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rg": "rg --no-heading --color=never {pattern} {corpus}",
         "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "core"
+      ]
     },
     {
       "id": "literal-rare",
@@ -46,7 +52,10 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rg": "rg --no-heading --color=never {pattern} {corpus}",
         "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "core"
+      ]
     },
     {
       "id": "literal-nomatch",
@@ -58,7 +67,10 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rg": "rg --no-heading --color=never {pattern} {corpus}",
         "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "smoke"
+      ]
     },
     {
       "id": "regex-simple",
@@ -70,7 +82,10 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rg": "rg --no-heading --color=never {pattern} {corpus}",
         "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "smoke"
+      ]
     },
     {
       "id": "regex-class",
@@ -82,7 +97,10 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rg": "rg --no-heading --color=never {pattern} {corpus}",
         "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "core"
+      ]
     },
     {
       "id": "regex-complex",
@@ -94,7 +112,10 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rg": "rg --no-heading --color=never {pattern} {corpus}",
         "ugrep": "ugrep --color=never {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "core"
+      ]
     },
     {
       "id": "literal-nocase",
@@ -106,7 +127,10 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -i {pattern} {corpus}",
         "rg": "rg --no-heading --color=never -i {pattern} {corpus}",
         "ugrep": "ugrep --color=never -i {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "core"
+      ]
     },
     {
       "id": "context-before-after",
@@ -118,7 +142,10 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -B2 -A2 {pattern} {corpus}",
         "rg": "rg --no-heading --color=never -B2 -A2 {pattern} {corpus}",
         "ugrep": "ugrep --color=never -B2 -A2 {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "core"
+      ]
     },
     {
       "id": "count-matches",
@@ -130,7 +157,10 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --count {pattern} {corpus}",
         "rg": "rg --no-heading --color=never --count {pattern} {corpus}",
         "ugrep": "ugrep --color=never --count {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "smoke"
+      ]
     },
     {
       "id": "files-with-matches",
@@ -142,7 +172,10 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -l {pattern} {corpus}",
         "rg": "rg --no-heading --color=never -l {pattern} {corpus}",
         "ugrep": "ugrep --color=never -l {pattern} {corpus}"
-      }
+      },
+      "groups": [
+        "smoke"
+      ]
     },
     {
       "id": "literal-src-only",
@@ -154,6 +187,242 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rg": "rg --no-heading --color=never {pattern} {corpus}",
         "ugrep": "ugrep --color=never {pattern} {corpus}"
+      },
+      "groups": [
+        "core"
+      ]
+    },
+    {
+      "id": "edge-ignore-default",
+      "description": "Default ignore behavior: .gitignore + .ignore + git/info/exclude all respected",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/ignore-source",
+      "groups": [
+        "edge-cases"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-ignore-u-flag",
+      "description": "-U flag skips VCS ignores but keeps .ignore rules",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/ignore-source",
+      "groups": [
+        "edge-cases"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -U {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -U {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never --no-require-git {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-hidden-default",
+      "description": "Default behavior excludes hidden files/dirs",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/hidden-files",
+      "groups": [
+        "edge-cases"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-hidden-flag",
+      "description": "--hidden flag includes hidden files/dirs in results",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/hidden-files",
+      "groups": [
+        "edge-cases"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --hidden {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --hidden {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never --hidden {pattern} {corpus}",
+        "ugrep": "ugrep --color=never --hidden {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-binary-default",
+      "description": "Default behavior skips binary files",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/binary-files",
+      "groups": [
+        "edge-cases"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-binary-search",
+      "description": "--search-binary includes binary file matches",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/binary-files",
+      "groups": [
+        "edge-cases"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --search-binary {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --search-binary {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never -a {pattern} {corpus}",
+        "ugrep": "ugrep --color=never --binary {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-symlink-default",
+      "description": "Default behavior does not follow symlinks into directories",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/symlink-traversal",
+      "groups": [
+        "edge-cases"
+      ],
+      "platform_skip": {
+        "condition": "symlinks_unsupported",
+        "reason": "Symlink creation not available on this platform"
+      },
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-symlink-follow",
+      "description": "-f flag follows symlinks into directories and files",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/symlink-traversal",
+      "groups": [
+        "edge-cases"
+      ],
+      "platform_skip": {
+        "condition": "symlinks_unsupported",
+        "reason": "Symlink creation not available on this platform"
+      },
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -f {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -f {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never -L {pattern} {corpus}",
+        "ugrep": "ugrep --color=never -S {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-large-file-literal",
+      "description": "Literal search in large file (~2MB)",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/large-file",
+      "groups": [
+        "edge-cases"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-large-file-regex",
+      "description": "Regex search in large file",
+      "query_id": "q-edge-large-regex",
+      "corpus": "tests/edge-cases/large-file",
+      "groups": [
+        "edge-cases"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-zero-regex-caret-empty",
+      "description": "Zero-length regex ^ on empty file should fail silently",
+      "query_id": "q-edge-zero-caret",
+      "corpus": "tests/edge-cases/zero-length-regex/empty.txt",
+      "groups": [
+        "edge-cases"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-zero-regex-caret-content",
+      "description": "Zero-length regex ^ on file with content matches all lines",
+      "query_id": "q-edge-zero-caret",
+      "corpus": "tests/edge-cases/zero-length-regex/multi-line.txt",
+      "groups": [
+        "edge-cases"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-zero-regex-nomatch",
+      "description": "Zero-length regex that never matches (contradictory boundary)",
+      "query_id": "q-edge-zero-empty-class",
+      "corpus": "tests/edge-cases/zero-length-regex/multi-line.txt",
+      "groups": [
+        "edge-cases"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-max-count-basic",
+      "description": "--max-count 2 truncates per-file matches with diagnostic",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/max-count/few-matches.txt",
+      "groups": [
+        "edge-cases"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --max-count 2 {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --max-count 2 {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never -m 2 {pattern} {corpus}",
+        "ugrep": "ugrep --color=never -m 2 {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-max-count-multi-file",
+      "description": "--count --max-count across multiple files",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/max-count",
+      "groups": [
+        "edge-cases"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --count --max-count 3 {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --count --max-count 3 {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never --count -m 3 {pattern} {corpus}",
+        "ugrep": "ugrep --color=never --count -m 3 {pattern} {corpus}"
       }
     }
   ]

@@ -45,6 +45,7 @@ FIXTURES_PATH = MANIFESTS_DIR / "fixtures.json"
 ARTIFACTS_BASE = REPO_ROOT / "parity-artifacts"
 
 # Known scenario groups.  "smoke" is a small fast subset; "all" runs everything.
+# Groups can be defined either here (legacy) or via "groups" field in scenarios.json.
 SMOKE_SCENARIOS = [
     "literal-simple",
     "literal-nomatch",
@@ -52,6 +53,9 @@ SMOKE_SCENARIOS = [
     "count-matches",
     "files-with-matches",
 ]
+
+# Edge-case scenario IDs (also tagged via "groups" field in scenarios.json).
+EDGE_CASE_PREFIX = "edge-"
 
 # Targets that can act as the "baseline" (source-of-truth).
 BASELINE_TARGETS = {"ag", "baseline"}
@@ -285,6 +289,19 @@ def run_matrix(
 
     Returns the run summary dict.
     """
+    # Ensure edge-case fixtures are set up if they'll be needed.
+    edge_fixtures_dir = REPO_ROOT / "tests" / "edge-cases"
+    edge_setup_script = edge_fixtures_dir / "setup_fixtures.py"
+    if edge_setup_script.is_file():
+        # Check if fixtures exist; if not, run setup.
+        if not (edge_fixtures_dir / "ignore-source").is_dir():
+            print("Setting up edge-case fixtures...")
+            subprocess.run(
+                [sys.executable, str(edge_setup_script)],
+                cwd=REPO_ROOT,
+                check=True,
+            )
+
     # Load manifests.
     scenarios_manifest = _load_json(SCENARIOS_PATH)
     queries_manifest = _load_json(QUERIES_PATH)
@@ -308,11 +325,20 @@ def run_matrix(
             print(f"WARNING: Unknown scenario IDs: {missing}", file=sys.stderr)
     elif group == "smoke":
         selected = [s for s in all_scenarios if s["id"] in SMOKE_SCENARIOS]
+    elif group == "edge-cases":
+        # Select scenarios tagged with "edge-cases" group or matching edge-case prefix.
+        selected = [
+            s for s in all_scenarios
+            if group in s.get("groups", []) or s["id"].startswith(EDGE_CASE_PREFIX)
+        ]
     elif group == "all" or group is None:
         selected = all_scenarios
     else:
-        print(f"ERROR: Unknown group '{group}'", file=sys.stderr)
-        sys.exit(1)
+        # Try to match by group tag in scenario metadata.
+        selected = [s for s in all_scenarios if group in s.get("groups", [])]
+        if not selected:
+            print(f"ERROR: Unknown group '{group}' — no scenarios matched", file=sys.stderr)
+            sys.exit(1)
 
     if not selected:
         print("ERROR: No scenarios selected", file=sys.stderr)
@@ -376,6 +402,30 @@ def run_matrix(
         if not query:
             print(f"WARNING: Query {scenario['query_id']} not found, skipping {sid}", file=sys.stderr)
             continue
+
+        # Check platform_skip conditions.
+        platform_skip = scenario.get("platform_skip")
+        if platform_skip:
+            skip_condition = platform_skip.get("condition", "")
+            should_skip = False
+            if skip_condition == "symlinks_unsupported":
+                should_skip = platform.system() == "Windows"
+            elif skip_condition == "one_device_unavailable":
+                should_skip = not os.path.exists("/dev/shm")
+            if should_skip:
+                skip_reason = platform_skip.get("reason", "Platform condition not met")
+                print(f"  SKIP: {sid} — {skip_reason}")
+                results.append({
+                    "scenario_id": sid,
+                    "query_id": scenario["query_id"],
+                    "pattern": query["pattern"],
+                    "corpus": scenario["corpus"],
+                    "baseline": None,
+                    "targets": {},
+                    "skipped": True,
+                    "skip_reason": skip_reason,
+                })
+                continue
 
         pattern = query["pattern"]
         corpus = scenario["corpus"]

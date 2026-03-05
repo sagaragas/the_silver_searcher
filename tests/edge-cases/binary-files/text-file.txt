@@ -1,0 +1,2 @@
+NEEDLE in text file
+Another line
