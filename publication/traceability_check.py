@@ -3,9 +3,11 @@
 
 Validates:
   VAL-CROSS-001: Shared fixture lineage across stages (commit SHA + manifest hashes)
-  VAL-CROSS-004: Public fork contains reproducibility package
+  VAL-CROSS-004: Public fork contains reproducibility package AND executed
+                 clean-checkout smoke reproducibility validation
   VAL-CROSS-005: Public release includes legal + methodological disclosure
   VAL-CROSS-008: Public publication commit is traceable to measured evidence
+                 (parity, benchmark, and memo commit SHAs must be equal)
 
 Usage:
     python3 publication/traceability_check.py \
@@ -80,17 +82,49 @@ def extract_memo_manifest_hashes(memo_text: str) -> dict:
     return hashes
 
 
-def check_cross_artifact_commit_consistency(
+def resolve_parity_summary(
+    claim_map: dict, repo_root: Path
+) -> tuple[dict, str | None]:
+    """Resolve parity summary from claim_evidence_map parity_run_ids or latest.
+
+    Returns (summary_dict, source_label).
+    """
+    parity_run_ids = claim_map.get("parity_run_ids") or {}
+    parity_dir = repo_root / "parity-artifacts"
+
+    # Try claim_evidence_map parity_run_ids first
+    for run_type, run_id in parity_run_ids.items():
+        summary_path = parity_dir / run_id / "summary.json"
+        if summary_path.exists():
+            return load_json(summary_path), f"parity_{run_type}_{run_id}"
+
+    # Fall back to latest
+    latest = parity_dir / "latest"
+    if latest.exists():
+        summary = load_json(latest / "summary.json")
+        if summary:
+            return summary, "parity_latest"
+
+    return {}, None
+
+
+def check_commit_lineage(
     memo_commit: str | None,
     claim_map: dict,
     benchmark_manifests: list[dict],
     parity_summary: dict,
+    parity_source: str | None,
 ) -> list[str]:
-    """VAL-CROSS-001 + VAL-CROSS-008: Check commit SHA consistency across artifacts."""
+    """Enforce strict parity/benchmark/memo commit-SHA equality.
+
+    VAL-CROSS-001 + VAL-CROSS-008: All three artifact sources (parity,
+    benchmark, memo) must reference the same commit SHA. Failure to match
+    is a hard error.
+    """
     errors = []
 
-    # Collect all commit SHAs
-    commits = {}
+    # Collect commit SHAs by source
+    commits: dict[str, str] = {}
 
     if memo_commit:
         commits["memo"] = memo_commit
@@ -99,44 +133,79 @@ def check_cross_artifact_commit_consistency(
     if claim_map_commit:
         commits["claim_evidence_map"] = claim_map_commit
 
+    # Collect measured (non-smoke) benchmark commits
     for manifest in benchmark_manifests:
-        run_id = manifest.get("run_id", "unknown")
         run_type = manifest.get("run_type", "unknown")
+        if run_type == "smoke":
+            continue
+        run_id = manifest.get("run_id", "unknown")
         commit = manifest.get("commit_sha")
         if commit:
             commits[f"benchmark_{run_type}_{run_id}"] = commit
 
     parity_commit = parity_summary.get("commit_sha")
-    if parity_commit:
-        commits["parity"] = parity_commit
+    if parity_commit and parity_source:
+        commits[parity_source] = parity_commit
 
-    # Check consistency among measured benchmark runs
-    benchmark_commits = {
-        k: v for k, v in commits.items() if k.startswith("benchmark_") and "smoke" not in k
+    # ---- Strict 3-way equality check ----
+    # We require at least memo + one benchmark + parity to all be present
+    memo_sha = commits.get("memo")
+    benchmark_shas = {
+        k: v for k, v in commits.items() if k.startswith("benchmark_")
     }
-    if benchmark_commits:
-        unique_bench = set(benchmark_commits.values())
+    parity_shas = {
+        k: v for k, v in commits.items()
+        if k.startswith("parity_")
+    }
+
+    # Check memo vs claim_evidence_map
+    if memo_sha and claim_map_commit and memo_sha != claim_map_commit:
+        errors.append(
+            f"Memo commit ({memo_sha}) != "
+            f"claim_evidence_map commit ({claim_map_commit})"
+        )
+
+    # Check benchmark commit consistency among themselves
+    if benchmark_shas:
+        unique_bench = set(benchmark_shas.values())
         if len(unique_bench) > 1:
             errors.append(
                 f"Benchmark commit SHAs differ across runs: "
-                f"{json.dumps(benchmark_commits, indent=2)}"
+                f"{json.dumps(benchmark_shas, indent=2)}"
             )
 
-    # Check memo commit matches benchmark evidence commit
-    if memo_commit and claim_map_commit:
-        if memo_commit != claim_map_commit:
+    # Check memo vs benchmark
+    if memo_sha and benchmark_shas:
+        bench_commit = next(iter(set(benchmark_shas.values())))
+        if memo_sha != bench_commit:
             errors.append(
-                f"Memo commit ({memo_commit}) != "
-                f"claim_evidence_map commit ({claim_map_commit})"
-            )
-
-    if memo_commit and benchmark_commits:
-        bench_commit = next(iter(set(benchmark_commits.values())))
-        if memo_commit != bench_commit:
-            errors.append(
-                f"Memo commit ({memo_commit}) != "
+                f"Memo commit ({memo_sha}) != "
                 f"benchmark measured commit ({bench_commit})"
             )
+
+    # ---- Critical: parity must match memo and benchmark ----
+    if parity_shas:
+        parity_sha = next(iter(parity_shas.values()))
+        if memo_sha and parity_sha != memo_sha:
+            errors.append(
+                f"Parity commit ({parity_sha}) != "
+                f"memo commit ({memo_sha}): "
+                f"parity, benchmark, and memo SHAs must be equal"
+            )
+        if benchmark_shas:
+            bench_sha = next(iter(set(benchmark_shas.values())))
+            if parity_sha != bench_sha:
+                errors.append(
+                    f"Parity commit ({parity_sha}) != "
+                    f"benchmark commit ({bench_sha}): "
+                    f"parity, benchmark, and memo SHAs must be equal"
+                )
+    elif memo_sha:
+        # Parity commit is missing entirely — this is a failure
+        errors.append(
+            "No parity artifact commit SHA found; "
+            "parity, benchmark, and memo SHAs must all be present and equal"
+        )
 
     return errors
 
@@ -150,7 +219,7 @@ def check_manifest_hash_consistency(
     errors = []
 
     # Collect all manifest hashes from measured benchmark runs
-    benchmark_hashes = {}
+    benchmark_hashes: dict[str, dict[str, str]] = {}
     for manifest in benchmark_manifests:
         run_type = manifest.get("run_type", "unknown")
         if run_type == "smoke":
@@ -215,6 +284,79 @@ def check_reproducibility_package(repo_root: Path) -> list[str]:
     return errors
 
 
+def check_clean_checkout_reproducibility(
+    repo_root: Path, memo_commit: str | None
+) -> list[str]:
+    """VAL-CROSS-004 (execution): Verify executed clean-checkout smoke
+    reproducibility for the cited publication commit.
+
+    This goes beyond file-presence checks by requiring evidence that a
+    smoke reproducibility run was actually *executed* against the cited
+    commit. The evidence must be a JSON artifact recording the execution
+    outcome.
+    """
+    errors = []
+
+    evidence_path = (
+        repo_root / "publication" / "clean_checkout_reproducibility.json"
+    )
+    if not evidence_path.exists():
+        errors.append(
+            "Missing clean-checkout reproducibility evidence: "
+            "publication/clean_checkout_reproducibility.json — "
+            "a smoke reproducibility run must be executed (not just files checked)"
+        )
+        return errors
+
+    evidence = load_json(evidence_path)
+
+    # Validate evidence structure
+    required_keys = ["executed", "commit_sha", "result", "checks"]
+    for key in required_keys:
+        if key not in evidence:
+            errors.append(
+                f"Clean-checkout reproducibility evidence missing key: '{key}'"
+            )
+
+    if not evidence.get("executed"):
+        errors.append(
+            "Clean-checkout reproducibility evidence 'executed' is false; "
+            "smoke run must actually execute, not just check file presence"
+        )
+
+    # Verify commit SHA matches memo
+    evidence_sha = evidence.get("commit_sha")
+    if memo_commit and evidence_sha and evidence_sha != memo_commit:
+        errors.append(
+            f"Clean-checkout reproducibility commit ({evidence_sha}) != "
+            f"memo commit ({memo_commit})"
+        )
+
+    # Verify result is pass
+    result = evidence.get("result")
+    if result != "pass":
+        errors.append(
+            f"Clean-checkout reproducibility result is '{result}', expected 'pass'"
+        )
+
+    # Verify individual checks
+    checks = evidence.get("checks", [])
+    if not checks:
+        errors.append(
+            "Clean-checkout reproducibility evidence has no checks recorded"
+        )
+    for check in checks:
+        check_name = check.get("name", "unknown")
+        check_result = check.get("result")
+        if check_result != "pass":
+            detail = check.get("detail", "")
+            errors.append(
+                f"Clean-checkout check '{check_name}' failed: {detail}"
+            )
+
+    return errors
+
+
 def check_legal_methodology_disclosure(
     repo_root: Path, memo_text: str
 ) -> list[str]:
@@ -269,26 +411,34 @@ def check_legal_methodology_disclosure(
 
 
 def build_publication_checklist(
-    commit_errors: list[str],
+    lineage_errors: list[str],
     hash_errors: list[str],
-    repro_errors: list[str],
+    repro_file_errors: list[str],
+    repro_exec_errors: list[str],
     legal_errors: list[str],
 ) -> dict:
-    """Build a structured publication checklist."""
+    """Build a structured publication checklist with lineage and
+    clean-checkout reproducibility as separate checks."""
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "checks": [
             {
                 "id": "VAL-CROSS-001",
                 "name": "Shared fixture lineage across stages",
-                "result": "pass" if not commit_errors and not hash_errors else "fail",
-                "errors": commit_errors + hash_errors,
+                "result": "pass" if not lineage_errors and not hash_errors else "fail",
+                "errors": lineage_errors + hash_errors,
             },
             {
-                "id": "VAL-CROSS-004",
-                "name": "Public fork contains reproducibility package",
-                "result": "pass" if not repro_errors else "fail",
-                "errors": repro_errors,
+                "id": "VAL-CROSS-004-files",
+                "name": "Public fork contains reproducibility package (file presence)",
+                "result": "pass" if not repro_file_errors else "fail",
+                "errors": repro_file_errors,
+            },
+            {
+                "id": "VAL-CROSS-004-exec",
+                "name": "Clean-checkout smoke reproducibility execution",
+                "result": "pass" if not repro_exec_errors else "fail",
+                "errors": repro_exec_errors,
             },
             {
                 "id": "VAL-CROSS-005",
@@ -299,8 +449,8 @@ def build_publication_checklist(
             {
                 "id": "VAL-CROSS-008",
                 "name": "Public publication commit is traceable to measured evidence",
-                "result": "pass" if not commit_errors else "fail",
-                "errors": commit_errors,
+                "result": "pass" if not lineage_errors else "fail",
+                "errors": lineage_errors,
             },
         ],
     }
@@ -331,8 +481,9 @@ def main() -> int:
 
     # Load artifacts
     claim_map = load_json(repo_root / "publication" / "claim_evidence_map.json")
-    parity_latest = repo_root / "parity-artifacts" / "latest"
-    parity_summary = load_json(parity_latest / "summary.json") if parity_latest.exists() else {}
+
+    # Resolve parity summary (prefer claim_evidence_map parity_run_ids)
+    parity_summary, parity_source = resolve_parity_summary(claim_map, repo_root)
 
     # Load all measured benchmark run manifests
     benchmark_manifests = []
@@ -364,14 +515,23 @@ def main() -> int:
     print("TRACEABILITY CHECK")
     print("=" * 60)
 
-    # 1. Cross-artifact commit consistency (VAL-CROSS-001 + VAL-CROSS-008)
-    commit_errors = check_cross_artifact_commit_consistency(
-        memo_commit, claim_map, benchmark_manifests, parity_summary
+    # 1. Commit lineage: strict parity/benchmark/memo equality (VAL-CROSS-001 + VAL-CROSS-008)
+    lineage_errors = check_commit_lineage(
+        memo_commit, claim_map, benchmark_manifests, parity_summary, parity_source
     )
-    print(f"\n[{'PASS' if not commit_errors else 'FAIL'}] Commit SHA consistency (VAL-CROSS-001/008)")
+    print(f"\n[{'PASS' if not lineage_errors else 'FAIL'}] Commit lineage (VAL-CROSS-001/008)")
     if memo_commit:
         print(f"  Memo commit: {memo_commit[:12]}...")
-    for e in commit_errors:
+    if parity_summary.get("commit_sha"):
+        print(f"  Parity commit: {parity_summary['commit_sha'][:12]}...")
+    bench_commits = {
+        m.get("run_type", "?"): m.get("commit_sha", "?")[:12]
+        for m in benchmark_manifests
+        if m.get("run_type") != "smoke"
+    }
+    if bench_commits:
+        print(f"  Benchmark commits: {bench_commits}")
+    for e in lineage_errors:
         print(f"  ERROR: {e}")
 
     # 2. Manifest hash consistency (VAL-CROSS-001)
@@ -385,13 +545,19 @@ def main() -> int:
     for e in hash_errors:
         print(f"  ERROR: {e}")
 
-    # 3. Reproducibility package (VAL-CROSS-004)
-    repro_errors = check_reproducibility_package(repo_root)
-    print(f"\n[{'PASS' if not repro_errors else 'FAIL'}] Reproducibility package (VAL-CROSS-004)")
-    for e in repro_errors:
+    # 3. Reproducibility package — file presence (VAL-CROSS-004)
+    repro_file_errors = check_reproducibility_package(repo_root)
+    print(f"\n[{'PASS' if not repro_file_errors else 'FAIL'}] Reproducibility package files (VAL-CROSS-004)")
+    for e in repro_file_errors:
         print(f"  ERROR: {e}")
 
-    # 4. Legal + methodology disclosure (VAL-CROSS-005)
+    # 4. Reproducibility — clean-checkout execution (VAL-CROSS-004)
+    repro_exec_errors = check_clean_checkout_reproducibility(repo_root, memo_commit)
+    print(f"\n[{'PASS' if not repro_exec_errors else 'FAIL'}] Clean-checkout smoke reproducibility execution (VAL-CROSS-004)")
+    for e in repro_exec_errors:
+        print(f"  ERROR: {e}")
+
+    # 5. Legal + methodology disclosure (VAL-CROSS-005)
     legal_errors = check_legal_methodology_disclosure(repo_root, memo_text)
     print(f"\n[{'PASS' if not legal_errors else 'FAIL'}] Legal + methodology disclosure (VAL-CROSS-005)")
     for e in legal_errors:
@@ -399,7 +565,7 @@ def main() -> int:
 
     # Build and save checklist
     checklist = build_publication_checklist(
-        commit_errors, hash_errors, repro_errors, legal_errors
+        lineage_errors, hash_errors, repro_file_errors, repro_exec_errors, legal_errors
     )
 
     checklist_path = repo_root / "publication" / "publication_checklist.json"
@@ -408,8 +574,11 @@ def main() -> int:
         f.write("\n")
 
     # Summary
-    all_errors = commit_errors + hash_errors + repro_errors + legal_errors
-    total_checks = 4
+    all_errors = (
+        lineage_errors + hash_errors + repro_file_errors
+        + repro_exec_errors + legal_errors
+    )
+    total_checks = len(checklist["checks"])
     passed_checks = sum(
         1 for c in checklist["checks"] if c["result"] == "pass"
     )

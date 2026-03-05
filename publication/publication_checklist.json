@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "checks": [
     {
       "id": "VAL-CROSS-001",
@@ -8,8 +8,14 @@
       "errors": []
     },
     {
-      "id": "VAL-CROSS-004",
-      "name": "Public fork contains reproducibility package",
+      "id": "VAL-CROSS-004-files",
+      "name": "Public fork contains reproducibility package (file presence)",
+      "result": "pass",
+      "errors": []
+    },
+    {
+      "id": "VAL-CROSS-004-exec",
+      "name": "Clean-checkout smoke reproducibility execution",
       "result": "pass",
       "errors": []
     },

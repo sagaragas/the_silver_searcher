@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "executed": true,
+  "timestamp": "2026-03-05T20:14:31.066127+00:00",
+  "commit_sha": "44759b4b07252dbf8e471a71ee21e0e6539ce236",
+  "result": "pass",
+  "checks": [
+    {
+      "name": "commit_accessible",
+      "result": "pass",
+      "detail": "git cat-file -t 44759b4b0725... -> exit 0"
+    },
+    {
+      "name": "manifests_present",
+      "result": "pass",
+      "detail": "All manifest files present"
+    },
+    {
+      "name": "rust_binary_builds",
+      "result": "pass",
+      "detail": "cargo build --workspace --release -> exit 0"
+    },
+    {
+      "name": "rust_ag_runs",
+      "result": "pass",
+      "detail": "rust-ag --nocolor --workers=1 foo . -> exit 0, 209 output lines"
+    },
+    {
+      "name": "baseline_ag_runs",
+      "result": "pass",
+      "detail": "ag --nocolor --workers=1 foo . -> exit 0, 209 output lines"
+    },
+    {
+      "name": "benchmark_harness_smoke",
+      "result": "pass",
+      "detail": "benchmarks/harness.py smoke (literal-simple, rust+ag) -> exit 0"
+    },
+    {
+      "name": "parity_smoke",
+      "result": "pass",
+      "detail": "parity smoke run -> exit 0"
+    }
+  ]
+}

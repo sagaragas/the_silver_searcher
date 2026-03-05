@@ -7,6 +7,9 @@
     "nightly": "20260305T174330Z",
     "manual": "20260305T174335Z"
   },
+  "parity_run_ids": {
+    "smoke": "20260305T201322Z"
+  },
   "claims": [
     {
       "claim_id": "CLM-PERF-001",
