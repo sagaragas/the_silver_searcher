@@ -1,0 +1,21 @@
+{
+  "featureId": "misc-parity-runner-stderr-contract-alignment-fix",
+  "reviewedAt": "2026-03-05T19:08:54Z",
+  "commitId": "25b1ce848965bb51b458c0fa98c0e621ab35e9e2",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix fully addresses the prior blocking failure: stderr diff artifact requirements are now schema-aware in validate_outputs (required only for schema_version >= 2), strict stderr enforcement is preserved for v2+, and tests now explicitly cover v1 overall-pass compatibility plus v2/v3 enforcement behavior.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "knowledge",
+      "observation": "Shared architecture guidance still states stderr.diff artifacts are 'present and well-formed' without explicitly restating the schema-version gate, while tooling now enforces stderr.diff only for schema v2+ runs.",
+      "evidence": "/Users/ragas/code/missions/the_silver_searcher/.factory/library/architecture.md:41-43; /Users/ragas/code/missions/the_silver_searcher/scripts/parity/validate_outputs.py:253-256,288"
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/misc-ops-hardening/scrutiny/reviews/misc-parity-runner-stderr-contract-alignment.json",
+  "summary": "Pass: the fix commit resolves the original schema-gating defect by making stderr.diff artifact validation conditional on schema version (v2+ only), while retaining strict stderr parity validation for v2+ and restoring v1 compatibility as required."
+}
