@@ -349,6 +349,299 @@ Evidence: `benchmarks/out/20260305T174325Z/run_manifest.json`
 
 ---
 
+## 4. Regressions and Failures
+
+<!-- CLM-REG-001 | CLM-REG-002 | CLM-REG-003 -->
+
+This section documents all measured regressions, failures, and negative
+results. The memo intentionally avoids a winner-only narrative.
+
+### 4.1 rust-ag Is Slower Than Both rg and ugrep
+
+<!-- CLM-REG-001 -->
+
+While rust-ag achieved a 2.0× speedup over the original ag, it is
+measurably slower than both established Rust and C++ comparators:
+
+- **rg is 1.25× faster than rust-ag** (local median: 7.74 ms vs 9.69 ms).
+  This gap was consistent across all three run types (1.25×–1.27×) with
+  zero CI overlap.
+- **ugrep is 2.4× faster than rust-ag** (local median: 4.02 ms vs
+  9.69 ms), consistent across runs (2.41×–2.52×) with zero CI overlap.
+
+These are genuine regressions relative to state-of-the-art tools. The
+Rust rewrite does not achieve competitive parity with rg or ugrep on
+this workload.
+
+Evidence: `benchmarks/out/20260305T174335Z/claim_gate.json` —
+pair evaluations for rg-vs-rust-ag and ugrep-vs-rust-ag.
+
+### 4.2 Claim Gate Overall Status: Fail
+
+<!-- CLM-REG-002 -->
+
+The formal claim-threshold gate returned `fail` overall. While all
+parity checks, speedup thresholds, and cross-run agreements passed
+individually, the **reproducibility check failed** across all three run
+types (local, nightly, manual). This means the full gate policy does not
+formally authorize performance winner claims.
+
+The reproducibility failure stems from incomplete publication artifact
+bundle validation at the cross-run level — an infrastructure gap rather
+than a measurement problem. The underlying performance differences are
+clearly separated (zero CI overlap on all pairs) and directionally
+consistent.
+
+Evidence: `benchmarks/out/20260305T174335Z/claim_gate.json` —
+`gate: "fail"`, `reproducibility_check.result: "fail"`.
+
+### 4.3 Scenario Coverage Is Limited
+
+<!-- CLM-REG-003 -->
+
+Measured performance benchmarks cover only the `literal-simple` scenario
+(pattern `"foo"`, corpus `.`). The full registered scenario matrix
+contains 38 scenarios spanning regex, context, count mode, edge cases,
+and more. Performance characteristics may differ materially on:
+
+- Complex regex patterns (backtracking, alternation)
+- Large file edge cases
+- Count-only and files-with-matches modes
+- Context-line rendering overhead
+
+Extending measured coverage to additional scenarios is required before
+generalizing performance claims beyond literal search.
+
+Evidence: `manifests/scenarios.json` — 38 registered scenarios vs 1
+measured.
+
+---
+
+## 5. Limitations and Trade-offs
+
+<!-- CLM-LIM-001 | CLM-LIM-002 | CLM-LIM-003 | CLM-LIM-004 | CLM-LIM-005 -->
+
+### 5.1 Single-Scenario Performance Window
+
+<!-- CLM-LIM-001 -->
+
+All performance claims are based on a single benchmark scenario
+(`literal-simple`). This scenario exercises the full search pipeline but
+represents only one workload class. Regex-heavy, large-corpus, or
+output-intensive workloads may produce different relative rankings.
+
+**Impact**: Performance conclusions should not be extrapolated to
+workloads with different characteristics without additional measurement.
+
+### 5.2 Small Sample Size
+
+<!-- CLM-LIM-002 -->
+
+Each scenario-comparator cell uses 3 measured samples after 1 warmup
+iteration. While bootstrap CIs provide uncertainty bounds, the small
+sample size limits statistical power for detecting subtle performance
+differences and increases sensitivity to transient system load.
+
+**Impact**: Reported CIs may underestimate true variability. Claims with
+small speedup ratios (e.g., rg-vs-rust-ag at 1.25×) should be
+interpreted with caution.
+
+### 5.3 Single-Machine, Single-OS Environment
+
+<!-- CLM-LIM-003 -->
+
+All benchmarks were executed on a single machine (Apple M4, macOS Darwin
+25.3.0). Performance on Linux, x86_64, or different hardware
+configurations may vary due to differences in:
+
+- Memory subsystem behavior (page cache, TLB)
+- Filesystem performance (APFS vs ext4/btrfs)
+- CPU instruction sets (NEON/AArch64 vs AVX/SSE)
+- Kernel scheduler behavior under multi-threaded workloads
+
+**Impact**: Results are specific to the measured environment.
+Cross-platform generalization requires separate measurement.
+
+### 5.4 Feature Parity Scope
+
+<!-- CLM-LIM-004 -->
+
+The Rust rewrite targets behavioral parity with ag 2.2.0 for core
+search semantics. Features not yet ported or divergent include:
+
+- LZMA-compressed file search (ag supports with `--search-zip`)
+- Thread pool tuning (`--workers`)
+- Some file-type filter aliases
+- Platform-specific features (Windows path handling)
+
+**Impact**: rust-ag is not a drop-in replacement for ag in all use
+cases. Users relying on unported features should continue using ag.
+
+### 5.5 Comparator Output Divergence
+
+<!-- CLM-LIM-005 -->
+
+rg and ugrep produce different output sets from ag on the same corpus
+due to differing default ignore and file-selection semantics. The
+correctness gate validates ag-vs-rust-ag parity, not cross-tool output
+equivalence.
+
+**Impact**: Speed comparisons are apples-to-oranges with respect to
+result set size. A tool that matches fewer files may appear faster
+solely due to reduced I/O. The correctness gate confirms this
+divergence (3 unique hash clusters per scenario).
+
+Evidence: `benchmarks/out/20260305T183717Z/correctness_gate.json` —
+`unique_stdout_hashes: 3` per scenario.
+
+---
+
+## 6. Third-Party License Attribution
+
+<!-- CLM-LIC-001 | CLM-LIC-002 -->
+
+### 6.1 Upstream Source
+
+<!-- CLM-LIC-001 -->
+
+This project is a derivative work of [The Silver Searcher](https://github.com/ggreer/the_silver_searcher)
+by Geoff Greer, licensed under the Apache License 2.0.
+
+- **License**: Apache-2.0
+- **Copyright**: Copyright 2011-2016 Geoff Greer
+- **Notice file**: `NOTICE`
+- **License file**: `LICENSE`
+
+### 6.2 Rust Dependencies (Runtime)
+
+| Crate | Version | License | Usage |
+|-------|---------|---------|-------|
+| regex | 1.12.3 | MIT OR Apache-2.0 | Pattern matching engine |
+| libc | 0.2.182 | MIT OR Apache-2.0 | POSIX filesystem FFI |
+| aho-corasick | 1.1.4 | Unlicense OR MIT | Multi-pattern matching (transitive) |
+| memchr | 2.8.0 | Unlicense OR MIT | Byte-level search (transitive) |
+| regex-automata | 0.4.14 | MIT OR Apache-2.0 | Automata matching (transitive) |
+| regex-syntax | 0.8.10 | MIT OR Apache-2.0 | Pattern parsing (transitive) |
+
+All runtime dependencies use permissive licenses (MIT, Apache-2.0,
+Unlicense) compatible with the project's Apache-2.0 license. No copyleft
+or restrictive licenses are present in the dependency tree.
+
+### 6.3 Benchmark Comparator Tools
+
+| Tool | Version | License | Role |
+|------|---------|---------|------|
+| ripgrep (rg) | 13.0.0 | Unlicense OR MIT | Benchmark comparator |
+| ugrep | 7.5.0 | BSD-3-Clause | Benchmark comparator |
+
+These tools are not bundled or distributed; they are installed separately
+and used only for performance comparison.
+
+<!-- CLM-LIC-002 -->
+
+**Compliance summary**: All runtime dependencies and the upstream source
+use permissive licenses. The complete inventory is machine-auditable at
+`publication/license_inventory.json`.
+
+Evidence: `publication/license_inventory.json`
+
+---
+
+## 7. Adversarial Reviewer Q&A
+
+<!-- CLM-ADV-001 | CLM-ADV-002 | CLM-ADV-003 | CLM-ADV-004 | CLM-ADV-005 | CLM-ADV-006 -->
+
+This section anticipates hard questions an adversarial reviewer might
+ask and maps each to evidence or explicitly states what is unknown.
+
+### Q1: "Your claim gate failed. How can you claim any performance wins?"
+
+<!-- CLM-ADV-001 -->
+
+**A**: The gate failure is due to the reproducibility check, which
+requires validated publication artifact bundles at the cross-run level —
+an infrastructure gap, not a measurement defect. The underlying data
+shows: (a) all parity checks passed, (b) all speedup threshold
+evaluations passed, (c) all cross-run-type agreements hold, and (d) zero
+CI overlap exists across all comparator pairs. We report the gate
+failure transparently in §2.4 and §4.2 and do not claim formal gate
+authorization.
+
+Evidence: `benchmarks/out/20260305T174335Z/claim_gate.json` — gate
+status, parity_check, and scenario_claims fields.
+
+### Q2: "Only one scenario was measured. Aren't your conclusions overfit?"
+
+<!-- CLM-ADV-002 -->
+
+**A**: Yes, single-scenario results limit generalizability. This is
+explicitly documented as a regression (§4.3) and limitation (§5.1). The
+`literal-simple` scenario was chosen because it exercises the full
+pipeline (traversal, ignore, match, format) on a representative corpus.
+Extending to regex, context, and edge-case scenarios is identified as
+required follow-up work.
+
+Evidence: `manifests/scenarios.json` — 38 registered scenarios,
+1 measured. §4.3 and §5.1 document this gap.
+
+### Q3: "3 samples per cell is statistically weak. Why so few?"
+
+<!-- CLM-ADV-003 -->
+
+**A**: The minimum of 3 measured samples is a pragmatic constraint
+balancing measurement time against coverage. Bootstrap CIs from 3
+samples have wider bounds than from larger samples, which is why we
+report them explicitly. For the `literal-simple` scenario, the measured
+IQRs are small (0.10–0.53 ms) relative to the inter-tool gaps
+(5–15 ms), giving clear separation despite the small n. We acknowledge
+this as a limitation in §5.2.
+
+Evidence: `benchmarks/sampling_policy.json` — min_samples=3.
+Raw samples in `benchmarks/out/20260305T174325Z/run_manifest.json`.
+
+### Q4: "You only tested on macOS/ARM. Does this generalize to Linux/x86?"
+
+<!-- CLM-ADV-004 -->
+
+**A**: It does not generalize without measurement. We document this as a
+limitation in §5.3. The Apple M4 has different memory, cache, and SIMD
+characteristics than typical x86_64 server hardware. File system
+behavior (APFS vs ext4) also differs. Cross-platform benchmark runs are
+required before making platform-independent claims.
+
+Evidence: `benchmarks/out/20260305T174325Z/run_manifest.json` —
+environment metadata (single machine).
+
+### Q5: "rg and ugrep produce different result sets. Isn't the speed comparison unfair?"
+
+<!-- CLM-ADV-005 -->
+
+**A**: This is a legitimate concern, documented in §5.5. The tools have
+different default ignore and traversal semantics, so they search
+different file sets. A tool matching fewer files may appear faster due
+to reduced I/O rather than algorithmic superiority. The correctness gate
+confirms this divergence (3 unique hash clusters per scenario). We
+report cross-tool comparisons for context but emphasize that the primary
+parity relationship is ag-vs-rust-ag (identical output).
+
+Evidence: `benchmarks/out/20260305T183717Z/correctness_gate.json` —
+`unique_stdout_hashes: 3` showing distinct result sets.
+
+### Q6: "Is the Rust rewrite a drop-in replacement for ag?"
+
+<!-- CLM-ADV-006 -->
+
+**A**: No. The rewrite targets behavioral parity for core search
+semantics but does not implement all ag features. Missing features
+include LZMA search, worker-count tuning, some file-type aliases, and
+platform-specific handling. This is documented in §5.4. Users should
+evaluate feature coverage before replacing ag with rust-ag.
+
+Evidence: `rust-ag/Cargo.toml` — feature set.
+§5.4 — explicit feature gap list.
+
+---
+
 ## Claim-Evidence Index
 
 Every factual and numeric claim in this memo is tagged with a claim ID
@@ -371,6 +664,22 @@ and linked to evidence artifacts in `publication/claim_evidence_map.json`.
 | CLM-METHOD-004 | §1.8 | Claim-threshold gate parameters |
 | CLM-GATE-001 | §2.4 | Overall claim gate status (fail) |
 | CLM-SAMPLE-001 | §1.5, §3.1 | Warmup and sample counts |
+| CLM-REG-001 | §4.1 | rust-ag slower than rg and ugrep |
+| CLM-REG-002 | §4.2 | Claim gate overall fail due to reproducibility |
+| CLM-REG-003 | §4.3 | Only 1 of 38 scenarios measured |
+| CLM-LIM-001 | §5.1 | Single-scenario performance window |
+| CLM-LIM-002 | §5.2 | Small sample size (n=3) |
+| CLM-LIM-003 | §5.3 | Single-machine, single-OS environment |
+| CLM-LIM-004 | §5.4 | Feature parity scope gaps |
+| CLM-LIM-005 | §5.5 | Comparator output divergence |
+| CLM-LIC-001 | §6.1 | Upstream source attribution |
+| CLM-LIC-002 | §6.2–6.3 | License compliance summary |
+| CLM-ADV-001 | §7 Q1 | Claim gate failure explanation |
+| CLM-ADV-002 | §7 Q2 | Single-scenario overfitting |
+| CLM-ADV-003 | §7 Q3 | Small sample statistical power |
+| CLM-ADV-004 | §7 Q4 | Platform generalization |
+| CLM-ADV-005 | §7 Q5 | Cross-tool result set fairness |
+| CLM-ADV-006 | §7 Q6 | Drop-in replacement status |
 
 ---
 
@@ -388,4 +697,5 @@ and linked to evidence artifacts in `publication/claim_evidence_map.json`.
 | Correctness gate | `benchmarks/out/20260305T183717Z/correctness_gate.json` |
 | Sampling validation | `benchmarks/out/20260305T174335Z/sampling_validation.json` |
 | Claim gate | `benchmarks/out/20260305T174335Z/claim_gate.json` |
+| License inventory | `publication/license_inventory.json` |
 | Claim-evidence map | `publication/claim_evidence_map.json` |

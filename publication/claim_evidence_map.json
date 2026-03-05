@@ -237,6 +237,238 @@
           "description": "Sample count check passed with min_required=3"
         }
       ]
+    },
+    {
+      "claim_id": "CLM-REG-001",
+      "text": "rust-ag is measurably slower than both rg (1.25x) and ugrep (2.4x) on the literal-simple scenario.",
+      "category": "regression",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "scenario_claims[0].pair_evaluations[3]",
+          "description": "Claim gate evaluation for rg vs rust-ag speedup (1.25x)"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "scenario_claims[0].pair_evaluations[5]",
+          "description": "Claim gate evaluation for ugrep vs rust-ag speedup (2.4x)"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-REG-002",
+      "text": "The overall claim gate returned 'fail' due to reproducibility check failure across all three run types.",
+      "category": "regression",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "gate",
+          "description": "Top-level gate status: fail"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "reproducibility_check",
+          "description": "Reproducibility check failed across all run types"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-REG-003",
+      "text": "Only 1 of 38 registered scenarios was measured for performance benchmarks.",
+      "category": "regression",
+      "evidence": [
+        {
+          "artifact": "manifests/scenarios.json",
+          "path": "scenarios",
+          "description": "Full registered scenario list (38 scenarios)"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "set_equality_check.union_scenarios",
+          "description": "Only literal-simple in measured set"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-LIM-001",
+      "text": "Performance claims are based on a single benchmark scenario (literal-simple), limiting generalizability.",
+      "category": "limitation",
+      "evidence": [
+        {
+          "artifact": "manifests/scenarios.json",
+          "path": "scenarios",
+          "description": "38 registered scenarios; only literal-simple measured"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-LIM-002",
+      "text": "Each cell uses 3 measured samples, limiting statistical power and potentially underestimating variability.",
+      "category": "limitation",
+      "evidence": [
+        {
+          "artifact": "benchmarks/sampling_policy.json",
+          "path": "min_samples",
+          "description": "Minimum samples set to 3"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174325Z/run_manifest.json",
+          "path": "scenarios[0].results",
+          "description": "Raw sample data showing IQR ranges"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-LIM-003",
+      "text": "All benchmarks executed on a single machine (Apple M4, macOS Darwin 25.3.0); cross-platform generalization requires separate measurement.",
+      "category": "limitation",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174325Z/run_manifest.json",
+          "path": "environment",
+          "description": "Single environment: Apple M4, macOS, 16 GiB"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-LIM-004",
+      "text": "The Rust rewrite does not implement all ag features (LZMA search, worker tuning, some file-type aliases, Windows handling).",
+      "category": "limitation",
+      "evidence": [
+        {
+          "artifact": "rust-ag/Cargo.toml",
+          "path": "dependencies",
+          "description": "Dependency list showing no LZMA or advanced feature crates"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-LIM-005",
+      "text": "rg and ugrep produce different output from ag (3 unique hash clusters per scenario), making cross-tool speed comparisons imprecise.",
+      "category": "limitation",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T183717Z/correctness_gate.json",
+          "path": "scenarios[*].unique_stdout_hashes",
+          "description": "3 unique hash clusters per scenario showing divergent result sets"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-LIC-001",
+      "text": "This project derives from The Silver Searcher by Geoff Greer, licensed under Apache-2.0.",
+      "category": "licensing",
+      "evidence": [
+        {
+          "artifact": "NOTICE",
+          "path": "",
+          "description": "Upstream copyright notice: Copyright 2011-2016 Geoff Greer"
+        },
+        {
+          "artifact": "LICENSE",
+          "path": "",
+          "description": "Apache License 2.0 full text"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-LIC-002",
+      "text": "All runtime dependencies use permissive licenses (MIT, Apache-2.0, Unlicense) with no copyleft in the dependency tree.",
+      "category": "licensing",
+      "evidence": [
+        {
+          "artifact": "publication/license_inventory.json",
+          "path": "categories.rust_runtime_dependencies",
+          "description": "Complete runtime dependency license inventory"
+        },
+        {
+          "artifact": "publication/license_inventory.json",
+          "path": "license_compatibility_note",
+          "description": "Compatibility assessment"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-ADV-001",
+      "text": "Claim gate failure is due to reproducibility infrastructure gap, not measurement defect; all parity and threshold checks passed individually.",
+      "category": "adversarial_qa",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "parity_check",
+          "description": "Parity check passed across all runs"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174335Z/claim_gate.json",
+          "path": "scenario_claims[0].pair_evaluations",
+          "description": "All pair evaluations show threshold pass and cross-run agreement"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-ADV-002",
+      "text": "Single-scenario limitation is explicitly documented; literal-simple exercises the full pipeline but doesn't cover regex or edge cases.",
+      "category": "adversarial_qa",
+      "evidence": [
+        {
+          "artifact": "manifests/scenarios.json",
+          "path": "scenarios",
+          "description": "38 registered scenarios showing coverage gap"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-ADV-003",
+      "text": "3 measured samples per cell produce clear separation (IQR 0.10-0.53 ms vs inter-tool gaps of 5-15 ms) despite limited statistical power.",
+      "category": "adversarial_qa",
+      "evidence": [
+        {
+          "artifact": "benchmarks/sampling_policy.json",
+          "path": "min_samples",
+          "description": "Policy: minimum 3 samples"
+        },
+        {
+          "artifact": "benchmarks/out/20260305T174325Z/run_manifest.json",
+          "path": "scenarios[0].results",
+          "description": "Raw samples showing small IQR relative to inter-tool gaps"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-ADV-004",
+      "text": "Results do not generalize to Linux/x86 without measurement; single-machine limitation is documented.",
+      "category": "adversarial_qa",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T174325Z/run_manifest.json",
+          "path": "environment",
+          "description": "Single environment metadata confirming macOS/ARM"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-ADV-005",
+      "text": "Cross-tool result set divergence (3 unique hash clusters) means speed comparisons are imprecise; ag-vs-rust-ag is the validated parity pair.",
+      "category": "adversarial_qa",
+      "evidence": [
+        {
+          "artifact": "benchmarks/out/20260305T183717Z/correctness_gate.json",
+          "path": "scenarios[*].cross_tool_hashes",
+          "description": "Cross-tool hash comparison showing divergent result sets"
+        }
+      ]
+    },
+    {
+      "claim_id": "CLM-ADV-006",
+      "text": "rust-ag is not a drop-in replacement for ag; missing features include LZMA, worker tuning, some file-type aliases.",
+      "category": "adversarial_qa",
+      "evidence": [
+        {
+          "artifact": "rust-ag/Cargo.toml",
+          "path": "dependencies",
+          "description": "Feature set limited to regex and libc"
+        }
+      ]
     }
   ]
 }
