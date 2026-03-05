@@ -153,6 +153,12 @@ QUERIES: list[dict[str, Any]] = [
         "pattern": "XYZZY_NEVER_FOUND_12345",
         "description": "Literal that produces zero matches for exit-code testing",
     },
+    {
+        "id": "q-stream-hello",
+        "type": "literal",
+        "pattern": "hello",
+        "description": "Literal for deterministic stdin/stream scenario fixture",
+    },
 ]
 
 # ---------------------------------------------------------------------------
@@ -174,11 +180,16 @@ def _scenario(
     extra: dict[str, Any] | None = None,
     groups: list[str] | None = None,
     comparators: list[str] | None = None,
+    stdin_data: str | None = None,
 ) -> dict[str, Any]:
     """Build a single scenario entry with comparator command matrix.
 
     *comparators*: optional subset of COMPARATORS to include. Default: all.
     *groups*: optional scenario group tags for filtering in the parity runner.
+    *stdin_data*: when set, the runner pipes this string to stdin instead of
+      searching a file/directory corpus.  Stream-mode scenarios omit
+      ``--parallel`` from ag/rust-ag base flags since baseline ag disables
+      stdin stream mode when ``--parallel`` is active.
     """
     if flags is None:
         flags = {}
@@ -190,20 +201,35 @@ def _scenario(
     # rust-ag: same as ag (placeholder; will use same flags)
     # rg: --no-heading --color=never
     # ugrep: --color=never
+    #
+    # When stdin_data is set, omit --parallel for ag/rust-ag because baseline
+    # ag disables stdin stream mode when --parallel is enabled.
 
-    base_flags = {
-        "ag": "--nocolor --workers=1 --parallel --noaffinity",
-        "rust-ag": "--nocolor --workers=1 --parallel --noaffinity",
-        "rg": "--no-heading --color=never",
-        "ugrep": "--color=never",
-    }
+    if stdin_data is not None:
+        base_flags = {
+            "ag": "--nocolor --workers=1 --noaffinity",
+            "rust-ag": "--nocolor --workers=1 --noaffinity",
+            "rg": "--no-heading --color=never",
+            "ugrep": "--color=never",
+        }
+    else:
+        base_flags = {
+            "ag": "--nocolor --workers=1 --parallel --noaffinity",
+            "rust-ag": "--nocolor --workers=1 --parallel --noaffinity",
+            "rg": "--no-heading --color=never",
+            "ugrep": "--color=never",
+        }
 
     commands: dict[str, str] = {}
     for comp in comparators:
         bf = base_flags[comp]
         ef = flags.get(comp, flags.get("all", ""))
         binary = comp if comp != "rust-ag" else "rust-ag"
-        commands[comp] = f"{binary} {bf} {ef} {{pattern}} {{corpus}}".strip()
+        if stdin_data is not None:
+            # Stream scenarios: pattern only, no corpus path.
+            commands[comp] = f"{binary} {bf} {ef} {{pattern}}".strip()
+        else:
+            commands[comp] = f"{binary} {bf} {ef} {{pattern}} {{corpus}}".strip()
         # Collapse multiple spaces.
         commands[comp] = " ".join(commands[comp].split())
 
@@ -216,6 +242,8 @@ def _scenario(
     }
     if groups:
         entry["groups"] = groups
+    if stdin_data is not None:
+        entry["stdin_data"] = stdin_data
     if extra:
         entry.update(extra)
     return entry
@@ -315,6 +343,61 @@ SCENARIOS: list[dict[str, Any]] = [
             "ugrep": "--no-filename",
         },
         groups=["cli-count-stream"],
+    ),
+    # --- Single-file count/filename-prefix scenarios (cli-count-stream) ---
+    _scenario(
+        "cli-count-single-file",
+        "Count matches (--count) on a single file verifying no filename prefix",
+        "q-stream-hello",
+        flags={
+            "ag": "--count",
+            "rust-ag": "--count",
+            "rg": "--count",
+            "ugrep": "--count",
+        },
+        corpus="tests/cli-count-stream-fixture.txt",
+        groups=["cli-count-stream"],
+    ),
+    _scenario(
+        "cli-default-single-file",
+        "Default single-file search verifying no filename prefix and line-number format",
+        "q-stream-hello",
+        corpus="tests/cli-count-stream-fixture.txt",
+        groups=["cli-count-stream"],
+    ),
+    # --- Stdin/stream scenarios (cli-count-stream) ---
+    # stdin_data is piped to the comparator; --parallel is omitted for ag/rust-ag.
+    _scenario(
+        "cli-stream-default",
+        "Stdin stream search with default output (no filename, no line numbers)",
+        "q-stream-hello",
+        stdin_data="hello world\nhello there\ngoodbye\nhello hello hello\n",
+        groups=["cli-count-stream"],
+        comparators=["ag", "rust-ag"],
+    ),
+    _scenario(
+        "cli-stream-count",
+        "Stdin stream search with --count reporting per-line match counts",
+        "q-stream-hello",
+        flags={
+            "ag": "-c",
+            "rust-ag": "-c",
+        },
+        stdin_data="hello world\nhello there\ngoodbye\nhello hello hello\n",
+        groups=["cli-count-stream"],
+        comparators=["ag", "rust-ag"],
+    ),
+    _scenario(
+        "cli-stream-numbers",
+        "Stdin stream search with --numbers enabling line-number output",
+        "q-stream-hello",
+        flags={
+            "ag": "--numbers",
+            "rust-ag": "--numbers",
+        },
+        stdin_data="hello world\nhello there\ngoodbye\nhello hello hello\n",
+        groups=["cli-count-stream"],
+        comparators=["ag", "rust-ag"],
     ),
     # --- Filename-only scenarios ---
     _scenario(

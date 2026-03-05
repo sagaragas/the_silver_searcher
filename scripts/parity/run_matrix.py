@@ -276,8 +276,14 @@ def run_command(
     corpus: str,
     cwd: Path,
     timeout: int = 60,
+    stdin_data: str | None = None,
 ) -> dict[str, Any]:
-    """Execute a single command and capture output."""
+    """Execute a single command and capture output.
+
+    When *stdin_data* is provided the data is piped to the process's stdin.
+    This enables stream-mode scenarios where the comparator reads from stdin
+    instead of searching files.
+    """
     cmd_str = cmd_template.replace("{pattern}", pattern).replace("{corpus}", corpus)
     parts = tokenize_command(cmd_str)
 
@@ -291,6 +297,7 @@ def run_command(
     try:
         result = subprocess.run(
             parts,
+            input=stdin_data.encode("utf-8") if stdin_data is not None else None,
             capture_output=True,
             cwd=cwd,
             env=_build_env(),
@@ -650,6 +657,8 @@ def run_matrix(
 
         pattern = query["pattern"]
         corpus = scenario["corpus"]
+        # Retrieve optional stdin_data for stream-mode scenarios.
+        stdin_data: str | None = scenario.get("stdin_data")
 
         scenario_dir = run_dir / "scenarios" / sid
         scenario_dir.mkdir(parents=True, exist_ok=True)
@@ -660,7 +669,10 @@ def run_matrix(
             print(f"WARNING: No ag command for scenario {sid}", file=sys.stderr)
             continue
 
-        baseline_result = run_command(baseline_template, pattern, corpus, REPO_ROOT, timeout=cmd_timeout)
+        baseline_result = run_command(
+            baseline_template, pattern, corpus, REPO_ROOT,
+            timeout=cmd_timeout, stdin_data=stdin_data,
+        )
         baseline_norm = _normalise_output(baseline_result["stdout"])
 
         # Store baseline output.
@@ -690,6 +702,8 @@ def run_matrix(
             },
             "targets": {},
         }
+        if stdin_data is not None:
+            scenario_result["stdin_data"] = stdin_data
 
         for target in resolved_targets:
             if target == "ag":
@@ -715,7 +729,10 @@ def run_matrix(
                 }
                 continue
 
-            target_result = run_command(target_template, pattern, corpus, REPO_ROOT, timeout=cmd_timeout)
+            target_result = run_command(
+                target_template, pattern, corpus, REPO_ROOT,
+                timeout=cmd_timeout, stdin_data=stdin_data,
+            )
             target_norm = _normalise_output(target_result["stdout"])
 
             # Store target output.

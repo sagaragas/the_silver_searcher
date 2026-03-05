@@ -571,9 +571,8 @@ fn val_cli_001_count_invert_multi_file_all_match() {
 // Direct baseline-vs-rust transcript comparisons (VAL-CLI-001..003)
 // ============================================================
 
-/// Helper: run baseline ag on file paths and return (stdout, stderr, exit_code).
-fn run_baseline_ag(args: &[&str]) -> (String, String, i32) {
-    // Use the locally-built ag binary from the repo root.
+/// Path to the baseline ag binary from the repo root.
+fn baseline_ag_path() -> std::path::PathBuf {
     let ag_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
@@ -584,10 +583,40 @@ fn run_baseline_ag(args: &[&str]) -> (String, String, i32) {
             ag_path.display()
         );
     }
+    ag_path
+}
+
+/// Helper: run baseline ag on file paths and return (stdout, stderr, exit_code).
+fn run_baseline_ag(args: &[&str]) -> (String, String, i32) {
+    let ag_path = baseline_ag_path();
     let out = Command::new(&ag_path)
         .args(args)
         .output()
         .expect("failed to run baseline ag");
+    (
+        String::from_utf8_lossy(&out.stdout).to_string(),
+        String::from_utf8_lossy(&out.stderr).to_string(),
+        out.status.code().unwrap_or(-1),
+    )
+}
+
+/// Helper: run baseline ag with stdin piped and return (stdout, stderr, exit_code).
+fn run_baseline_ag_stdin(args: &[&str], stdin_data: &str) -> (String, String, i32) {
+    let ag_path = baseline_ag_path();
+    let mut child = Command::new(&ag_path)
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("failed to spawn baseline ag");
+    if let Some(ref mut stdin) = child.stdin {
+        stdin.write_all(stdin_data.as_bytes()).unwrap();
+    }
+    drop(child.stdin.take());
+    let out = child
+        .wait_with_output()
+        .expect("failed to wait on baseline ag");
     (
         String::from_utf8_lossy(&out.stdout).to_string(),
         String::from_utf8_lossy(&out.stderr).to_string(),
@@ -848,6 +877,159 @@ fn val_cli_003_transcript_nofilename_numbers_multi_file() {
         ag_norm, rust_norm,
         "sorted --nofilename --numbers output should match baseline:\nbaseline: {:?}\nrust-ag:  {:?}",
         ag_norm, rust_norm
+    );
+    assert_eq!(ag_exit, rust_exit, "exit codes should match");
+}
+
+// ============================================================
+// Single-file transcript comparisons (VAL-CLI-001 + VAL-CLI-002)
+// ============================================================
+
+/// Deterministic fixture path relative to the repo root.
+fn fixture_path() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("tests")
+        .join("cli-count-stream-fixture.txt")
+}
+
+#[test]
+fn val_cli_001_transcript_count_single_file() {
+    // Direct transcript: ag -c vs rust-ag -c on single fixture file.
+    let f = fixture_path();
+    let fstr = f.to_str().unwrap();
+    let (ag_out, _ag_err, ag_exit) = run_baseline_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "-c",
+        "hello",
+        fstr,
+    ]);
+    let (rust_out, _rust_err, rust_exit) = run_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "-c",
+        "hello",
+        fstr,
+    ]);
+    assert_eq!(
+        ag_out.trim(),
+        rust_out.trim(),
+        "single-file -c output should match baseline:\nbaseline: {}\nrust-ag:  {}",
+        ag_out.trim(),
+        rust_out.trim()
+    );
+    assert_eq!(ag_exit, rust_exit, "exit codes should match");
+}
+
+#[test]
+fn val_cli_002_transcript_default_single_file() {
+    // Direct transcript: default search on single fixture file.
+    // Single-file mode: no filename prefix, just "lineno:content".
+    let f = fixture_path();
+    let fstr = f.to_str().unwrap();
+    let (ag_out, _ag_err, ag_exit) = run_baseline_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "hello",
+        fstr,
+    ]);
+    let (rust_out, _rust_err, rust_exit) = run_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "--parallel",
+        "--noaffinity",
+        "hello",
+        fstr,
+    ]);
+    assert_eq!(
+        ag_out, rust_out,
+        "single-file default output should match baseline:\nbaseline: {:?}\nrust-ag:  {:?}",
+        ag_out, rust_out
+    );
+    assert_eq!(ag_exit, rust_exit, "exit codes should match");
+}
+
+// ============================================================
+// Stdin/stream transcript comparisons (VAL-CLI-001 + VAL-CLI-003)
+// ============================================================
+
+/// Deterministic stdin data matching the fixture file.
+const STREAM_FIXTURE: &str = "hello world\nhello there\ngoodbye\nhello hello hello\n";
+
+#[test]
+fn val_cli_001_transcript_stream_count() {
+    // Direct transcript: ag -c via stdin vs rust-ag -c via stdin.
+    // Omit --parallel: baseline ag disables stream mode with --parallel.
+    let (ag_out, _ag_err, ag_exit) = run_baseline_ag_stdin(
+        &["--nocolor", "--workers=1", "--noaffinity", "-c", "hello"],
+        STREAM_FIXTURE,
+    );
+    let (rust_out, _rust_err, rust_exit) = run_ag_stdin(
+        &["--nocolor", "--workers=1", "--noaffinity", "-c", "hello"],
+        STREAM_FIXTURE,
+    );
+    assert_eq!(
+        ag_out, rust_out,
+        "stream -c output should match baseline:\nbaseline: {:?}\nrust-ag:  {:?}",
+        ag_out, rust_out
+    );
+    assert_eq!(ag_exit, rust_exit, "exit codes should match");
+}
+
+#[test]
+fn val_cli_003_transcript_stream_default() {
+    // Direct transcript: default stdin search (no filename, no line numbers).
+    let (ag_out, _ag_err, ag_exit) = run_baseline_ag_stdin(
+        &["--nocolor", "--workers=1", "--noaffinity", "hello"],
+        STREAM_FIXTURE,
+    );
+    let (rust_out, _rust_err, rust_exit) = run_ag_stdin(
+        &["--nocolor", "--workers=1", "--noaffinity", "hello"],
+        STREAM_FIXTURE,
+    );
+    assert_eq!(
+        ag_out, rust_out,
+        "stream default output should match baseline:\nbaseline: {:?}\nrust-ag:  {:?}",
+        ag_out, rust_out
+    );
+    assert_eq!(ag_exit, rust_exit, "exit codes should match");
+}
+
+#[test]
+fn val_cli_003_transcript_stream_numbers() {
+    // Direct transcript: stdin search with --numbers.
+    let (ag_out, _ag_err, ag_exit) = run_baseline_ag_stdin(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--noaffinity",
+            "--numbers",
+            "hello",
+        ],
+        STREAM_FIXTURE,
+    );
+    let (rust_out, _rust_err, rust_exit) = run_ag_stdin(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--noaffinity",
+            "--numbers",
+            "hello",
+        ],
+        STREAM_FIXTURE,
+    );
+    assert_eq!(
+        ag_out, rust_out,
+        "stream --numbers output should match baseline:\nbaseline: {:?}\nrust-ag:  {:?}",
+        ag_out, rust_out
     );
     assert_eq!(ag_exit, rust_exit, "exit codes should match");
 }

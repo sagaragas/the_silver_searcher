@@ -5,8 +5,8 @@
     "tests",
     "src"
   ],
-  "manifest_hash": "f6b846c14d582557d17659d446417f3a6a5b2850254c1b36e6994e57475217da",
-  "file_count": 125,
+  "manifest_hash": "67d60b0c17cdd4883793223df7ca3b0e7445cc6d19de602d086c8aaf5190ccda",
+  "file_count": 126,
   "files": [
     {
       "path": "src/decompress.c",
@@ -142,6 +142,11 @@
       "path": "tests/case_sensitivity.t",
       "size": 604,
       "sha256": "c8ca5af5176ab33b3ada3da03b7b0bdbf02998c48bc16ddd9cba82749d2f84ee"
+    },
+    {
+      "path": "tests/cli-count-stream-fixture.txt",
+      "size": 50,
+      "sha256": "126fcead9c63efad92b4318f42070a40326f8554fa9d0660aa36b4281b404af9"
     },
     {
       "path": "tests/color.t",

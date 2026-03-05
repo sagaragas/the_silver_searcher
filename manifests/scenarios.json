@@ -7,10 +7,10 @@
     "rg",
     "ugrep"
   ],
-  "corpus_manifest_hash": "f6b846c14d582557d17659d446417f3a6a5b2850254c1b36e6994e57475217da",
-  "query_manifest_hash": "e902cb24fa4004e22228e6df5d2a45c276b35fdf3d3e75e2977fde33ff35d96c",
-  "manifest_hash": "d02afb02673029ff670aaa4654805e840a29d9d891bb34e3194ca14c16a6fc93",
-  "scenario_count": 33,
+  "corpus_manifest_hash": "67d60b0c17cdd4883793223df7ca3b0e7445cc6d19de602d086c8aaf5190ccda",
+  "query_manifest_hash": "eae091869faf4b710242d5490b484f9ee239e35b83849f296b3f9bbe2d44a275",
+  "manifest_hash": "b36676fbd952d18f7702d3c16e7cb07320178b243b3fe02ac4dc81d8dafc8c04",
+  "scenario_count": 38,
   "scenarios": [
     {
       "id": "literal-simple",
@@ -172,6 +172,78 @@
       "groups": [
         "cli-count-stream"
       ]
+    },
+    {
+      "id": "cli-count-single-file",
+      "description": "Count matches (--count) on a single file verifying no filename prefix",
+      "query_id": "q-stream-hello",
+      "corpus": "tests/cli-count-stream-fixture.txt",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity --count {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --count {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never --count {pattern} {corpus}",
+        "ugrep": "ugrep --color=never --count {pattern} {corpus}"
+      },
+      "groups": [
+        "cli-count-stream"
+      ]
+    },
+    {
+      "id": "cli-default-single-file",
+      "description": "Default single-file search verifying no filename prefix and line-number format",
+      "query_id": "q-stream-hello",
+      "corpus": "tests/cli-count-stream-fixture.txt",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never {pattern} {corpus}",
+        "ugrep": "ugrep --color=never {pattern} {corpus}"
+      },
+      "groups": [
+        "cli-count-stream"
+      ]
+    },
+    {
+      "id": "cli-stream-default",
+      "description": "Stdin stream search with default output (no filename, no line numbers)",
+      "query_id": "q-stream-hello",
+      "corpus": ".",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --noaffinity {pattern}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --noaffinity {pattern}"
+      },
+      "groups": [
+        "cli-count-stream"
+      ],
+      "stdin_data": "hello world\nhello there\ngoodbye\nhello hello hello\n"
+    },
+    {
+      "id": "cli-stream-count",
+      "description": "Stdin stream search with --count reporting per-line match counts",
+      "query_id": "q-stream-hello",
+      "corpus": ".",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --noaffinity -c {pattern}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --noaffinity -c {pattern}"
+      },
+      "groups": [
+        "cli-count-stream"
+      ],
+      "stdin_data": "hello world\nhello there\ngoodbye\nhello hello hello\n"
+    },
+    {
+      "id": "cli-stream-numbers",
+      "description": "Stdin stream search with --numbers enabling line-number output",
+      "query_id": "q-stream-hello",
+      "corpus": ".",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --noaffinity --numbers {pattern}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --noaffinity --numbers {pattern}"
+      },
+      "groups": [
+        "cli-count-stream"
+      ],
+      "stdin_data": "hello world\nhello there\ngoodbye\nhello hello hello\n"
     },
     {
       "id": "files-with-matches",

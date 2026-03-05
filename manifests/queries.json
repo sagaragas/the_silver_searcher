@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "description": "Query / pattern manifest for benchmark scenarios",
-  "manifest_hash": "e902cb24fa4004e22228e6df5d2a45c276b35fdf3d3e75e2977fde33ff35d96c",
-  "query_count": 12,
+  "manifest_hash": "eae091869faf4b710242d5490b484f9ee239e35b83849f296b3f9bbe2d44a275",
+  "query_count": 13,
   "queries": [
     {
       "id": "q-literal-simple",
@@ -75,6 +75,12 @@
       "type": "literal",
       "pattern": "XYZZY_NEVER_FOUND_12345",
       "description": "Literal that produces zero matches for exit-code testing"
+    },
+    {
+      "id": "q-stream-hello",
+      "type": "literal",
+      "pattern": "hello",
+      "description": "Literal for deterministic stdin/stream scenario fixture"
     }
   ]
 }
