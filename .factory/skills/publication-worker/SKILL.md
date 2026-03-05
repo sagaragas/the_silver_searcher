@@ -9,16 +9,24 @@ NOTE: Startup and cleanup are handled by `worker-base`. This skill defines the W
 
 ## When to Use This Skill
 
-Use for features in milestone `performance-memo` and for publication/license packaging work.
+Use for features in milestone `performance-memo` and for publication/license packaging work, including related follow-up milestones (e.g., `misc-performance-followup`).
 
 ## Work Procedure
 
 1. Read publication-related assertions (`VAL-PUB-*`, `VAL-CROSS-*`) and collect benchmark/parity artifacts first.
 2. Build claim-evidence map before drafting narrative sections; every numeric claim must have artifact linkage.
+   - **Uncertainty source:** Use `benchmarks/out/<run>/sampling_validation.json` as the authoritative source for all uncertainty stats (IQR/CI) in memo and Q&A claims. Do not hand-enter uncertainty values; extract them programmatically from the artifact.
 3. Draft/update memo sections (methods, results, regressions, limitations, licensing, adversarial Q&A) from artifacts only.
-4. Generate publication-gate outputs: numeric-claim audit, specificity/style checks, reconciliation report.
-5. Ensure public fork publication package includes referenced scripts/manifests/checksums and traceable commit SHA.
-6. Run required validators and publication checks from `.factory/services.yaml`.
+4. **License inventory sequencing:** Generate or update `publication/license_inventory.json` **before** running `publication/license_audit.py`. The audit must fail fast when the inventory is missing or stale. This is a hard prerequisite — do not run the audit without a current inventory.
+5. Generate publication-gate outputs: numeric-claim audit, specificity/style checks, reconciliation report.
+6. **Commit-lineage traceability:** Enforce strict equality between the commit SHA cited in the memo, the parity evidence commit SHA, and the benchmark evidence commit SHA. All three must resolve to the same commit. Publication traceability checks must hard-fail on any mismatch — no fallback to unresolved `parity_run_ids`.
+7. **Clean-checkout smoke reproducibility:** Execute a clean-checkout smoke reproducibility run against an actual isolated-worktree checkout/clone of the cited commit — not just commit existence verification plus current-tree execution. The clean-checkout evidence artifact (`publication/clean_checkout_reproducibility.json`) must include:
+   - `schema_version` field
+   - `requested_commit_sha` and `checked_out_commit_sha` (must be equal to the memo-cited publication commit SHA)
+   - `execution_context` must be `isolated_worktree`
+   - All checks in the artifact must pass
+8. Ensure public fork publication package includes referenced scripts/manifests/checksums and traceable commit SHA.
+9. Run required validators and publication checks from `.factory/services.yaml`.
 
 ## Example Handoff
 

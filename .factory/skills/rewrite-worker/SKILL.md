@@ -9,19 +9,40 @@ NOTE: Startup and cleanup are handled by `worker-base`. This skill defines the W
 
 ## When to Use This Skill
 
-Use for features in milestones `baseline-and-fixtures`, `rust-search-core`, and `rust-cli-parity`.
-This includes Python/parity-tooling hardening features, not only Rust source changes.
+Use for features in milestones `baseline-and-fixtures`, `rust-search-core`, `rust-cli-parity`, and related hardening/follow-up milestones (e.g., `misc-ops-hardening`, `misc-performance-followup`).
+This includes Python/parity-tooling hardening features, manifest/fixture regeneration, and script changes — not only Rust source changes.
 
 ## Work Procedure
 
+### Common Steps (all feature types)
+
 1. Read `mission.md`, `AGENTS.md`, `validation-contract.md`, and the assigned feature details before touching code.
 2. Reproduce baseline behavior with `ag` for the feature scope and store fixture/output artifacts first.
+
+### Rust Code Features
+
 3. Add or update failing tests first (red): parity tests, fixture checks, and command-matrix assertions.
-4. Implement changes to make tests pass (green), whether in Rust source or tooling scripts, while matching baseline behavior and repository style.
+4. Implement changes to make tests pass (green), matching baseline behavior and repository style.
+
+### Tooling / Script / Manifest Features
+
+3. For tooling-focused features (Python scripts, manifests, fixture regeneration), the strict red-first test cycle may not apply literally. Instead:
+   - When a failing test can be written before the change (e.g., a new validation check, a regression guard), write it first.
+   - When the feature is regeneration-only or manifest sync work where a pre-existing test already covers correctness, running the scoped validator before and after the change is acceptable in place of a new red test.
+   - Always include direct unit tests or command-transcript evidence that the exact regression path is fixed.
+   - For argv/tokenization or escaping-related changes, include edge-case regression tests covering shell/regex escaping semantics (backslashes, quoted arguments, `{pattern}` placeholder expansion).
+4. Implement the tooling change and verify with scoped validators.
+
+### Shared Finalization Steps
+
 5. Run scoped checks during iteration, then run full required validators from `.factory/services.yaml` commands.
 6. Run manual CLI verification for assigned flows (command + observed output + exit code) and capture artifacts.
 7. For tooling-focused features, include direct unit tests plus command-transcript evidence that the exact regression path is fixed.
 8. Confirm no leftover temporary processes/files outside expected artifact paths.
+
+### Procedure Compliance Evidence
+
+When reporting `followedProcedure` in skill feedback, evaluate compliance against the feature type (Rust code vs tooling/manifests). Claiming `followedProcedure: true` requires that transcript ordering evidence shows tests or scoped validators ran before or alongside implementation edits — not only after.
 
 ## Example Handoff
 
