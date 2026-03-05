@@ -23,6 +23,7 @@ Testing surface information for validators and workers.
 - `cram` must be installed in local venv (`.venv-ag-tests`), not system pip.
 - One-device/symlink edge cases may be platform-dependent and require explicit skip notes.
 - Version output may vary by compile-time features; normalize format where required by contract.
+- `scripts/parity/run_matrix.py` currently has CLI groups `cli-formatting` and `cli-exit-errors` only; there is no `cli-count-stream` group, so `VAL-CLI-001..003` require direct baseline-vs-rust CLI transcripts.
 
 ## Evidence Capture Requirements
 
