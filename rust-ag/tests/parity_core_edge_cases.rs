@@ -434,10 +434,12 @@ fn val_core_008_broken_symlink_error() {
 }
 
 #[test]
-fn val_core_008_one_device_basic() {
-    // --one-device should work without errors on the one-device fixture.
+fn val_core_008_one_device_restricted() {
+    // --one-device restricts traversal to the same filesystem device.
     // On macOS, cross-device boundary is not available, so this primarily
     // tests that --one-device doesn't break normal same-device traversal.
+    // On Linux with /dev/shm cross-device link, --one-device should exclude
+    // the cross-device sentinel file from results.
     let fixture = repo_root().join("tests/edge-cases/one-device");
     assert_parity(
         &[
@@ -450,6 +452,61 @@ fn val_core_008_one_device_basic() {
             ".",
         ],
         &fixture,
+    );
+}
+
+#[test]
+fn val_core_008_one_device_follow() {
+    // -f (follow symlinks) without --one-device should traverse cross-device
+    // symlinks when available.  On macOS where no cross-device link exists,
+    // this tests that -f works correctly on same-device symlinks.
+    // On Linux with /dev/shm, -f should include the cross-device sentinel.
+    let fixture = repo_root().join("tests/edge-cases/one-device");
+    assert_parity(
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "-f",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+}
+
+#[test]
+fn val_core_008_one_device_restricted_excludes_local_only() {
+    // With --one-device, results should only contain local-device files.
+    // The cross-device sentinel (if present) must NOT appear.
+    let fixture = repo_root().join("tests/edge-cases/one-device");
+    let rust = run_cmd(
+        &rust_ag_bin(),
+        &[
+            "--nocolor",
+            "--workers=1",
+            "--parallel",
+            "--noaffinity",
+            "--one-device",
+            "NEEDLE",
+            ".",
+        ],
+        &fixture,
+    );
+    let stdout = String::from_utf8_lossy(&rust.stdout);
+    assert!(
+        stdout.contains("local-file.txt"),
+        "--one-device should still find local files: {stdout}"
+    );
+    assert!(
+        stdout.contains("nested.txt"),
+        "--one-device should still find nested same-device files: {stdout}"
+    );
+    // cross-device-file.txt should NOT appear (it's on /dev/shm if available)
+    assert!(
+        !stdout.contains("cross-device-file.txt"),
+        "--one-device should exclude cross-device files: {stdout}"
     );
 }
 

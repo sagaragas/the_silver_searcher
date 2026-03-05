@@ -9,8 +9,8 @@
   ],
   "corpus_manifest_hash": "f6b846c14d582557d17659d446417f3a6a5b2850254c1b36e6994e57475217da",
   "query_manifest_hash": "e902cb24fa4004e22228e6df5d2a45c276b35fdf3d3e75e2977fde33ff35d96c",
-  "manifest_hash": "a6d1fcc6b656ad3f56bfad420021c3af6a12d5873dc78bd6661d3af100aedf5e",
-  "scenario_count": 30,
+  "manifest_hash": "212f3ad2a667fcdd12d71fa62528df513948183fff28fd9c4a3378140a42a41c",
+  "scenario_count": 31,
   "scenarios": [
     {
       "id": "literal-simple",
@@ -281,8 +281,8 @@
       }
     },
     {
-      "id": "edge-one-device",
-      "description": "Search with one-device restriction in one-device fixture",
+      "id": "edge-one-device-restricted",
+      "description": "Search with --one-device restriction excludes cross-device paths",
       "query_id": "q-edge-needle",
       "corpus": "tests/edge-cases/one-device",
       "commands": {
@@ -296,7 +296,27 @@
         "edge-cases"
       ],
       "platform_skip": {
-        "condition": "not cross_device_available",
+        "condition": "one_device_unavailable",
+        "reason": "Cross-device mount point not available on this platform"
+      }
+    },
+    {
+      "id": "edge-one-device-follow",
+      "description": "Search following symlinks without --one-device includes cross-device paths",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/one-device",
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity -f {pattern} {corpus}",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity -f {pattern} {corpus}",
+        "rg": "rg --no-heading --color=never -L {pattern} {corpus}",
+        "ugrep": "ugrep --color=never -L {pattern} {corpus}"
+      },
+      "groups": [
+        "core-edge-cases",
+        "edge-cases"
+      ],
+      "platform_skip": {
+        "condition": "one_device_unavailable",
         "reason": "Cross-device mount point not available on this platform"
       }
     },

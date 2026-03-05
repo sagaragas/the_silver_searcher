@@ -61,7 +61,8 @@ REQUIRED_EDGE_SCENARIO_IDS: set[str] = {
     "edge-ignore-source",
     "edge-large-file",
     "edge-max-count",
-    "edge-one-device",
+    "edge-one-device-restricted",
+    "edge-one-device-follow",
     "edge-recursion-n-r-precedence",
     "edge-recursion-r-n-precedence",
     "edge-symlink-traversal",
@@ -387,8 +388,8 @@ SCENARIOS: list[dict[str, Any]] = [
         groups=["core-edge-cases", "edge-cases"],
     ),
     _scenario(
-        "edge-one-device",
-        "Search with one-device restriction in one-device fixture",
+        "edge-one-device-restricted",
+        "Search with --one-device restriction excludes cross-device paths",
         "q-edge-needle",
         flags={
             "ag": "--one-device",
@@ -399,7 +400,26 @@ SCENARIOS: list[dict[str, Any]] = [
         corpus="tests/edge-cases/one-device",
         extra={
             "platform_skip": {
-                "condition": "not cross_device_available",
+                "condition": "one_device_unavailable",
+                "reason": "Cross-device mount point not available on this platform",
+            },
+        },
+        groups=["core-edge-cases", "edge-cases"],
+    ),
+    _scenario(
+        "edge-one-device-follow",
+        "Search following symlinks without --one-device includes cross-device paths",
+        "q-edge-needle",
+        flags={
+            "ag": "-f",
+            "rust-ag": "-f",
+            "rg": "-L",
+            "ugrep": "-L",
+        },
+        corpus="tests/edge-cases/one-device",
+        extra={
+            "platform_skip": {
+                "condition": "one_device_unavailable",
                 "reason": "Cross-device mount point not available on this platform",
             },
         },
