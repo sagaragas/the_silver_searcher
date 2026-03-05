@@ -32,3 +32,6 @@ Architectural decisions and patterns for this mission.
 
 - `ag` treats `--max-count=0` as effectively unlimited because truncation in `src/search.c` is gated on `opts.max_matches_per_file > 0`, even though help text mentions a default max-count of 10,000.
 - In rust-ag, `-m0`/`--max-count=0` is mapped to `usize::MAX` (truly unlimited). The default when no `-m` flag is given remains 10,000.
+- Stream mode `-c -v` must count non-matching lines (invert semantics), not matching lines; parity coverage exists in `rust-ag/tests/parity_cli_count_filename_stream.rs`.
+- Stream stdin handling must stay byte-tolerant (read bytes and decode lossily) so non-UTF8 input never panics.
+- For `-g` filename filtering, baseline `ag` evaluates the regex against raw traversal paths, then normalizes paths only for printed output. Matching against normalized display paths can regress patterns that intentionally include a leading `./`.

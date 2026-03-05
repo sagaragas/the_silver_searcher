@@ -1,0 +1,21 @@
+{
+  "featureId": "rust-cli-count-filename-stream-parity-fix",
+  "reviewedAt": "2026-03-05T14:21:35Z",
+  "commitId": "1ffe60a0a3f5a2e775d73f4a9d056d799d63102c",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "After reviewing the prior failed feature diff (015ec5b93403ddb1b561bc8e1baa9c6ef7c4338f) and the fix diff (1ffe60a0a3f5a2e775d73f4a9d056d799d63102c), the fix directly addresses both blocking failures from the prior review: stream `-c -v` now applies invert-match semantics in `search_stream_count`, and stream stdin reading is now byte-tolerant (`read_to_end` + `from_utf8_lossy`) so non-UTF8 input no longer panics. Regression coverage was added for both failure paths.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "knowledge",
+      "observation": "The repository shared library still does not document the stream-mode parity quirks now fixed here (stream `-c -v` invert count behavior and non-UTF8 stdin handling expectations), which may cause future rediscovery work.",
+      "evidence": "`rust-ag/src/main.rs` now contains explicit stream invert/count and byte-tolerant stdin logic (lines ~85-104 and ~462-485), but searching `.factory/library/` for `stdin|stream|non-UTF8|invert-match|--numbers|--nofilename` returns no relevant guidance."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/rust-cli-parity/scrutiny/reviews/rust-cli-count-filename-stream-parity.json",
+  "summary": "Pass: fix review confirms the original blocking defects (stream `-c -v` semantics and non-UTF8 stdin panic) are adequately resolved, with targeted code changes and regression tests, and no new blocking issues identified."
+}

@@ -1,93 +1,71 @@
 {
   "milestone": "rust-cli-parity",
-  "round": 1,
+  "round": 2,
   "status": "fail",
   "validatorsRun": {
     "test": {
       "passed": true,
-      "command": "PATH=\"/Users/ragas/code/missions/the_silver_searcher/.venv-ag-tests/bin:$PATH\" make -C \"/Users/ragas/code/missions/the_silver_searcher\" test && if [ -f \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" ] || [ -f \"/Users/ragas/code/missions/the_silver_searcher/rust-ag/Cargo.toml\" ]; then cargo test --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" --workspace -- --test-threads=5; else echo \"No Rust workspace yet; skipping Rust tests\"; fi",
+      "command": "cd \"/Users/ragas/code/missions/the_silver_searcher\" && PATH=\".venv-ag-tests/bin:$PATH\" make test && if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo test --workspace -- --test-threads=5; else echo \"No Rust workspace yet; skipping Rust tests\"; fi",
       "exitCode": 0
     },
     "typecheck": {
       "passed": true,
-      "command": "if [ -f \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" ] || [ -f \"/Users/ragas/code/missions/the_silver_searcher/rust-ag/Cargo.toml\" ]; then cargo check --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" --workspace; else echo \"No Rust workspace yet; skipping typecheck\"; fi",
+      "command": "cd \"/Users/ragas/code/missions/the_silver_searcher\" && if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo check --workspace; else echo \"No Rust workspace yet; skipping typecheck\"; fi",
       "exitCode": 0
     },
     "lint": {
       "passed": true,
-      "command": "if [ -f \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" ] || [ -f \"/Users/ragas/code/missions/the_silver_searcher/rust-ag/Cargo.toml\" ]; then cargo fmt --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" --all --check && cargo clippy --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" --workspace --all-targets -- -D warnings; else echo \"No Rust workspace yet; skipping Rust lint\"; fi",
+      "command": "cd \"/Users/ragas/code/missions/the_silver_searcher\" && if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings; else echo \"No Rust workspace yet; skipping Rust lint\"; fi",
       "exitCode": 0
     }
   },
   "reviewsSummary": {
-    "total": 4,
-    "passed": 0,
-    "failed": 4,
+    "total": 5,
+    "passed": 4,
+    "failed": 1,
     "failedFeatures": [
-      "rust-cli-count-filename-stream-parity",
-      "rust-cli-context-color-filter-help-version",
-      "rust-cli-exit-and-invalid-diagnostics",
-      "rust-cli-file-traversal-scope-parity-fix"
+      "rust-cli-filename-filter-path-prefix-fix"
     ]
   },
   "blockingIssues": [
     {
-      "featureId": "rust-cli-count-filename-stream-parity",
+      "featureId": "rust-cli-filename-filter-path-prefix-fix",
       "severity": "blocking",
-      "description": "Stream mode `-c -v` parity mismatch: `search_stream_count` ignores invert semantics and reports matching-line counts instead of baseline invert counts."
-    },
-    {
-      "featureId": "rust-cli-count-filename-stream-parity",
-      "severity": "blocking",
-      "description": "Stream mode panics on non-UTF8 stdin due to `read_to_string(...).expect(...)`, while baseline handles byte streams without panic."
-    },
-    {
-      "featureId": "rust-cli-context-color-filter-help-version",
-      "severity": "blocking",
-      "description": "Invalid `-G/--file-search-regex` values are silently ignored instead of returning baseline-compatible invalid-regex diagnostics and exit semantics."
-    },
-    {
-      "featureId": "rust-cli-context-color-filter-help-version",
-      "severity": "blocking",
-      "description": "Context rendering drops output for non-UTF8 files because `read_to_string` failures short-circuit output, diverging from baseline byte-tolerant behavior."
-    },
-    {
-      "featureId": "rust-cli-exit-and-invalid-diagnostics",
-      "severity": "blocking",
-      "description": "Missing argument handling for `--path-to-ignore`/`-p` is misclassified and falls back to generic query-missing error instead of baseline invalid-option diagnostics."
-    },
-    {
-      "featureId": "rust-cli-file-traversal-scope-parity-fix",
-      "severity": "blocking",
-      "description": "`is_binary_buf` incorrectly skips final suspicious-byte ratio check for short buffers (`total_bytes < 32`), causing traversal scope mismatches with baseline binary classification."
+      "description": "`-g` regex matching is evaluated against normalized display paths (`display_path_for`) instead of baseline raw traversal paths, causing parity regressions for patterns that depend on leading `./` (e.g., '^\\./rust-ag/src/main\\.rs$')."
     }
   ],
-  "appliedUpdates": [],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Added stream-mode parity notes to .factory/library/architecture.md for `-c -v` invert counting and byte-tolerant stdin handling expectations.",
+      "sourceFeature": "rust-cli-count-filename-stream-parity-fix"
+    },
+    {
+      "target": "library",
+      "description": "Added `-g` baseline semantics note to .factory/library/architecture.md: regex matches raw paths, while output paths are normalized only at print time.",
+      "sourceFeature": "rust-cli-filename-filter-path-prefix-fix"
+    }
+  ],
   "suggestedGuidanceUpdates": [
     {
       "target": "rewrite-worker skill",
-      "suggestion": "Require explicit edge-case verification for stream/context non-UTF8 handling and stream `-c -v` parity in CLI milestones.",
-      "evidence": "Blocking issues appeared in both `rust-cli-count-filename-stream-parity` and `rust-cli-context-color-filter-help-version` due to missing byte-oriented/stream-edge validation.",
+      "suggestion": "When modifying `-g` output formatting, require explicit parity guards that verify filename-regex matching semantics on raw paths (including `^\\./...$` patterns), not only display formatting assertions.",
+      "evidence": "Review failure in rust-cli-filename-filter-path-prefix-fix showed formatting-only tests passed while regex matching semantics regressed.",
       "isSystemic": true
     },
     {
       "target": "rewrite-worker skill",
-      "suggestion": "Require invalid-option validation to include missing-value cases for options that require arguments (not only unknown-flag cases).",
-      "evidence": "`rust-cli-exit-and-invalid-diagnostics` passed unknown-option tests but missed `--path-to-ignore`/`-p` missing-argument parity mismatch.",
+      "suggestion": "After fixing CLI regressions (e.g., invalid `-G` and non-UTF8 context behavior), require corresponding shared parity-matrix scenario coverage updates when gaps are identified.",
+      "evidence": "Review of rust-cli-context-color-filter-help-version-fix noted shared matrix scenarios still only cover valid `-G` and UTF-8 context cases.",
       "isSystemic": true
     },
     {
-      "target": "AGENTS.md",
-      "suggestion": "Clarify whether parity validation must compare stderr bytes/channels in addition to stdout+exit, and enforce that requirement consistently in tooling and acceptance checks.",
-      "evidence": "Review for `rust-cli-exit-and-invalid-diagnostics` identified mismatch between library claims (stdout/stderr/exit) and current parity runner behavior (stdout+exit only).",
+      "target": "rewrite-worker skill",
+      "suggestion": "Enforce red-first workflow adherence in reported skill feedback (or add automated transcript-order checks) so implementation-before-test ordering cannot be marked as procedure-followed.",
+      "evidence": "Review of rust-cli-filename-filter-path-prefix-fix observed source edits before new tests while skill feedback still reported followedProcedure=true.",
       "isSystemic": true
     }
   ],
-  "rejectedObservations": [
-    {
-      "observation": "Add a separate guidance item for UTF-8-only context fixtures.",
-      "reason": "duplicate"
-    }
-  ],
-  "previousRound": null
+  "rejectedObservations": [],
+  "previousRound": ".factory/validation/rust-cli-parity/scrutiny/synthesis.round1.json"
 }
