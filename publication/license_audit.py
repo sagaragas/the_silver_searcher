@@ -3,11 +3,15 @@
 
 Validates (per VAL-PUB-006):
 1. license_inventory.json exists and is well-formed.
-2. Every runtime dependency in `cargo tree` output appears in the inventory.
+2. Every *transitive* runtime dependency in `cargo tree` output appears in
+   the inventory (not only depth-1 direct dependencies).
 3. Upstream source attribution references existing NOTICE and LICENSE files.
 4. Benchmark comparator tools are listed.
 5. All licenses in inventory are permissive (no copyleft in runtime deps).
 6. Memo includes a license attribution section referencing the inventory.
+
+Dependency-enumeration failures (e.g. `cargo tree` not found, non-zero exit)
+propagate as non-zero audit failures with actionable diagnostics.
 
 Usage:
     python3 publication/license_audit.py
@@ -52,25 +56,65 @@ def load_inventory() -> dict | None:
         return json.load(f)
 
 
+class DependencyEnumerationError(Exception):
+    """Raised when dependency enumeration fails."""
+
+
 def get_cargo_runtime_deps() -> list[str]:
-    """Get runtime dependency names from cargo tree (depth 1, no dev)."""
+    """Get *all* transitive runtime dependency names from cargo tree.
+
+    Enumerates the full transitive closure of normal (non-dev) dependencies,
+    not just depth-1 direct dependencies. Uses ``--prefix none`` for clean
+    line-oriented output.
+
+    Raises ``DependencyEnumerationError`` on any failure (command not found,
+    non-zero exit, timeout) so callers can propagate actionable diagnostics
+    rather than silently reporting zero dependencies.
+    """
+    cargo_cmd = [
+        "cargo", "tree", "--workspace",
+        "--edges", "normal",
+        "--prefix", "none",
+        "--format", "{p}",
+    ]
     try:
         result = subprocess.run(
-            ["cargo", "tree", "--workspace", "--depth", "1",
-             "--edges", "normal", "--format", "{p}"],
+            cargo_cmd,
             capture_output=True, text=True, cwd=REPO_ROOT, timeout=30,
         )
-        names = set()
-        for line in result.stdout.splitlines():
-            line = line.strip().lstrip("├── ").lstrip("└── ").lstrip("│   ")
-            match = re.match(r"(\S+)\s+v", line)
-            if match:
-                name = match.group(1)
-                if name != "rust-ag":
-                    names.add(name)
-        return sorted(names)
-    except (subprocess.SubprocessError, FileNotFoundError):
-        return []
+    except FileNotFoundError:
+        raise DependencyEnumerationError(
+            "cargo not found on PATH. Install the Rust toolchain or ensure "
+            "'cargo' is available to enumerate runtime dependencies."
+        )
+    except subprocess.TimeoutExpired:
+        raise DependencyEnumerationError(
+            f"cargo tree timed out after 30s. Command: {' '.join(cargo_cmd)}"
+        )
+    except subprocess.SubprocessError as exc:
+        raise DependencyEnumerationError(
+            f"cargo tree failed with unexpected error: {exc}"
+        )
+
+    if result.returncode != 0:
+        stderr_snippet = (result.stderr or "").strip()[:500]
+        raise DependencyEnumerationError(
+            f"cargo tree exited with code {result.returncode}.\n"
+            f"Command: {' '.join(cargo_cmd)}\n"
+            f"stderr: {stderr_snippet or '(empty)'}"
+        )
+
+    names: set[str] = set()
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        # With --prefix none each line is: "<name> v<version> [(<source>)]"
+        # Deduped entries may have trailing " (*)" which we ignore.
+        match = re.match(r"(\S+)\s+v", line)
+        if match:
+            name = match.group(1)
+            if name != "rust-ag":
+                names.add(name)
+    return sorted(names)
 
 
 def check_inventory_schema(inventory: dict) -> list[str]:
@@ -103,7 +147,7 @@ def check_inventory_schema(inventory: dict) -> list[str]:
 def check_runtime_dep_coverage(
     inventory: dict, cargo_deps: list[str]
 ) -> list[str]:
-    """Check that all cargo runtime deps appear in inventory."""
+    """Check that all transitive cargo runtime deps appear in inventory."""
     errors = []
     inv_names = set()
     for cat_key in ("rust_runtime_dependencies",):
@@ -113,7 +157,11 @@ def check_runtime_dep_coverage(
 
     for dep in cargo_deps:
         if dep.lower() not in inv_names:
-            errors.append(f"Runtime dependency '{dep}' not in license inventory")
+            errors.append(
+                f"Transitive runtime dependency '{dep}' missing from "
+                f"license inventory (rust_runtime_dependencies). "
+                f"Add an entry to publication/license_inventory.json."
+            )
 
     return errors
 
@@ -213,15 +261,30 @@ def main() -> int:
         ok_count += 1
         print("  ✓ Schema valid")
 
-    # Check 3: Runtime dep coverage
-    cargo_deps = get_cargo_runtime_deps()
+    # Check 3: Runtime dep coverage (full transitive tree)
+    try:
+        cargo_deps = get_cargo_runtime_deps()
+    except DependencyEnumerationError as exc:
+        print(
+            f"FAIL: Dependency enumeration failed — cannot verify "
+            f"license coverage.\n  {exc}",
+            file=sys.stderr,
+        )
+        return 1
+
     dep_errors = check_runtime_dep_coverage(inventory, cargo_deps)
     if dep_errors:
         errors.extend(dep_errors)
-        print(f"  ✗ Runtime dep coverage: {len(dep_errors)} missing")
+        print(
+            f"  ✗ Transitive runtime dep coverage: "
+            f"{len(dep_errors)} missing"
+        )
     else:
         ok_count += 1
-        print(f"  ✓ Runtime dep coverage ({len(cargo_deps)} deps)")
+        print(
+            f"  ✓ Transitive runtime dep coverage "
+            f"({len(cargo_deps)} deps)"
+        )
 
     # Check 4: Upstream attribution
     attr_errors = check_upstream_attribution(inventory)
