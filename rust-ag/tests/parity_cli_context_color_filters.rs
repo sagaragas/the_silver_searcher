@@ -401,6 +401,64 @@ fn val_cli_006_g_flag_no_content_search() {
 }
 
 #[test]
+fn val_cli_006_g_flag_no_dot_slash_prefix() {
+    // Baseline ag's normalize_path() strips leading "./" from output paths.
+    // When searching from ".", output should NOT have "./" prefix.
+    let dir = setup_filter_fixture();
+    let dir_path = dir.path().to_str().unwrap();
+    // Simulate real parity scenario: -g with pattern and "." as explicit path.
+    let (stdout, _stderr, exit) = run_ag(&["-g", "\\.rs$", dir_path]);
+    assert_eq!(exit, 0);
+    for line in stdout.trim().lines() {
+        assert!(
+            !line.starts_with("./"),
+            "-g output paths should not start with './': {line}"
+        );
+    }
+}
+
+#[test]
+fn val_cli_006_g_flag_no_dot_slash_multi_path() {
+    // Even with multiple paths (one of which starts with "./"), output
+    // should never start with "./" — matching baseline ag normalize_path.
+    let dir = setup_filter_fixture();
+    let sub_dir = dir.path().join("sub");
+    let (stdout, _stderr, exit) = run_ag(&[
+        "-g",
+        "\\.rs$",
+        dir.path().to_str().unwrap(),
+        sub_dir.to_str().unwrap(),
+    ]);
+    assert_eq!(exit, 0);
+    for line in stdout.trim().lines() {
+        assert!(
+            !line.starts_with("./"),
+            "-g multi-path output should not start with './': {line}"
+        );
+    }
+}
+
+#[test]
+fn val_cli_006_normal_search_no_dot_slash_prefix() {
+    // Normal search mode should also strip "./" from paths.
+    // Baseline ag's normalize_path() applies unconditionally.
+    let dir = setup_filter_fixture();
+    let (stdout, _stderr, exit) = run_ag(&[
+        "--nocolor",
+        "--workers=1",
+        "hello",
+        dir.path().to_str().unwrap(),
+    ]);
+    assert_eq!(exit, 0);
+    for line in stdout.trim().lines() {
+        assert!(
+            !line.starts_with("./"),
+            "Normal search output should not start with './': {line}"
+        );
+    }
+}
+
+#[test]
 fn val_cli_006_file_search_regex_filters() {
     let dir = setup_filter_fixture();
     let (stdout, _stderr, exit) = run_ag(&["-G", "\\.rs$", "hello", dir.path().to_str().unwrap()]);

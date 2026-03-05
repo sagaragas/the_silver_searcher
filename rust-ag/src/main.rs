@@ -145,8 +145,6 @@ fn main() {
 
     let show_line_numbers = opts.numbers || !(opts.no_numbers || opts.no_filename || stdin_is_pipe);
 
-    let strip_dot_prefix = opts.paths.len() == 1 && opts.paths[0] == ".";
-
     let has_context = opts.before_context > 0 || opts.after_context > 0;
 
     let mut found_any = false;
@@ -155,7 +153,7 @@ fn main() {
     for file_path in &files {
         let result = search::search_file(file_path, &re, &opts);
 
-        let display_path = display_path_for(file_path, strip_dot_prefix);
+        let display_path = display_path_for(file_path);
 
         // Handle binary files.
         if result.is_binary && result.binary_has_match {
@@ -289,11 +287,10 @@ fn run_filename_pattern_mode(opts: &opts::Opts) -> i32 {
     };
 
     let files = walk::walk_paths(opts);
-    let strip_dot_prefix = opts.paths.len() == 1 && opts.paths[0] == ".";
 
     let mut found = false;
     for f in &files {
-        let display = display_path_for(f, strip_dot_prefix);
+        let display = display_path_for(f);
         if file_re.is_match(&display) {
             println!("{display}");
             found = true;
@@ -514,14 +511,21 @@ fn search_stream_normal(
 }
 
 /// Compute the display path for output.
-fn display_path_for(path: &std::path::Path, strip_dot: bool) -> String {
+///
+/// Mirrors baseline ag's `normalize_path()` in `print.c`:
+///   - Strip leading "./" when path length >= 3
+///   - Collapse leading "//" to "/"
+fn display_path_for(path: &std::path::Path) -> String {
     let s = path.to_string_lossy();
-    if strip_dot {
-        let stripped = s.strip_prefix("./").unwrap_or(&s);
-        stripped.to_string()
-    } else {
-        s.to_string()
+    if s.len() >= 3 {
+        if let Some(rest) = s.strip_prefix("./") {
+            return rest.to_string();
+        }
+        if let Some(rest) = s.strip_prefix("//") {
+            return format!("/{rest}");
+        }
     }
+    s.to_string()
 }
 
 fn print_help() {
