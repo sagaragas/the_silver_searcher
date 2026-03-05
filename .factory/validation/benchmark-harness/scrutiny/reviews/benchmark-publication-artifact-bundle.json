@@ -1,0 +1,34 @@
+{
+  "featureId": "benchmark-publication-artifact-bundle",
+  "reviewedAt": "2026-03-05T15:57:08Z",
+  "commitId": "8b5e02f",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "Feature adds the requested packager, checksum verifier, tests, and service commands, but two blocking integrity gaps remain: required raw artifacts are not enforced as required, and checksum verification can be bypassed by dropping checksum entries from publication_manifest.json.",
+    "issues": [
+      {
+        "file": "benchmarks/package_publication_artifacts.py",
+        "line": 287,
+        "severity": "blocking",
+        "description": "Missing files from REQUIRED_RAW_ARTIFACTS only emit a warning and packaging continues. This can produce a publication bundle that omits required raw artifacts while still reporting success, violating expected behavior that publication manifests include required artifacts."
+      },
+      {
+        "file": "benchmarks/verify_checksums.py",
+        "line": 73,
+        "severity": "blocking",
+        "description": "Verifier trusts publication_manifest.checksums as the full verification set and does not validate checksum coverage against manifest artifacts/required artifacts. A tampered manifest with removed checksum entries can still return gate=pass, so integrity verification is incomplete."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "benchmark-worker SKILL step 7 requires publication manifest completeness verification, but the procedure does not explicitly require negative tests for missing required artifacts or checksum-map coverage tampering.",
+      "evidence": ".factory/skills/benchmark-worker/SKILL.md (Work Procedure step 7) and benchmarks/tests/test_publication_artifacts.py (no failing-path test for missing REQUIRED_RAW_ARTIFACTS; no test for removed checksum entries in publication_manifest.json)."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed feature benchmark-publication-artifact-bundle at commit 8b5e02f, including handoff, diff, transcript skeleton, and shared-state docs. Core functionality exists, but blocking completeness/integrity gaps mean the feature should not pass scrutiny yet."
+}

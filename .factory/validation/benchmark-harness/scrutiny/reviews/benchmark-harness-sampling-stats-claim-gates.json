@@ -1,0 +1,40 @@
+{
+  "featureId": "benchmark-harness-sampling-stats-claim-gates",
+  "reviewedAt": "2026-03-05T15:56:26Z",
+  "commitId": "84fb53a0161aff53b7a128fb60fe766c249d7e16",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature adds substantial policy/claim-gate machinery and tests, but several contract-critical checks are either missing or too weak to enforce the stated guarantees across local/nightly/manual evidence.",
+    "issues": [
+      {
+        "file": "benchmarks/claim_gate.py",
+        "line": 122,
+        "severity": "blocking",
+        "description": "VAL-BENCH-012 requires evidence to be on the same commit and manifests, but the gate validates only commit SHA consistency and never validates manifest-hash consistency across runs (despite ingesting manifest_hashes). This can pass mixed-manifest evidence sets."
+      },
+      {
+        "file": "benchmarks/claim_gate.py",
+        "line": 177,
+        "severity": "blocking",
+        "description": "Claim-threshold evaluation is derived from local-run stats only (primary_stats = local) and cross-run logic only checks direction agreement (<1.0), not threshold satisfaction per run type. This does not enforce that threshold rules pass for local + nightly + manual runs as required by VAL-BENCH-012."
+      },
+      {
+        "file": "benchmarks/validate_sampling.py",
+        "line": 279,
+        "severity": "blocking",
+        "description": "Order-bias validation marks pass whenever execution_schedule exists, without enforcing declared schedule semantics (e.g., interleaved_random) or validating seed/entry integrity against policy. Fixed-order schedules can incorrectly pass VAL-BENCH-010."
+      },
+      {
+        "file": "benchmarks/harness.py",
+        "line": 1145,
+        "severity": "blocking",
+        "description": "The measured CLI exits non-zero only on cell execution errors; it does not fail when sampling validation returns FAIL. This weakens policy enforcement because non-compliant warmup/sample/order runs can still exit successfully."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, commit diff, transcript skeleton, and benchmark-worker skill. Marked FAIL due to missing manifest-consistency enforcement and incomplete cross-run threshold enforcement in claim gating, plus insufficient order-bias enforcement and measured-command non-failing behavior on sampling gate failures."
+}

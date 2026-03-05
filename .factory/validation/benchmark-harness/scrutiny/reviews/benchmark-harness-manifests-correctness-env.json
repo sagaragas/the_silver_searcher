@@ -1,0 +1,33 @@
+{
+  "featureId": "benchmark-harness-manifests-correctness-env",
+  "reviewedAt": "2026-03-05T15:57:17Z",
+  "commitId": "285b87b",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Feature implementation substantially satisfies VAL-BENCH-003/004/005: manifest hash pinning comparison and on-disk verification are implemented, correctness gate artifacting and exit-code gating are present, and full environment metadata collection + schema validation are added with broad test coverage.",
+    "issues": [
+      {
+        "file": "benchmarks/correctness_gate.py",
+        "line": 263,
+        "severity": "non_blocking",
+        "description": "Failure-detail printing checks `hash_divergence`, but scenario details are recorded under `parity_divergence`; this suppresses divergence details in CLI output for failed runs."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The benchmark-worker skill does not explicitly document that correctness gating should be strict on the ag/rust-ag parity pair while cross-tool stdout divergence can be advisory.",
+      "evidence": "handoff.skillFeedback.suggestedChanges explicitly calls this out; .factory/skills/benchmark-worker/SKILL.md Work Procedure lacks this parity-pair rule."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Benchmark shared knowledge does not capture the parity-pair correctness nuance discovered during implementation.",
+      "evidence": ".factory/library/benchmarking.md lists required controls/outputs but does not note that ag vs rust-ag parity is the hard correctness check and rg/ugrep format divergence may be informational."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, transcript skeleton, skill, and commit 285b87b. The feature is functionally complete for the stated behavior and backed by targeted tests; one minor CLI reporting key mismatch was found, plus skill/library documentation gaps around parity-pair correctness semantics."
+}

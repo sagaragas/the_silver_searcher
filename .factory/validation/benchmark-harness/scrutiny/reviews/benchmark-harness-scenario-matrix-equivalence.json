@@ -1,0 +1,40 @@
+{
+  "featureId": "benchmark-harness-scenario-matrix-equivalence",
+  "reviewedAt": "2026-03-05T15:56:46Z",
+  "commitId": "7f841f4f51bc66cebed3196109ce9d601b528d4a",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature adds a working harness, validator, and tests, but it does not enforce the required four-comparator matrix for every scenario; missing comparator cells are treated as skips, so VAL-BENCH-001 can pass while matrix coverage is incomplete.",
+    "issues": [
+      {
+        "file": "benchmarks/harness.py",
+        "line": 510,
+        "severity": "blocking",
+        "description": "Missing comparator commands are silently marked as skipped (`No command template for <comp>`) instead of failing the run. This allows incomplete scenario-comparator cells to pass. Evidence: `manifests/scenarios.json` contains scenarios with only `ag`/`rust-ag` commands (e.g. `edge-ignore-scope-leak` at lines 200-207 and `cli-context-symmetric` at lines 371-378 in the reviewed commit), so full-matrix execution across `ag`/`rust-ag`/`rg`/`ugrep` is not actually enforced."
+      },
+      {
+        "file": "benchmarks/validate_manifest.py",
+        "line": 150,
+        "severity": "blocking",
+        "description": "Missing-cell validation only iterates comparators present in each scenario's `commands` map and never checks required comparators from the canonical set. As a result, runs with absent `rg`/`ugrep` cells for a scenario can still pass `no missing scenario-comparator cells`, violating VAL-BENCH-001 semantics."
+      },
+      {
+        "file": "benchmarks/tests/test_manifest_integrity.py",
+        "line": 70,
+        "severity": "non_blocking",
+        "description": "Matrix-completeness tests intentionally accept partial scenarios and only assert that at least one scenario has all four comparators. This weakens regression protection for VAL-BENCH-001 and did not catch incomplete per-scenario comparator coverage."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Shared state says comparator set is fixed to all four tools, but mission artifacts do not document when partial scenario comparator sets are acceptable, leading to conflicting interpretations of VAL-BENCH-001.",
+      "evidence": ".factory/library/benchmarking.md states comparator set is fixed to Rust rewrite + ag + rg + ugrep, while `manifests/scenarios.json` in the reviewed commit includes scenarios with only ag/rust-ag command entries (e.g., lines 200-207 and 371-378)."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review failed: comparator-matrix completeness is not strictly enforced in execution or validation, and current tests permit partial comparator coverage per scenario despite VAL-BENCH-001 requiring complete scenario-comparator cells."
+}
