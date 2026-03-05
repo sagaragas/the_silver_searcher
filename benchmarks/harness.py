@@ -1078,8 +1078,21 @@ def run_measured(
 
 
 def _update_latest_symlink(out_base: Path, run_dir: Path) -> None:
-    """Create or update 'latest' symlink."""
+    """Create or update 'latest' symlink.
+
+    Only updates the symlink when *run_dir* is a canonical child of
+    *out_base* (i.e. resides directly inside the benchmark output tree).
+    When tests pass a ``tmp_path`` as *run_dir* the symlink is left
+    untouched so that ``--run latest`` remains deterministic.
+    """
+    from run_resolution import is_canonical_run_dir
+
     out_base.mkdir(parents=True, exist_ok=True)
+
+    # Guard: skip if run_dir is not a canonical run directory inside out_base.
+    if not is_canonical_run_dir(run_dir, base=out_base):
+        return
+
     latest = out_base / "latest"
     if latest.is_symlink() or latest.exists():
         latest.unlink()

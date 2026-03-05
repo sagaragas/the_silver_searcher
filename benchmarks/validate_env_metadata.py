@@ -291,25 +291,14 @@ def write_env_metadata_artifact(
 
 
 def resolve_run_dir(run_id: str | None, run_dir: str | None) -> Path:
-    """Resolve run directory from run ID or explicit path."""
-    if run_dir:
-        return Path(run_dir)
-    if run_id == "latest":
-        latest = BENCHMARKS_OUT / "latest"
-        if latest.is_symlink():
-            return latest.resolve()
-        if not BENCHMARKS_OUT.exists():
-            print("ERROR: No benchmark output directory found", file=sys.stderr)
-            sys.exit(2)
-        runs = sorted(
-            [d for d in BENCHMARKS_OUT.iterdir() if d.is_dir() and d.name != "latest"],
-            reverse=True,
-        )
-        if not runs:
-            print("ERROR: No benchmark runs found", file=sys.stderr)
-            sys.exit(2)
-        return runs[0]
-    return BENCHMARKS_OUT / run_id
+    """Resolve run directory from run ID or explicit path.
+
+    Delegates to the hardened resolver in ``run_resolution`` which filters
+    out transient temp directories when resolving ``--run latest``.
+    """
+    from run_resolution import resolve_run_dir as _resolve
+
+    return _resolve(run_id, run_dir, benchmarks_out=BENCHMARKS_OUT)
 
 
 def main() -> None:
