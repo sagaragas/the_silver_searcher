@@ -17,6 +17,7 @@
       "description": "Simple literal search across repo",
       "query_id": "q-literal-simple",
       "corpus": ".",
+      "groups": ["smoke", "core-ignore-recursion"],
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
@@ -53,6 +54,7 @@
       "description": "Literal with zero matches (pure traversal overhead)",
       "query_id": "q-nomatch",
       "corpus": ".",
+      "groups": ["smoke", "core-ignore-recursion"],
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
@@ -161,6 +163,7 @@
       "description": "Search in ignore-source fixture to verify ignore semantics",
       "query_id": "q-edge-needle",
       "corpus": "tests/edge-cases/ignore-source",
+      "groups": ["edge-cases", "core-ignore-recursion"],
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} {corpus}",
@@ -173,6 +176,7 @@
       "description": "Search with --hidden flag in hidden-files fixture",
       "query_id": "q-edge-needle",
       "corpus": "tests/edge-cases/hidden-files",
+      "groups": ["edge-cases", "core-ignore-recursion"],
       "commands": {
         "ag": "ag --nocolor --workers=1 --parallel --noaffinity --hidden {pattern} {corpus}",
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --hidden {pattern} {corpus}",

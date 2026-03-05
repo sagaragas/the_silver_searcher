@@ -1,6 +1,6 @@
 ---
 name: rewrite-worker
-description: Implements baseline fixtures, Rust search engine behavior, and CLI parity for the Silver Searcher rewrite using strict test-first workflow.
+description: Implements baseline fixtures/tooling plus Rust search engine and CLI parity behavior using strict test-first workflow.
 ---
 
 # Rewrite Worker
@@ -10,16 +10,18 @@ NOTE: Startup and cleanup are handled by `worker-base`. This skill defines the W
 ## When to Use This Skill
 
 Use for features in milestones `baseline-and-fixtures`, `rust-search-core`, and `rust-cli-parity`.
+This includes Python/parity-tooling hardening features, not only Rust source changes.
 
 ## Work Procedure
 
 1. Read `mission.md`, `AGENTS.md`, `validation-contract.md`, and the assigned feature details before touching code.
 2. Reproduce baseline behavior with `ag` for the feature scope and store fixture/output artifacts first.
 3. Add or update failing tests first (red): parity tests, fixture checks, and command-matrix assertions.
-4. Implement Rust changes to make tests pass (green), matching baseline behavior and repository style.
+4. Implement changes to make tests pass (green), whether in Rust source or tooling scripts, while matching baseline behavior and repository style.
 5. Run scoped checks during iteration, then run full required validators from `.factory/services.yaml` commands.
 6. Run manual CLI verification for assigned flows (command + observed output + exit code) and capture artifacts.
-7. Confirm no leftover temporary processes/files outside expected artifact paths.
+7. For tooling-focused features, include direct unit tests plus command-transcript evidence that the exact regression path is fixed.
+8. Confirm no leftover temporary processes/files outside expected artifact paths.
 
 ## Example Handoff
 

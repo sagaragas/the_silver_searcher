@@ -66,19 +66,28 @@ fn no_args_exits_with_error() {
 }
 
 #[test]
-fn placeholder_search_exits_one() {
-    // Placeholder behavior: any search pattern exits with 1 (no match).
-    // This will change once search is implemented.
+fn search_nomatch_exits_one() {
+    // Search with no matches should exit with 1.
+    // Use a temp directory so no files can match.
+    let dir = std::env::temp_dir().join("rust-ag-test-empty");
+    let _ = std::fs::create_dir_all(&dir);
+    // Create a file with known content that won't match.
+    let test_file = dir.join("test.txt");
+    std::fs::write(&test_file, "hello world\n").unwrap();
+
     let output = rust_ag_bin()
-        .arg("test_pattern")
-        .arg(".")
+        .arg("ZZZZNOTFOUNDZZZ_XYZZY_UNIQUE")
+        .arg(dir.to_str().unwrap())
         .output()
         .expect("failed to execute rust-ag");
+
+    // Cleanup.
+    let _ = std::fs::remove_dir_all(&dir);
 
     assert_eq!(
         output.status.code(),
         Some(1),
-        "Expected exit code 1 for placeholder search"
+        "Expected exit code 1 for search with no matches"
     );
 }
 
