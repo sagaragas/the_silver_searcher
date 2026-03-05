@@ -285,10 +285,10 @@ SCENARIOS: list[dict[str, Any]] = [
             "ugrep": "-B2 -A2",
         },
     ),
-    # --- Count scenarios ---
+    # --- Count / filename-prefix / nofilename scenarios (cli-count-stream) ---
     _scenario(
         "count-matches",
-        "Count matching lines (--count)",
+        "Count matching lines (--count) across multiple files",
         "q-literal-word",
         flags={
             "ag": "--count",
@@ -296,6 +296,25 @@ SCENARIOS: list[dict[str, Any]] = [
             "rg": "--count",
             "ugrep": "--count",
         },
+        groups=["cli-count-stream"],
+    ),
+    _scenario(
+        "cli-default-multi-file",
+        "Default multi-file search verifying filename prefix semantics",
+        "q-literal-word",
+        groups=["cli-count-stream"],
+    ),
+    _scenario(
+        "cli-nofilename",
+        "Search with --nofilename to suppress filename prefixes",
+        "q-literal-word",
+        flags={
+            "ag": "--nofilename",
+            "rust-ag": "--nofilename",
+            "rg": "--no-filename",
+            "ugrep": "--no-filename",
+        },
+        groups=["cli-count-stream"],
     ),
     # --- Filename-only scenarios ---
     _scenario(
