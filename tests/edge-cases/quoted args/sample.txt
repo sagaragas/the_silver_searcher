@@ -1,0 +1,4 @@
+This file lives in a directory with spaces in its name.
+It contains the NEEDLE marker for parity testing.
+Another line with NEEDLE here too.
+Plain text line without the marker.

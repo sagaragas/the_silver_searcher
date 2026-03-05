@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "description": "Query / pattern manifest for benchmark scenarios",
-  "manifest_hash": "2ecebb6e3bb8953f18a0bfad614e3b48e1964b8d235eba8d279973a6587036c6",
-  "query_count": 13,
+  "manifest_hash": "22fe2ecea2b3e03a7cd563d473ead5d9a8a4dc9002cb6ad68b5306f91a174ecc",
+  "query_count": 14,
   "queries": [
     {
       "id": "q-literal-simple",
@@ -81,6 +81,12 @@
       "type": "regex",
       "pattern": "NEEDLE.*line",
       "description": "Regex pattern for large-file testing"
+    },
+    {
+      "id": "q-edge-spaced-literal",
+      "type": "literal",
+      "pattern": "the marker",
+      "description": "Multi-word literal pattern for quoted-arg tokenization testing"
     }
   ]
 }

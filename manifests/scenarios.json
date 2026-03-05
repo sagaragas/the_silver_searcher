@@ -9,8 +9,8 @@
   ],
   "corpus_manifest_hash": "59a804f244ddfe4a2a3d5932fb85f2e2cbf166da6cd30bb1a138e9183984144a",
   "query_manifest_hash": "2ecebb6e3bb8953f18a0bfad614e3b48e1964b8d235eba8d279973a6587036c6",
-  "manifest_hash": "e3989d4f1b3cc94a9205a4f14c1fa1b471f027e99a5eff47881fe7dfdc6aae5c",
-  "scenario_count": 27,
+  "manifest_hash": "b92f199e463c4b54c74e9d098136b20c0c172420f2247d8a2a21911525a49bdd",
+  "scenario_count": 29,
   "scenarios": [
     {
       "id": "literal-simple",
@@ -423,6 +423,38 @@
         "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity --count --max-count 3 {pattern} {corpus}",
         "rg": "rg --no-heading --color=never --count -m 3 {pattern} {corpus}",
         "ugrep": "ugrep --color=never --count -m 3 {pattern} {corpus}"
+      }
+    },
+    {
+      "id": "edge-quoted-corpus-space",
+      "description": "Search in a corpus path containing spaces — verifies argv tokenization preserves path",
+      "query_id": "q-edge-needle",
+      "corpus": "tests/edge-cases/quoted args",
+      "groups": [
+        "edge-cases",
+        "quoted-args-regression"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity {pattern} \"{corpus}\"",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity {pattern} \"{corpus}\"",
+        "rg": "rg --no-heading --color=never {pattern} \"{corpus}\"",
+        "ugrep": "ugrep --color=never {pattern} \"{corpus}\""
+      }
+    },
+    {
+      "id": "edge-quoted-pattern-space",
+      "description": "Search with a multi-word pattern containing spaces — verifies argv tokenization preserves pattern",
+      "query_id": "q-edge-spaced-literal",
+      "corpus": "tests/edge-cases/quoted args",
+      "groups": [
+        "edge-cases",
+        "quoted-args-regression"
+      ],
+      "commands": {
+        "ag": "ag --nocolor --workers=1 --parallel --noaffinity \"{pattern}\" \"{corpus}\"",
+        "rust-ag": "rust-ag --nocolor --workers=1 --parallel --noaffinity \"{pattern}\" \"{corpus}\"",
+        "rg": "rg --no-heading --color=never \"{pattern}\" \"{corpus}\"",
+        "ugrep": "ugrep --color=never \"{pattern}\" \"{corpus}\""
       }
     }
   ]

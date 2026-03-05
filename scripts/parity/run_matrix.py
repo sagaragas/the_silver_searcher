@@ -23,6 +23,7 @@ import json
 import os
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -215,7 +216,7 @@ def run_command(
 ) -> dict[str, Any]:
     """Execute a single command and capture output."""
     cmd_str = cmd_template.replace("{pattern}", pattern).replace("{corpus}", corpus)
-    parts = cmd_str.split()
+    parts = shlex.split(cmd_str)
 
     # Resolve the binary name to an actual executable path.
     binary_name = parts[0]
