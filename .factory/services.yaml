@@ -22,6 +22,8 @@ commands:
   benchmark_validate_sampling: python3 benchmarks/validate_sampling.py --run latest
   benchmark_claim_gate: python3 benchmarks/claim_gate.py --run latest
   benchmark_measured_smoke: python3 benchmarks/harness.py measured --comparators rust ag rg ugrep --scenarios literal-simple --warmup 2 --samples 3 --timeout 30
+  benchmark_package_publication: python3 benchmarks/package_publication_artifacts.py --run latest
+  benchmark_verify_checksums: python3 benchmarks/verify_checksums.py --manifest benchmarks/out/latest/publication/publication_manifest.json
   publication_gate: python3 publication/check_claims.py --memo publication/ragas_blog_memo.md
 
 services: {}
