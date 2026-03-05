@@ -290,8 +290,13 @@ fn run_filename_pattern_mode(opts: &opts::Opts) -> i32 {
 
     let mut found = false;
     for f in &files {
-        let display = display_path_for(f);
-        if file_re.is_match(&display) {
+        // Match the regex against the raw traversal path (including leading
+        // "./" when searching from "."), mirroring baseline ag which runs
+        // pcre_exec against `dir_full_path` before normalize_path().
+        let raw_path = f.to_string_lossy();
+        if file_re.is_match(&raw_path) {
+            // Display the normalized path (strip leading "./" etc.).
+            let display = display_path_for(f);
             println!("{display}");
             found = true;
         }

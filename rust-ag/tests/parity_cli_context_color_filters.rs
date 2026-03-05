@@ -459,6 +459,66 @@ fn val_cli_006_normal_search_no_dot_slash_prefix() {
 }
 
 #[test]
+fn val_cli_006_g_flag_matches_raw_traversal_path_with_dot_slash() {
+    // Baseline ag matches -g regex against the raw traversal path, which
+    // includes "./" when searching from ".".  A pattern anchored to "^\./"
+    // MUST match.  The display output should still strip "./" via
+    // normalize_path.
+    let dir = setup_filter_fixture();
+    let dir_path = dir.path().to_str().unwrap();
+
+    // Run with cwd = dir_path and search path "." — the walker produces
+    // paths like "./foo.rs".  The regex anchors on "^\./" so it MUST match
+    // the raw path (baseline ag behavior).
+    let out = Command::new(rust_ag_bin())
+        .args(["-g", r"^\./foo\.rs$", "."])
+        .current_dir(dir_path)
+        .output()
+        .expect("failed to run rust-ag");
+    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+    let exit = out.status.code().unwrap_or(-1);
+
+    assert_eq!(
+        exit, 0,
+        "-g with ^\\./foo\\.rs$ should match (raw path has ./): stdout={stdout}"
+    );
+    assert!(
+        stdout.contains("foo.rs"),
+        "Output should contain foo.rs: {stdout}"
+    );
+    // Display path should NOT start with "./"
+    for line in stdout.trim().lines() {
+        assert!(
+            !line.starts_with("./"),
+            "Display path should not start with './': {line}"
+        );
+    }
+}
+
+#[test]
+fn val_cli_006_g_flag_no_match_without_dot_slash_anchor() {
+    // Baseline ag: when searching from ".", a pattern anchored to
+    // "^foo\.rs$" (without "./" prefix) does NOT match because the raw
+    // traversal path is "./foo.rs".
+    let dir = setup_filter_fixture();
+    let dir_path = dir.path().to_str().unwrap();
+
+    let out = Command::new(rust_ag_bin())
+        .args(["-g", r"^foo\.rs$", "."])
+        .current_dir(dir_path)
+        .output()
+        .expect("failed to run rust-ag");
+    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+    let exit = out.status.code().unwrap_or(-1);
+
+    assert_eq!(
+        exit, 1,
+        "-g with ^foo\\.rs$ should NOT match (raw path starts with ./): stdout={stdout}"
+    );
+    assert!(stdout.trim().is_empty(), "No output expected: {stdout}");
+}
+
+#[test]
 fn val_cli_006_file_search_regex_filters() {
     let dir = setup_filter_fixture();
     let (stdout, _stderr, exit) = run_ag(&["-G", "\\.rs$", "hello", dir.path().to_str().unwrap()]);
