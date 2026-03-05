@@ -1,7 +1,7 @@
 {
   "milestone": "misc-performance-followup",
-  "round": 1,
-  "status": "fail",
+  "round": 2,
+  "status": "pass",
   "validatorsRun": {
     "test": {
       "passed": true,
@@ -20,63 +20,36 @@
     }
   },
   "reviewsSummary": {
-    "total": 4,
+    "total": 2,
     "passed": 2,
-    "failed": 2,
-    "failedFeatures": [
-      "misc-publication-reconcile-speedup-claims",
-      "misc-cli-stream-manifest-integrity-fix"
-    ]
+    "failed": 0,
+    "failedFeatures": []
   },
-  "blockingIssues": [
-    {
-      "featureId": "misc-publication-reconcile-speedup-claims",
-      "severity": "blocking",
-      "description": "Narrative pair extraction in publication/reconcile_metrics.py is too narrow and skips validating extracted speedup claim text such as 'rust-ag achieved a 2.0× speedup over the original ag', leaving a required narrative claim unvalidated."
-    },
-    {
-      "featureId": "misc-publication-reconcile-speedup-claims",
-      "severity": "blocking",
-      "description": "publication/reconcile_metrics.py returns early on reconciliation failure before writing publication/reconciliation_report.json, so failing runs can leave stale or missing evidence output."
-    },
-    {
-      "featureId": "misc-cli-stream-manifest-integrity-fix",
-      "severity": "blocking",
-      "description": "scripts/bench/build_scenario_manifest.py now always emits '{pattern} {corpus}' for stdin stream scenarios; parity execution then supplies a file argument alongside stdin_data, regressing required stdin-driven stream behavior."
-    }
-  ],
-  "appliedUpdates": [
-    {
-      "target": "services.yaml",
-      "description": "Added `publication_tests` command for deterministic execution of publication test suite (`python3 -m pytest publication/tests/ -v`).",
-      "sourceFeature": "misc-publication-reconcile-speedup-claims"
-    }
-  ],
+  "blockingIssues": [],
+  "appliedUpdates": [],
   "suggestedGuidanceUpdates": [
     {
       "target": "AGENTS.md",
-      "suggestion": "Clarify whether strict red-first test-first workflow applies uniformly to publication/tooling scripts or only to code paths where practical; align this with current skill procedures to remove contradictory guidance.",
-      "evidence": "Both misc-publication-license-audit-transitive-runtime-coverage and misc-publication-reconcile-speedup-claims reviews observed AGENTS test-first requirements not explicitly enforced by publication-worker procedure, creating inconsistent expectations.",
+      "suggestion": "Align mission-level test-first wording with current worker-skill policy by explicitly documenting when strict red-first applies and when tooling/publication flows may use scoped pre/post validation instead.",
+      "evidence": "Review observations from misc-publication-license-audit-transitive-runtime-coverage and misc-skill-guidance-alignment both flagged a mismatch between strict AGENTS wording and updated skill procedures for tooling/publication features.",
       "isSystemic": true
     },
     {
       "target": "skills",
-      "suggestion": "Update benchmark-worker guidance to explicitly preserve stdin/stream semantics when enforcing scenario-template integrity and comparator completeness.",
-      "evidence": "misc-cli-stream-manifest-integrity-fix passed comparator/placeholder checks but regressed stdin-driven stream execution semantics.",
-      "isSystemic": false
-    },
-    {
-      "target": "skills",
-      "suggestion": "Broaden rewrite-worker example handoff content to include tooling/manifests/non-Rust feature examples so reporting expectations are explicit beyond Rust parity work.",
-      "evidence": "misc-skill-guidance-alignment review noted residual Rust-centric handoff examples despite widened rewrite-worker scope.",
+      "suggestion": "Expand rewrite-worker example handoff content with at least one tooling/manifest non-Rust example so reporting expectations are explicit for rewrite-worker tasks beyond Rust implementation changes.",
+      "evidence": "misc-skill-guidance-alignment review noted residual Rust-centric Example Handoff guidance after scope expansion to tooling/manifests.",
       "isSystemic": false
     }
   ],
   "rejectedObservations": [
     {
       "observation": "Add a dedicated services.yaml command for publication license inventory generation.",
-      "reason": "ambiguous"
+      "reason": "ambiguous (current repository does not expose a clear standalone inventory-generation command separate from existing inventory artifact and license_audit flow)."
+    },
+    {
+      "observation": "AGENTS strict test-first mismatch with publication-worker procedure.",
+      "reason": "duplicate (captured in suggestedGuidanceUpdates as a systemic AGENTS alignment recommendation)."
     }
   ],
-  "previousRound": null
+  "previousRound": ".factory/validation/misc-performance-followup/scrutiny/synthesis.round1.json"
 }

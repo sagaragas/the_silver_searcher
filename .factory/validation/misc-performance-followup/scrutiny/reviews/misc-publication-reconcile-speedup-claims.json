@@ -1,45 +1,22 @@
 {
   "featureId": "misc-publication-reconcile-speedup-claims",
-  "reviewedAt": "2026-03-05T21:14:58Z",
-  "commitId": "e07f7ba31c5239901006eeb5905b95c37501e053",
+  "reviewedAt": "2026-03-05T21:42:10Z",
+  "commitId": "4fe091d292abc5bf8016e0d72dbbd119058cb51a",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
-  "status": "fail",
+  "status": "pass",
   "codeReview": {
-    "summary": "The feature adds substantial speedup reconciliation logic and evidence reporting, but two blocking defects remain: one extracted narrative speedup claim is not validated due to narrow pair parsing, and failure runs return before writing reconciliation_report.json.",
+    "summary": "Re-review of fix commit 4fe091d confirms prior blockers are resolved: 'speedup over' phrasing now resolves comparator pairs, unresolved narrative claims are treated as failures (not skipped), and reconciliation_report.json is persisted before fail returns with explicit speedup-claim evidence.",
     "issues": [
       {
         "file": "publication/reconcile_metrics.py",
-        "line": 171,
-        "severity": "blocking",
-        "description": "Narrative pair extraction is too narrow (only 'A vs B' / 'A is ... faster than B'). The memo line 'While rust-ag achieved a 2.0× speedup over the original ag' is extracted as a speedup claim but cannot map a pair, so it is skipped instead of validated. Evidence: publication/ragas_blog_memo.md:365 and publication/reconciliation_report.json:77-83 show this claim as skipped, violating the expected behavior to validate extracted narrative speedup claims against benchmark ratios."
-      },
-      {
-        "file": "publication/reconcile_metrics.py",
-        "line": 874,
-        "severity": "blocking",
-        "description": "On reconciliation failure, the function returns before writing publication/reconciliation_report.json (write happens at line 883+). This means fail cases can leave stale/missing report evidence, conflicting with expected behavior that reconciliation_report.json includes explicit speedup-claim pass/fail evidence."
-      },
-      {
-        "file": "publication/reconcile_metrics.py",
-        "line": 580,
+        "line": 523,
         "severity": "non_blocking",
-        "description": "reconcile_speedup_table() accepts a tolerance parameter (line 497) and callers pass --speedup-tolerance (line 809), but comparison uses hardcoded table_tol=0.02. This makes the function signature/CLI coupling misleading."
+        "description": "reconcile_speedup_table() accepts a tolerance parameter but comparison still uses hardcoded table_tol=0.02 at line 606, so caller-provided tolerance (including --speedup-tolerance passed from main) does not affect table checks."
       }
     ]
   },
-  "sharedStateObservations": [
-    {
-      "area": "skills",
-      "observation": "publication-worker SKILL.md does not reinforce AGENTS test-first requirement, which likely enabled implementation-before-tests flow in this session.",
-      "evidence": "AGENTS.md:17 requires strict test-first workflow; .factory/skills/publication-worker/SKILL.md Work Procedure (line 14+) has no test-first step; worker-transcripts.jsonl:90 shows multiple Tool: Edit operations on publication/reconcile_metrics.py before 'Now let me write a proper test file' and creation of publication/tests/test_reconcile_speedups.py."
-    },
-    {
-      "area": "services",
-      "observation": "The new publication speedup test suite is not represented in .factory/services.yaml commands, so workers run ad-hoc pytest commands for this area.",
-      "evidence": "handoffs/...e573bfea...json:31 records command 'python3 -m pytest publication/tests/test_reconcile_speedups.py -v'; .factory/services.yaml has publication_gate/style/reconcile commands (lines 28-32) but no publication test command."
-    }
-  ],
-  "addressesFailureFrom": null,
-  "summary": "Review failed. The commit implements the core reconciliation feature, but it does not reliably validate all extracted narrative speedup claims and does not persist reconciliation_report.json on failure paths, leaving expected fail evidence incomplete."
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/misc-performance-followup/scrutiny/reviews/misc-publication-reconcile-speedup-claims.json",
+  "summary": "Pass. The fix session adequately addresses the original blocking failures from the prior review (pair extraction for 'speedup over', no-skip failure policy for extracted narrative claims, and always-persist reconciliation report on fail paths)."
 }

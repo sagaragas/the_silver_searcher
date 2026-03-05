@@ -1,28 +1,15 @@
 {
   "featureId": "misc-cli-stream-manifest-integrity-fix",
-  "reviewedAt": "2026-03-05T21:15:31Z",
-  "commitId": "3cff3aa6e321a90cc6bf108c6b36d8532ea6c43d",
+  "reviewedAt": "2026-03-05T21:42:08Z",
+  "commitId": "e85f737378754ec09b01f801287ed9e5695eca94",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
-  "status": "fail",
+  "status": "pass",
   "codeReview": {
-    "summary": "The commit correctly adds canonical comparators and restores {corpus} placeholders for cli-stream scenarios, but it does not preserve stdin-driven stream behavior as required by the feature description.",
-    "issues": [
-      {
-        "file": "scripts/bench/build_scenario_manifest.py",
-        "line": 228,
-        "severity": "blocking",
-        "description": "`_scenario()` now always emits `{pattern} {corpus}` even when `stdin_data` is present. Stream scenarios therefore render commands like `ag ... {pattern} .` (see manifests/scenarios.json:207-247). The parity runner still pipes `stdin_data` but also executes the expanded file argument (`cmd_template.replace(...).replace('{corpus}', corpus)` in scripts/parity/run_matrix.py:287-300), which defeats the intended stdin-only stream path described there (scripts/parity/run_matrix.py:283-285). This violates the feature requirement to preserve stdin-driven stream behavior."
-      }
-    ]
+    "summary": "Re-review of the original failing commit (3cff3aa6e321a90cc6bf108c6b36d8532ea6c43d) and fix commit (e85f737378754ec09b01f801287ed9e5695eca94) shows the blocker is resolved: cli-stream scenarios keep canonical comparator coverage and {corpus} placeholders in manifests, while execution paths now strip corpus positional args and pipe stdin_data for stdin-driven behavior.",
+    "issues": []
   },
-  "sharedStateObservations": [
-    {
-      "area": "skills",
-      "observation": "benchmark-worker emphasizes comparator completeness but does not explicitly guard stdin/stream semantics when enforcing manifest-template integrity, which allowed a change that satisfies placeholder/comparator checks while regressing stream execution semantics.",
-      "evidence": ".factory/skills/benchmark-worker/SKILL.md:18-20 focuses on comparator completeness; .factory/library/user-testing.md:26-27 states cli-count-stream must cover stdin/stream behavior and that stream checks depend on stream-mode flag semantics."
-    }
-  ],
-  "addressesFailureFrom": null,
-  "summary": "Fail: comparator-completeness and corpus-placeholder integrity were fixed, but the implementation no longer preserves stdin-driven stream behavior for cli-stream scenarios because stream commands now include an expanded corpus argument during execution."
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/misc-performance-followup/scrutiny/reviews/misc-cli-stream-manifest-integrity-fix.json",
+  "summary": "Pass: the fix session adequately resolves the prior blocker by preserving manifest integrity requirements and restoring stdin-only execution semantics for stdin_data stream scenarios in both benchmark harness and parity runner paths."
 }
