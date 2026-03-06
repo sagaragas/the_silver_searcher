@@ -9,7 +9,7 @@ NOTE: Startup and cleanup are handled by `worker-base`. This skill defines the W
 
 ## When to Use This Skill
 
-Use for features in milestone `performance-memo` and for publication/license packaging work, including related follow-up milestones (e.g., `misc-performance-followup`).
+Use for features in milestone `performance-memo` and for publication/license packaging work, including related follow-up milestones (e.g., `misc-performance-followup`, `blog-release`, `misc-blog-polish`).
 
 ## Work Procedure
 
@@ -27,8 +27,32 @@ Use for features in milestone `performance-memo` and for publication/license pac
    - All checks in the artifact must pass
 8. Ensure public fork publication package includes referenced scripts/manifests/checksums and traceable commit SHA.
 9. Run required validators and publication checks from `.factory/services.yaml`.
-   - **Full vs scoped validation:** New publication content (memo drafts, claim-evidence maps, license inventories) requires the full publication gate suite (`publication_gate`, `publication_reconcile`, `publication_style_gate`, `publication_license_audit`, `publication_traceability`). Polish fixes that only touch prose, formatting, or help text may use a scoped validator run limited to the directly affected checks (e.g., running only `publication_reconcile` after a tolerance-related change).
-   - **Deviation logging requirement:** When a scoped validator run is intentionally used instead of the full gate suite, the worker **must** record the scope decision and rationale in the `EndFeatureRun` handoff under `skillFeedback.deviations` — specifying which validators were run, which were skipped, and why the scoped run was sufficient. Omitting this deviation record is a handoff quality failure.
+
+   ### Validation scope rules by task type
+
+   **Full publication gate suite is mandatory** for tasks that create or alter publication content with claim, evidence, or license implications. The full suite is: `publication_gate`, `publication_reconcile`, `publication_style_gate`, `publication_license_audit`, `publication_traceability`. This includes:
+   - New memo drafts or material revisions to claim content, evidence linkage, or metrics tables in `ragas_blog_memo.md`
+   - New or updated claim-evidence maps, license inventories, or traceability artifacts
+   - Changes that add, remove, or modify numeric/factual claims in any publication output
+
+   **Blog-draft and derivative-output tasks may use scoped validation** when the underlying memo and evidence artifacts are already validated and unchanged. A blog-draft derived from a validated memo (e.g., `ragas_dev_blog_draft.md`) does not re-introduce claims or evidence linkage — it adapts existing validated content for a different audience. Scoped validation for blog-draft tasks includes:
+   - `publication_gate` and `publication_style_gate` (against the source memo, to confirm the memo remains clean)
+   - Manual review of the blog draft for faithful alignment with the validated memo
+   - `publication_reconcile`, `publication_license_audit`, and `publication_traceability` may be omitted **only if** the memo, claim-evidence map, license inventory, and traceability artifacts are unmodified from their last full-suite-validated state
+
+   **Polish-only tasks** (prose rewording, formatting, help-text edits, or typo fixes that do not alter claims, evidence, or metrics) may use the narrowest scoped run limited to the directly affected check (e.g., running only `publication_style_gate` after a prose cleanup, or only `publication_reconcile` after a tolerance-related change).
+
+   **Skill or tooling documentation changes** (e.g., updating `SKILL.md`, scripts, or non-publication configuration) do not require publication validators, since they do not touch publication content or artifacts.
+
+   ### Deviation logging requirement
+
+   When a reduced (scoped) validator set is used instead of the full gate suite, the worker **must** record the scope decision in the `EndFeatureRun` handoff. This applies to blog-draft scoped runs, polish-only runs, and any other non-full-suite validation. The record must include:
+   - **Which validators were run** and their results
+   - **Which validators were skipped** from the full suite
+   - **Why the scoped run was sufficient** (e.g., "blog draft derived from unchanged validated memo; no new claims or evidence linkage")
+   - This information must appear in `skillFeedback.deviations` (with `step` referencing "Step 9 — validation scope") **and** in `verification.commandsRun` (listing only the validators actually executed)
+
+   Omitting this deviation record when a scoped run was used is a handoff quality failure.
 
 ## Example Handoff
 
