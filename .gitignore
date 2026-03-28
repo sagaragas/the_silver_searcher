@@ -30,3 +30,9 @@ tests/*.err
 tests/big/*.err
 tests/big/big_file.txt
 the_silver_searcher.spec
+parity-artifacts/
+benchmarks/out/
+target/
+tests/edge-cases/*/.git/
+tests/edge-cases/large-file/large.txt
+__pycache__

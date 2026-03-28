@@ -1,0 +1,15 @@
+{
+  "featureId": "baseline-parity-latest-symlink-fix",
+  "reviewedAt": "2026-03-05T09:46:57Z",
+  "commitId": "6dfbf0c980beeb60623b5cf2a4b040b171acb478",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "This fix adequately addresses the prior non-blocking failure from baseline-parity-oracle-runner by replacing `latest_link.symlink_to(run_dir.name)` with `_update_latest_symlink(...)`, which computes a valid relative target for both default in-tree runs and custom `--output-dir` runs outside `parity-artifacts`. The added tests in `scripts/parity/test_latest_symlink.py` cover default/custom resolution and replacement behavior, and the implementation is aligned with the feature's expected behavior.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/baseline-and-fixtures/scrutiny/reviews/baseline-parity-oracle-runner.json",
+  "summary": "Reviewed fix handoff, transcript skeleton, and both commit diffs (`45832a8...` and `6dfbf0c...`). The symlink-resolution defect identified in the prior review is addressed and validated by focused test coverage, so this fix review passes."
+}

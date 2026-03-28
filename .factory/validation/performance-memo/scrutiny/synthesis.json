@@ -1,0 +1,46 @@
+{
+  "milestone": "performance-memo",
+  "round": 3,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "PATH=\"/Users/ragas/code/missions/the_silver_searcher/.venv-ag-tests/bin:$PATH\" make -C \"/Users/ragas/code/missions/the_silver_searcher\" test && cargo test --workspace --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --test-threads=5",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "cargo check --workspace --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\"",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "cargo fmt --all --check --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" && cargo clippy --workspace --all-targets --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- -D warnings",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Updated .factory/library/publication.md clean-checkout schema notes to require schema_version, requested/checked_out commit provenance fields, and isolated_worktree execution context.",
+      "sourceFeature": "performance-memo-traceability-lineage-clean-checkout-fix"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "publication-worker skill",
+      "suggestion": "Explicitly require isolated-worktree clean-checkout evidence fields (schema_version, requested_commit_sha, checked_out_commit_sha, execution_context=isolated_worktree) and strict no-fallback parity_run_ids enforcement in traceability steps.",
+      "evidence": "Review performance-memo-traceability-lineage-clean-checkout-fix passed because these constraints are enforced in code, but SKILL.md language remains higher-level and could miss these concrete contract requirements.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": ".factory/validation/performance-memo/scrutiny/synthesis.round2.json"
+}

@@ -1,0 +1,15 @@
+{
+  "featureId": "misc-publication-worker-blog-draft-validation-guidance",
+  "reviewedAt": "2026-03-06T05:04:47Z",
+  "commitId": "4cde57d",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The commit cleanly updates publication-worker guidance to explicitly define full-suite vs scoped validation rules (including blog-draft and polish-only cases) and requires structured deviation logging in handoffs. Changes align with the feature description and expected behavior without introducing code or policy regressions.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Pass: Feature requirements are fully implemented in .factory/skills/publication-worker/SKILL.md with clear validation-scope taxonomy and explicit deviation-note requirements for scoped validation runs."
+}

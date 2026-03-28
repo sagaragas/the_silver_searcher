@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "platform": {
+    "system": "Darwin",
+    "release": "25.3.0",
+    "machine": "arm64"
+  },
+  "fixture_applicability": {
+    "ignore-source": {
+      "supported": true,
+      "skip_reason": null,
+      "notes": "Requires git to be installed for .gitignore handling"
+    },
+    "ignore-scope-leak": {
+      "supported": true,
+      "skip_reason": null,
+      "notes": "Tests ignore scope isolation across sibling directories"
+    },
+    "hidden-files": {
+      "supported": true,
+      "skip_reason": null,
+      "notes": "Hidden files (dot-prefix) work on all Unix-like systems"
+    },
+    "binary-files": {
+      "supported": true,
+      "skip_reason": null,
+      "notes": "Binary detection is platform-independent"
+    },
+    "symlink-traversal": {
+      "supported": true,
+      "skip_reason": null,
+      "notes": "Symlink creation and traversal tests. On Windows, requires developer mode or elevated privileges."
+    },
+    "one-device": {
+      "supported": false,
+      "skip_reason": "/dev/shm not available on this platform",
+      "notes": "One-device test requires /dev/shm (Linux tmpfs) to have a cross-device mount point. macOS uses a different tmpfs layout and may not have a suitable cross-device boundary. This fixture is Linux-specific."
+    },
+    "large-file": {
+      "supported": true,
+      "skip_reason": null,
+      "notes": "Large-file fixture is ~2MB; should work on all platforms"
+    },
+    "zero-length-regex": {
+      "supported": true,
+      "skip_reason": null,
+      "notes": "Zero-length regex behavior is platform-independent"
+    },
+    "max-count": {
+      "supported": true,
+      "skip_reason": null,
+      "notes": "Max-count behavior is platform-independent"
+    }
+  }
+}

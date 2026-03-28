@@ -1,0 +1,81 @@
+{
+  "milestone": "rust-search-core",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "cd \"/Users/ragas/code/missions/the_silver_searcher\" && PATH=\".venv-ag-tests/bin:$PATH\" make test && if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo test --workspace -- --test-threads=5; else echo \"No Rust workspace yet; skipping Rust tests\"; fi",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "cd \"/Users/ragas/code/missions/the_silver_searcher\" && if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo check --workspace; else echo \"No Rust workspace yet; skipping typecheck\"; fi",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "cd \"/Users/ragas/code/missions/the_silver_searcher\" && if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings; else echo \"No Rust workspace yet; skipping Rust lint\"; fi",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 3,
+    "passed": 0,
+    "failed": 3,
+    "failedFeatures": [
+      "rust-core-recursion-ignore-hidden",
+      "rust-core-case-multiline-word-boundary",
+      "rust-core-binary-symlink-largefile-maxcount"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "rust-core-recursion-ignore-hidden",
+      "severity": "blocking",
+      "description": "Ignore rules leak across sibling directories because directory-scoped ignore state is pushed but not popped during recursion unwind, causing baseline parity failures."
+    },
+    {
+      "featureId": "rust-core-recursion-ignore-hidden",
+      "severity": "blocking",
+      "description": "`-r` cannot override `-n` (last-flag semantics mismatch): recurse intent is parsed but not honored by traversal logic."
+    },
+    {
+      "featureId": "rust-core-case-multiline-word-boundary",
+      "severity": "blocking",
+      "description": "Conflicting multiline flags do not follow baseline last-wins behavior; `--nomultiline --multiline` still runs nomultiline path."
+    },
+    {
+      "featureId": "rust-core-binary-symlink-largefile-maxcount",
+      "severity": "blocking",
+      "description": "Binary-enabled mode short-circuits output handling, so `--search-binary` with `-c`/`-l` prints generic binary-match text instead of baseline-compatible count/list outputs."
+    },
+    {
+      "featureId": "rust-core-binary-symlink-largefile-maxcount",
+      "severity": "blocking",
+      "description": "`--max-count` diagnostics diverge under invert-match scenarios because max-count hit logic is derived from reportable-line counting instead of baseline-compatible match-cap semantics."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "rewrite-worker skill",
+      "suggestion": "Add an explicit procedure step requiring scenario-group/tag and manifest updates whenever workers add new parity matrix groups.",
+      "evidence": "Observed in reviews for rust-core-recursion-ignore-hidden and rust-core-binary-symlink-largefile-maxcount where workers called out missing guidance around scenarios.json/group maintenance.",
+      "isSystemic": true
+    },
+    {
+      "target": "rewrite-worker skill",
+      "suggestion": "Add a multiline parity checklist item to validate baseline `PCRE_MULTILINE` vs dotall behavior and conflicting flag precedence before implementation.",
+      "evidence": "Review for rust-core-case-multiline-word-boundary reported exploratory churn and a blocking precedence miss around `--nomultiline --multiline`.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Add a dedicated services.yaml command for rust core ignore/recursion parity matrix runs.",
+      "reason": "ambiguous"
+    }
+  ],
+  "previousRound": null
+}

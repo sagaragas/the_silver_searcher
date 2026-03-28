@@ -1,0 +1,46 @@
+{
+  "milestone": "benchmark-harness",
+  "groupId": "bench-cross007-round3",
+  "testedAt": "2026-03-05T17:48:14.646513Z",
+  "credentials": {
+    "account": "cli-validator-cross007",
+    "namespace": "cross007_round3"
+  },
+  "assertions": [
+    {
+      "id": "VAL-CROSS-007",
+      "title": "Local and CI reproducibility coverage aligns",
+      "status": "pass",
+      "issues": null
+    }
+  ],
+  "status": "pass",
+  "passedAssertions": [
+    "VAL-CROSS-007"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "commands": [
+    {
+      "command": "python3 - <<'PY' (baseline readiness check for .factory/init.sh and benchmarks/out) PY",
+      "exitCode": 0,
+      "observation": "init_script_exists=True; benchmarks_out_exists=True; benchmarks_out_nonempty=True; baseline_ready=True; init_needed=no."
+    },
+    {
+      "command": "python3 - <<'PY' (inspect latest claim_gate.json linkage + linked run_manifest commit/hash alignment) PY",
+      "exitCode": 0,
+      "observation": "Latest claim gate: benchmarks/out/20260305T174335Z/claim_gate.json with gate=pass; linked_run_ids=[20260305T174325Z,20260305T174335Z,20260305T174330Z]; run_type_check present=[local,manual,nightly] missing=[]; commit_check=pass with single commit 44759b4b07252dbf8e471a71ee21e0e6539ce236; manifest_hash_check=pass with no mismatches; each linked run_manifest has identical commit_sha and scenarios/queries/corpus hashes."
+    },
+    {
+      "command": "python3 - <<'PY' (inspect local_vs_ci_comparison_report.json and run_manifest_set_equality_diff_report.json) PY",
+      "exitCode": 0,
+      "observation": "local_vs_ci_comparison_report result=pass with linked run types local/manual/nightly; commit_match=pass; manifest_match=pass; per_run_schema_validity passes for all three run types with no missing fields. run_manifest_set_equality_diff_report result=pass; per_run_type_scenarios for local/manual/nightly all contain literal-simple; missing_scenarios=[] and extra_scenarios=[]."
+    }
+  ],
+  "toolsUsed": [
+    "cli"
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "VAL-CROSS-007 passes on round 3: latest claim-gate artifact links local/nightly/manual runs for the same commit and manifest hashes, and both local-vs-CI schema validation and run-manifest set-equality coverage reports are complete and passing with no unexplained missing cells."
+}

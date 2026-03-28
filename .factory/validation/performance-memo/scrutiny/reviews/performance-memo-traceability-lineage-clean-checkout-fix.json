@@ -1,0 +1,26 @@
+{
+  "featureId": "performance-memo-traceability-lineage-clean-checkout-fix",
+  "reviewedAt": "2026-03-05T20:37:58Z",
+  "commitId": "af0f30f77367f0f0b5beffc2d8d0f439e24b94e9",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The rerun fix resolves the prior blocking failure: clean-checkout smoke now executes inside an actual isolated git worktree at the cited commit with provenance fields, and traceability now hard-fails unresolved or missing claim_evidence_map parity_run_ids without any latest fallback.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The publication-worker skill remains less specific than the enforced traceability contract: it asks for a traceable commit SHA but does not explicitly require isolated-worktree clean-checkout execution evidence and no-fallback parity_run_ids behavior.",
+      "evidence": ".factory/skills/publication-worker/SKILL.md:20 says to ensure a traceable commit SHA, while implementation now enforces isolated worktree provenance and strict no-fallback parity resolution in publication/traceability_check.py:103,118,361-364."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Shared publication notes still describe the old clean-checkout evidence schema (`commit_sha`) and do not reflect the current provenance fields used by the checker.",
+      "evidence": ".factory/library/publication.md:14 documents fields `executed`, `commit_sha`, `result`, `checks`, but traceability now requires schema_version>=2 provenance fields (`requested_commit_sha`, `checked_out_commit_sha`, `execution_context`) in publication/traceability_check.py:329-343,369-388."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/performance-memo/scrutiny/reviews/performance-memo-traceability-lineage-clean-checkout-fix.json",
+  "summary": "Reviewed the prior failed review, both worker handoffs/sessions, both commits (93e6cb2 and af0f30f), transcript skeleton, and publication-worker/shared-state docs. The latest implementation now performs smoke checks in an isolated worktree at the cited commit and records/validates provenance equality, and unresolved parity_run_ids are now explicit hard failures with no parity-artifacts/latest fallback, so the prior blocker is resolved."
+}

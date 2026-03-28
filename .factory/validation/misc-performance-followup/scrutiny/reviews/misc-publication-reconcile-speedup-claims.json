@@ -1,0 +1,22 @@
+{
+  "featureId": "misc-publication-reconcile-speedup-claims",
+  "reviewedAt": "2026-03-05T21:42:10Z",
+  "commitId": "4fe091d292abc5bf8016e0d72dbbd119058cb51a",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Re-review of fix commit 4fe091d confirms prior blockers are resolved: 'speedup over' phrasing now resolves comparator pairs, unresolved narrative claims are treated as failures (not skipped), and reconciliation_report.json is persisted before fail returns with explicit speedup-claim evidence.",
+    "issues": [
+      {
+        "file": "publication/reconcile_metrics.py",
+        "line": 523,
+        "severity": "non_blocking",
+        "description": "reconcile_speedup_table() accepts a tolerance parameter but comparison still uses hardcoded table_tol=0.02 at line 606, so caller-provided tolerance (including --speedup-tolerance passed from main) does not affect table checks."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/misc-performance-followup/scrutiny/reviews/misc-publication-reconcile-speedup-claims.json",
+  "summary": "Pass. The fix session adequately addresses the original blocking failures from the prior review (pair extraction for 'speedup over', no-skip failure policy for extracted narrative claims, and always-persist reconciliation report on fail paths)."
+}

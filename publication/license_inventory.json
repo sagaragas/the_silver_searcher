@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "description": "Third-party license inventory for the Rust rewrite of The Silver Searcher. Covers runtime dependencies, dev dependencies, benchmark comparator tools, and upstream source attribution.",
+  "generated_from_commit": "48774a9",
+  "categories": {
+    "upstream_source": {
+      "description": "Original project from which this work derives",
+      "entries": [
+        {
+          "name": "the_silver_searcher",
+          "version": "2.2.0",
+          "license": "Apache-2.0",
+          "copyright": "Copyright 2011-2016 Geoff Greer",
+          "url": "https://github.com/ggreer/the_silver_searcher",
+          "notice_file": "NOTICE",
+          "license_file": "LICENSE",
+          "usage": "Upstream C codebase; Rust rewrite derives behavioral specification and test fixtures from this project"
+        }
+      ]
+    },
+    "rust_runtime_dependencies": {
+      "description": "Crates linked into the rust-ag binary at runtime",
+      "entries": [
+        {
+          "name": "regex",
+          "version": "1.12.3",
+          "license": "MIT OR Apache-2.0",
+          "url": "https://crates.io/crates/regex",
+          "usage": "Pattern matching engine for search queries"
+        },
+        {
+          "name": "libc",
+          "version": "0.2.182",
+          "license": "MIT OR Apache-2.0",
+          "url": "https://crates.io/crates/libc",
+          "usage": "FFI bindings for POSIX filesystem operations"
+        },
+        {
+          "name": "aho-corasick",
+          "version": "1.1.4",
+          "license": "Unlicense OR MIT",
+          "url": "https://crates.io/crates/aho-corasick",
+          "usage": "Transitive dependency of regex for multi-pattern matching"
+        },
+        {
+          "name": "memchr",
+          "version": "2.8.0",
+          "license": "Unlicense OR MIT",
+          "url": "https://crates.io/crates/memchr",
+          "usage": "Transitive dependency of regex for byte-level search"
+        },
+        {
+          "name": "regex-automata",
+          "version": "0.4.14",
+          "license": "MIT OR Apache-2.0",
+          "url": "https://crates.io/crates/regex-automata",
+          "usage": "Transitive dependency of regex for automata-based matching"
+        },
+        {
+          "name": "regex-syntax",
+          "version": "0.8.10",
+          "license": "MIT OR Apache-2.0",
+          "url": "https://crates.io/crates/regex-syntax",
+          "usage": "Transitive dependency of regex for pattern parsing"
+        }
+      ]
+    },
+    "rust_dev_dependencies": {
+      "description": "Crates used only during testing (not in production binary)",
+      "entries": [
+        {
+          "name": "tempfile",
+          "version": "3.26.0",
+          "license": "MIT OR Apache-2.0",
+          "url": "https://crates.io/crates/tempfile",
+          "usage": "Temporary file/directory creation in integration tests"
+        },
+        {
+          "name": "serde_json",
+          "version": "1.0.149",
+          "license": "MIT OR Apache-2.0",
+          "url": "https://crates.io/crates/serde_json",
+          "usage": "JSON parsing in integration tests"
+        }
+      ]
+    },
+    "benchmark_comparators": {
+      "description": "External tools used as benchmark comparators (not bundled, installed separately)",
+      "entries": [
+        {
+          "name": "ripgrep (rg)",
+          "version": "13.0.0",
+          "license": "Unlicense OR MIT",
+          "url": "https://github.com/BurntSushi/ripgrep",
+          "usage": "Benchmark comparator tool"
+        },
+        {
+          "name": "ugrep",
+          "version": "7.5.0",
+          "license": "BSD-3-Clause",
+          "url": "https://github.com/Genivia/ugrep",
+          "usage": "Benchmark comparator tool"
+        }
+      ]
+    },
+    "benchmark_tooling": {
+      "description": "Python packages used in benchmark harness and validation scripts",
+      "entries": [
+        {
+          "name": "Python",
+          "version": "3.14.2",
+          "license": "PSF-2.0",
+          "url": "https://www.python.org/",
+          "usage": "Benchmark harness, validation scripts, parity testing"
+        }
+      ]
+    }
+  },
+  "license_compatibility_note": "All runtime dependencies use permissive licenses (MIT, Apache-2.0, Unlicense) compatible with the project's Apache-2.0 license. No copyleft or restrictive licenses are present in the dependency tree."
+}

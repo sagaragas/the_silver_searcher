@@ -1,0 +1,35 @@
+{
+  "schema_version": 3,
+  "checks": [
+    {
+      "id": "VAL-CROSS-001",
+      "name": "Shared fixture lineage across stages",
+      "result": "pass",
+      "errors": []
+    },
+    {
+      "id": "VAL-CROSS-004-files",
+      "name": "Public fork contains reproducibility package (file presence)",
+      "result": "pass",
+      "errors": []
+    },
+    {
+      "id": "VAL-CROSS-004-exec",
+      "name": "Executed clean-checkout smoke reproducibility (isolated worktree with provenance)",
+      "result": "pass",
+      "errors": []
+    },
+    {
+      "id": "VAL-CROSS-005",
+      "name": "Public release includes legal + methodology disclosure",
+      "result": "pass",
+      "errors": []
+    },
+    {
+      "id": "VAL-CROSS-008",
+      "name": "Public publication commit is traceable to measured evidence (parity + benchmark + memo lineage)",
+      "result": "pass",
+      "errors": []
+    }
+  ]
+}

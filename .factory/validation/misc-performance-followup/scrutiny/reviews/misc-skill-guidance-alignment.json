@@ -1,0 +1,31 @@
+{
+  "featureId": "misc-skill-guidance-alignment",
+  "reviewedAt": "2026-03-05T21:14:49Z",
+  "commitId": "ffaae26",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The commit cleanly updates rewrite-worker, benchmark-worker, and publication-worker SKILL guidance to match the feature’s expected behavior, including tooling-flow clarity, comparator/correctness gate rules, and publication traceability/clean-checkout requirements.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Mission-level AGENTS guidance still states strict red-first test workflow without the new tooling/regeneration exception language now codified in rewrite-worker, which can create conflicting interpretation for non-Rust features.",
+      "evidence": "/Users/ragas/.factory/missions/d1c51473-4105-4ffd-8739-51d144ec03b4/AGENTS.md:17 vs /Users/ragas/code/missions/the_silver_searcher/.factory/skills/rewrite-worker/SKILL.md:29"
+    },
+    {
+      "area": "services",
+      "observation": "publication-worker now mandates generating/updating license inventory before license audit, but services.yaml exposes an audit command and no explicit inventory-generation command, which may reduce procedural reproducibility for workers.",
+      "evidence": "/Users/ragas/code/missions/the_silver_searcher/.factory/skills/publication-worker/SKILL.md:20 and /Users/ragas/code/missions/the_silver_searcher/.factory/services.yaml:31"
+    },
+    {
+      "area": "skills",
+      "observation": "rewrite-worker now covers tooling/manifest flows, but its example handoff remains Rust-parity-centric; this mismatch was also noted by the worker in skillFeedback and could still leave tooling-feature handoff expectations implicit.",
+      "evidence": "Handoff: /Users/ragas/.factory/missions/d1c51473-4105-4ffd-8739-51d144ec03b4/handoffs/2026-03-05T20-51-22-574Z__misc-skill-guidance-alignment__dde8b838-0036-4381-be86-eb58e9cf7f7b.json (handoff.skillFeedback.suggestedChanges) and /Users/ragas/code/missions/the_silver_searcher/.factory/skills/rewrite-worker/SKILL.md (Example Handoff section)"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Pass: expected guidance alignment is implemented across all three skill files and matches the feature contract; no blocking code-review defects were found."
+}

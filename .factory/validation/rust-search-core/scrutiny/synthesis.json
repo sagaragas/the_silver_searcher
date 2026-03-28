@@ -1,0 +1,33 @@
+{
+  "milestone": "rust-search-core",
+  "round": 4,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "PATH=\"/Users/ragas/code/missions/the_silver_searcher/.venv-ag-tests/bin:$PATH\" make -C \"/Users/ragas/code/missions/the_silver_searcher\" test && if [ -f \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" ] || [ -f \"/Users/ragas/code/missions/the_silver_searcher/rust-ag/Cargo.toml\" ]; then cargo test --workspace --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --test-threads=5; else echo \"No Rust workspace yet; skipping Rust tests\"; fi",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "if [ -f \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" ] || [ -f \"/Users/ragas/code/missions/the_silver_searcher/rust-ag/Cargo.toml\" ]; then cargo check --workspace --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\"; else echo \"No Rust workspace yet; skipping typecheck\"; fi",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "if [ -f \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" ] || [ -f \"/Users/ragas/code/missions/the_silver_searcher/rust-ag/Cargo.toml\" ]; then cargo fmt --all --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" --check && cargo clippy --workspace --all-targets --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- -D warnings; else echo \"No Rust workspace yet; skipping Rust lint\"; fi",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [],
+  "rejectedObservations": [],
+  "previousRound": ".factory/validation/rust-search-core/scrutiny/synthesis.round3.json"
+}

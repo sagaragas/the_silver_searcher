@@ -1,0 +1,41 @@
+{
+  "milestone": "blog-release",
+  "groupId": "blog-release-smoke",
+  "assignedAssertions": [],
+  "credentials": {
+    "account": "placeholder-account",
+    "namespace": "placeholder-namespace"
+  },
+  "testedAt": "2026-03-06T04:57:40Z",
+  "results": [],
+  "toolsUsed": [
+    "Execute",
+    "LS",
+    "Read"
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "No fulfills-mapped assertions were assigned. CLI smoke checks passed: claim gate and style gate succeeded, and the blog-ready draft artifact is present and readable.",
+  "evidence": [
+    {
+      "command": "python3 --version",
+      "exitCode": 0,
+      "observation": "Python 3.14.2 available; no service setup required for this CLI smoke flow."
+    },
+    {
+      "command": "python3 publication/check_claims.py --memo publication/ragas_blog_memo.md",
+      "exitCode": 0,
+      "observation": "Claim validation reported 4/4 checks passed; all claim-evidence checks passed."
+    },
+    {
+      "command": "python3 publication/style_gate.py --memo publication/ragas_blog_memo.md",
+      "exitCode": 0,
+      "observation": "Style gate reported 4/4 checks passed; all style checks passed."
+    },
+    {
+      "command": "test -r publication/ragas_dev_blog_draft.md",
+      "exitCode": 0,
+      "observation": "publication/ragas_dev_blog_draft.md exists and is readable."
+    }
+  ]
+}

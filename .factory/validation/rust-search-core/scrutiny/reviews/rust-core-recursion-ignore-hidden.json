@@ -1,0 +1,39 @@
+{
+  "featureId": "rust-core-recursion-ignore-hidden",
+  "reviewedAt": "2026-03-05T11:16:26Z",
+  "commitId": "60e5a7d2d0e4ba4f81ddbfbe316ec4f41c8317ad",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "Implementation covers most scoped behavior, but two blocking parity defects remain in traversal/flag semantics.",
+    "issues": [
+      {
+        "file": "rust-ag/src/walk.rs",
+        "line": 58,
+        "severity": "blocking",
+        "description": "Ignore rules are pushed per directory (`engine.push_directory(dir)`) but never popped when recursion unwinds, so ignore patterns from one subtree leak into later siblings. This breaks default ignore-stack semantics; repro: creating `a/.ignore` with `*.txt` also suppresses `b/keep.txt` in rust-ag while baseline ag still returns it."
+      },
+      {
+        "file": "rust-ag/src/walk.rs",
+        "line": 108,
+        "severity": "blocking",
+        "description": "`-r` cannot override `-n`: walker only checks `opts.no_recurse`, while parser sets `opts.recurse` separately (`opts.rs` lines 285-286 and 398-399) but that field is never honored. Baseline ag follows last-flag semantics (`-n -r` recurses), rust-ag stays non-recursive."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The worker explicitly suggested documenting parity-matrix group tagging, but the skill still does not mention updating `manifests/scenarios.json` groups when adding new parity-runner groups.",
+      "evidence": "handoff.skillFeedback.suggestedChanges requests this update; `.factory/skills/rewrite-worker/SKILL.md` Work Procedure has no step about scenario group tags."
+    },
+    {
+      "area": "services",
+      "observation": "A commonly used rust parity-matrix command is not represented in services.yaml.",
+      "evidence": "Worker verification used `python3 scripts/parity/run_matrix.py --target rust-ag --group core-ignore-recursion`, but `.factory/services.yaml` only defines baseline parity commands (`parity_baseline_smoke`, `parity_edge_cases_baseline`)."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review failed: recursive ignore-stack scoping and `-n`/`-r` precedence diverge from baseline behavior, producing concrete parity mismatches."
+}

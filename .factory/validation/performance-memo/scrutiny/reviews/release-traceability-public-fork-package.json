@@ -1,0 +1,50 @@
+{
+  "featureId": "release-traceability-public-fork-package",
+  "reviewedAt": "2026-03-05T19:48:16Z",
+  "commitId": "4141ea19f180b21e0c4379ed6eca9f9aa24db013",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature adds substantial traceability tooling and reconciles memo table stats, but it does not satisfy two blocking requirements: enforcing parity/benchmark/memo single-commit lineage and validating clean-checkout reproducibility on the cited commit.",
+    "issues": [
+      {
+        "file": "publication/traceability_check.py",
+        "line": 109,
+        "severity": "blocking",
+        "description": "Parity commit SHA is loaded (`parity_commit`) but never compared against memo/benchmark commits, so the check can pass even when parity artifacts are on a different commit. This violates the feature expectation of consistent lineage across parity, benchmark, and memo artifacts (features.json line 1696)."
+      },
+      {
+        "file": "publication/traceability_check.py",
+        "line": 188,
+        "severity": "blocking",
+        "description": "`check_reproducibility_package` only verifies file existence and does not execute a clean-checkout smoke reproduction of the cited commit. The feature explicitly requires clean-checkout reproducibility validation (features.json line 1698 and verification step line 1704)."
+      },
+      {
+        "file": "publication/reconcile_metrics.py",
+        "line": 264,
+        "severity": "non_blocking",
+        "description": "Speedup claims are extracted and counted but not reconciled (`reconcile_speedups` returns an empty result and is never used), leaving narrative speedup statements effectively unchecked by the reconciliation gate."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The publication-worker procedure does not explicitly require running a clean-checkout smoke reproducibility run, even though mission guidance does.",
+      "evidence": ".factory/skills/publication-worker/SKILL.md line 20 focuses on package completeness/traceable SHA; AGENTS.md line 29 requires a clean-checkout smoke reproducibility run."
+    },
+    {
+      "area": "knowledge",
+      "observation": "There is no documented canonical method to bind publication-time parity artifacts to the same commit as measured benchmark evidence, and the worker treated parity commit drift as expected.",
+      "evidence": "Handoff line 93 states parity-artifacts/latest uses a different commit and that traceability check intentionally validates only measured benchmark commit consistency; publication/traceability_check.py line 109 reads parity commit but does not enforce match."
+    },
+    {
+      "area": "skills",
+      "observation": "The skill/library guidance does not clearly state that IQR/CI reconciliation should use sampling_validation.json as authoritative computed statistics.",
+      "evidence": "Handoff skillFeedback line 100 requests this update explicitly; .factory/library/publication.md line 10 only states reconciliation against benchmark summary artifacts in general terms."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, transcript skeleton, skill, shared-state docs, and commit 4141ea19f180b21e0c4379ed6eca9f9aa24db013. Result is FAIL due to blocking gaps in parity commit lineage enforcement and clean-checkout reproducibility validation; one additional non-blocking reconciliation coverage gap was noted."
+}

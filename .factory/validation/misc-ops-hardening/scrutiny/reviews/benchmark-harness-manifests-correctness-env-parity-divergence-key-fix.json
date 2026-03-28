@@ -1,0 +1,21 @@
+{
+  "featureId": "benchmark-harness-manifests-correctness-env-parity-divergence-key-fix",
+  "reviewedAt": "2026-03-05T18:40:47Z",
+  "commitId": "3c4917b",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Implementation matches the feature intent: CLI detail rendering now reads the correct `parity_divergence` key, failure output reliably includes divergence payloads, and regression coverage includes an end-to-end CLI path. No correctness or completeness issues were found in the reviewed diff.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "`benchmark-worker` skill scope appears stale versus actual mission usage: it says 'Use for features in milestone `benchmark-harness`', but this reviewed feature (milestone `misc-ops-hardening`) is assigned and completed with that same skill.",
+      "evidence": ".factory/skills/benchmark-worker/SKILL.md ('When to Use This Skill'); mission feature record at /Users/ragas/.factory/missions/d1c51473-4105-4ffd-8739-51d144ec03b4/features.json:1511-1534"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Pass. The key mismatch fix is correctly implemented in `benchmarks/correctness_gate.py` (uses `parity_divergence` in CLI rendering), regression tests were added in `benchmarks/tests/test_correctness_gate.py`, and the change satisfies the feature's expected behavior without introducing regressions in reviewed code paths."
+}

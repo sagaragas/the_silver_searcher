@@ -1,0 +1,123 @@
+{
+  "milestone": "benchmark-harness",
+  "groupId": "bench-matrix-env",
+  "testedAt": "2026-03-05T17:11:11.832287+00:00",
+  "credentials": {
+    "account": "bench-validator-1@example.test",
+    "namespace": "bench-matrix-env-ns"
+  },
+  "assignedAssertions": [
+    "VAL-BENCH-001",
+    "VAL-BENCH-002",
+    "VAL-BENCH-003",
+    "VAL-BENCH-004",
+    "VAL-BENCH-005",
+    "VAL-BENCH-009"
+  ],
+  "results": [
+    {
+      "id": "VAL-BENCH-001",
+      "status": "pass",
+      "reason": "Comparator matrix completeness checks passed with all required comparators present for all non-skipped scenarios and no missing/incomplete cells.",
+      "evidence": [
+        {
+          "command": "python3 benchmarks/validate_manifest.py --run 20260305T165853Z",
+          "exitCode": 0,
+          "observation": "Validation summary 38/38 passed; no missing required comparator result cells; no incomplete required comparator cells; cell totals consistent."
+        },
+        {
+          "command": "python3 - <<PY (artifact inspection for matrix completeness) PY",
+          "exitCode": 0,
+          "observation": "Required comparators ag/rust-ag/rg/ugrep present; non-skipped scenarios=29; cell_totals={'total':116,'executed':116,'skipped':0,'errors':0}; missing cell entries=0; incomplete cells=0."
+        }
+      ]
+    },
+    {
+      "id": "VAL-BENCH-002",
+      "status": "pass",
+      "reason": "Comparator version/build capture is present for every required comparator.",
+      "evidence": [
+        {
+          "command": "python3 benchmarks/validate_manifest.py --run 20260305T165853Z",
+          "exitCode": 0,
+          "observation": "Version and binary_path checks passed for rust-ag, ag, rg, and ugrep; run_manifest embeds tools_metadata."
+        },
+        {
+          "command": "Read benchmarks/out/20260305T165853Z/tools_metadata.json",
+          "exitCode": 0,
+          "observation": "tools_metadata.json contains comparator binary_path and version/version_raw fields for rust-ag, ag, rg, and ugrep plus timestamp and commit_sha."
+        }
+      ]
+    },
+    {
+      "id": "VAL-BENCH-003",
+      "status": "pass",
+      "reason": "Input corpus/query/scenario manifests are pinned and verified against on-disk hashes for the run.",
+      "evidence": [
+        {
+          "command": "python3 benchmarks/manifest_pinning.py verify --run 20260305T165853Z",
+          "exitCode": 0,
+          "observation": "On-disk manifest verification PASS for scenarios, queries, and corpus."
+        },
+        {
+          "command": "python3 benchmarks/validate_manifest.py --run 20260305T165853Z",
+          "exitCode": 0,
+          "observation": "run_manifest references scenario/query/corpus hashes and each hash matches the on-disk manifest file."
+        }
+      ]
+    },
+    {
+      "id": "VAL-BENCH-004",
+      "status": "pass",
+      "reason": "Correctness gate artifact validates benchmark scenarios before accepting performance claims.",
+      "evidence": [
+        {
+          "command": "python3 benchmarks/correctness_gate.py --run 20260305T165853Z",
+          "exitCode": 0,
+          "observation": "Correctness Gate PASS: scenarios checked=29, passed=29, failed=0, skipped=1; gate artifact written to benchmarks/out/20260305T165853Z/correctness_gate.json."
+        }
+      ]
+    },
+    {
+      "id": "VAL-BENCH-005",
+      "status": "pass",
+      "reason": "Environment metadata is schema-valid and includes required platform/toolchain/commit/timestamp context.",
+      "evidence": [
+        {
+          "command": "python3 benchmarks/validate_env_metadata.py --run 20260305T165853Z",
+          "exitCode": 0,
+          "observation": "Schema validation passed; metadata includes Darwin 25.3.0, CPU, core counts, memory, Rust version, and commit SHA."
+        },
+        {
+          "command": "Read benchmarks/out/20260305T165853Z/run_manifest.json",
+          "exitCode": 0,
+          "observation": "run_manifest includes environment object with timestamp/platform/python and commit_sha plus tools metadata reference."
+        }
+      ]
+    },
+    {
+      "id": "VAL-BENCH-009",
+      "status": "pass",
+      "reason": "Scenario command expansion preserves comparator-specific command intent without unresolved placeholders.",
+      "evidence": [
+        {
+          "command": "python3 benchmarks/validate_manifest.py --run 20260305T165853Z",
+          "exitCode": 0,
+          "observation": "command_equivalence.json exists, has scenarios, and reported no unexpanded placeholders in equivalence artifact."
+        },
+        {
+          "command": "python3 - <<PY (artifact inspection for command equivalence) PY",
+          "exitCode": 0,
+          "observation": "command_equivalence scenario_count=30; required comparator expanded commands present; placeholder issues=0."
+        }
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "Execute",
+    "Read"
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Validated 6 assigned benchmark-harness assertions for run 20260305T165853Z; all passed with manifest, pinning, correctness-gate, environment-metadata, and command-equivalence checks."
+}

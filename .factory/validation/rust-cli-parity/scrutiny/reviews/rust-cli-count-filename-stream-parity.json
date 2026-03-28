@@ -1,0 +1,45 @@
+{
+  "featureId": "rust-cli-count-filename-stream-parity",
+  "reviewedAt": "2026-03-05T13:33:50Z",
+  "commitId": "015ec5b93403ddb1b561bc8e1baa9c6ef7c4338f",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature delivers substantial CLI parity work, but stream-mode count semantics and stdin robustness are not fully baseline-compatible.",
+    "issues": [
+      {
+        "file": "rust-ag/src/main.rs",
+        "line": 449,
+        "severity": "blocking",
+        "description": "`search_stream_count` ignores `--invert-match` and always prints counts for matching lines (`count > 0`). Baseline `ag` differs for stream `-c -v` (example: input `hello hello\\nworld\\nfoo\\n` with pattern `hello` yields `ag` output `1\\n1`, while rust-ag outputs `2`). This breaks VAL-CLI-001 stream count parity under invert mode."
+      },
+      {
+        "file": "rust-ag/src/main.rs",
+        "line": 89,
+        "severity": "blocking",
+        "description": "Stream mode uses `read_to_string(...).expect(...)`, which panics on non-UTF8 stdin and exits with panic status. Baseline `ag` handles the same byte stream without crashing (example bytes `\\xFFhello\\n`, pattern `hello`, baseline exits 0 with match output). This is a parity and stability regression for stream behavior."
+      },
+      {
+        "file": "rust-ag/tests/parity_cli_count_filename_stream.rs",
+        "line": 175,
+        "severity": "non_blocking",
+        "description": "Test coverage includes file `-c -v` and stream `-c`, but does not include stream `-c -v`, allowing the stream invert-count mismatch to pass undetected."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The rewrite-worker skill omits explicit guidance about the stdin-pipe stream quirk that affects numbering behavior when explicit paths are present.",
+      "evidence": "Handoff `handoffs/2026-03-05T12-51-04-835Z__rust-cli-count-filename-stream-parity__4778d39c-0b80-41bb-a49a-c67d3918e588.json` has `skillFeedback.suggestedChanges` requesting this addition; `.factory/skills/rewrite-worker/SKILL.md` currently has no stdin-pipe quirk note."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Shared library docs do not capture stdin/stream parity quirks discovered during this feature, increasing rediscovery risk for later CLI parity work.",
+      "evidence": "Search over `.factory/library/` for `stdin|stream|--numbers|--nofilename|pipe quirk` returned no matches relevant to this behavior."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review failed: despite broad implementation progress, blocking parity/stability defects remain in stream mode (`-c -v` semantics and non-UTF8 stdin handling)."
+}

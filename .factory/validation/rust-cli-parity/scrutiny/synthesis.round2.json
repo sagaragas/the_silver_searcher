@@ -1,0 +1,71 @@
+{
+  "milestone": "rust-cli-parity",
+  "round": 2,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "cd \"/Users/ragas/code/missions/the_silver_searcher\" && PATH=\".venv-ag-tests/bin:$PATH\" make test && if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo test --workspace -- --test-threads=5; else echo \"No Rust workspace yet; skipping Rust tests\"; fi",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "cd \"/Users/ragas/code/missions/the_silver_searcher\" && if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo check --workspace; else echo \"No Rust workspace yet; skipping typecheck\"; fi",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "cd \"/Users/ragas/code/missions/the_silver_searcher\" && if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings; else echo \"No Rust workspace yet; skipping Rust lint\"; fi",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 5,
+    "passed": 4,
+    "failed": 1,
+    "failedFeatures": [
+      "rust-cli-filename-filter-path-prefix-fix"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "rust-cli-filename-filter-path-prefix-fix",
+      "severity": "blocking",
+      "description": "`-g` regex matching is evaluated against normalized display paths (`display_path_for`) instead of baseline raw traversal paths, causing parity regressions for patterns that depend on leading `./` (e.g., '^\\./rust-ag/src/main\\.rs$')."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Added stream-mode parity notes to .factory/library/architecture.md for `-c -v` invert counting and byte-tolerant stdin handling expectations.",
+      "sourceFeature": "rust-cli-count-filename-stream-parity-fix"
+    },
+    {
+      "target": "library",
+      "description": "Added `-g` baseline semantics note to .factory/library/architecture.md: regex matches raw paths, while output paths are normalized only at print time.",
+      "sourceFeature": "rust-cli-filename-filter-path-prefix-fix"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "rewrite-worker skill",
+      "suggestion": "When modifying `-g` output formatting, require explicit parity guards that verify filename-regex matching semantics on raw paths (including `^\\./...$` patterns), not only display formatting assertions.",
+      "evidence": "Review failure in rust-cli-filename-filter-path-prefix-fix showed formatting-only tests passed while regex matching semantics regressed.",
+      "isSystemic": true
+    },
+    {
+      "target": "rewrite-worker skill",
+      "suggestion": "After fixing CLI regressions (e.g., invalid `-G` and non-UTF8 context behavior), require corresponding shared parity-matrix scenario coverage updates when gaps are identified.",
+      "evidence": "Review of rust-cli-context-color-filter-help-version-fix noted shared matrix scenarios still only cover valid `-G` and UTF-8 context cases.",
+      "isSystemic": true
+    },
+    {
+      "target": "rewrite-worker skill",
+      "suggestion": "Enforce red-first workflow adherence in reported skill feedback (or add automated transcript-order checks) so implementation-before-test ordering cannot be marked as procedure-followed.",
+      "evidence": "Review of rust-cli-filename-filter-path-prefix-fix observed source edits before new tests while skill feedback still reported followedProcedure=true.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": ".factory/validation/rust-cli-parity/scrutiny/synthesis.round1.json"
+}

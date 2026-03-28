@@ -1,0 +1,46 @@
+{
+  "milestone": "benchmark-harness",
+  "round": 4,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "PATH=\"/Users/ragas/code/missions/the_silver_searcher/.venv-ag-tests/bin:$PATH\" make -C \"/Users/ragas/code/missions/the_silver_searcher\" test && cargo test --workspace --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --test-threads=5",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "cargo check --workspace --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\"",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "cargo fmt --all --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --check && cargo clippy --workspace --all-targets --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- -D warnings",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Updated .factory/library/benchmarking.md with correctness-gate semantics (ag/rust-ag parity divergence is hard-fail; cross-tool divergence is advisory) and required non-zero harness exit behavior when correctness gate fails.",
+      "sourceFeature": "benchmark-harness-manifests-correctness-env"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "benchmark-worker skill",
+      "suggestion": "Add an explicit acceptance check that correctness-gate failures must propagate to non-zero CLI exits for benchmark harness modes (smoke/run/measured), including when cell error counts are zero.",
+      "evidence": "The prior blocking issue in benchmark-harness-manifests-correctness-env came from missing CLI fail-state propagation despite correctness-gate failure detection.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": ".factory/validation/benchmark-harness/scrutiny/synthesis.round3.json"
+}

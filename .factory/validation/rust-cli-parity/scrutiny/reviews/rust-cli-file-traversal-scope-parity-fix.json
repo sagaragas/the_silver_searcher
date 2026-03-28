@@ -1,0 +1,22 @@
+{
+  "featureId": "rust-cli-file-traversal-scope-parity-fix",
+  "reviewedAt": "2026-03-05T13:35:26Z",
+  "commitId": "c2368a0169c1f73694144d1b134e830e8ac3b2d8",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The ignore anchoring/path-component fix is directionally correct and covered by new unit tests, but the binary-detection port is not behaviorally equivalent to baseline ag for short buffers, which still causes traversal-scope mismatch in CLI output.",
+    "issues": [
+      {
+        "file": "rust-ag/src/search.rs",
+        "line": 769,
+        "severity": "blocking",
+        "description": "`is_binary_buf` incorrectly gates the final suspicious-byte ratio check behind `total_bytes >= 32`, while baseline ag applies the final ratio check unconditionally (`src/util.c:381`). This causes short binary-like files (<32 bytes, no NUL) to be treated as text in rust-ag. Repro: create a 10-byte high-suspicion file and run `ag -v -l ZZZ_UNLIKELY <dir>` vs `rust-ag -v -l ZZZ_UNLIKELY <dir>`; baseline excludes the binary file, rust-ag includes it. This violates the feature's traversal-scope parity goal."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Review failed due to a blocking parity gap in `is_binary_buf` for short buffers: rust-ag still includes files baseline ag classifies as binary, so traversal file-set parity is not fully restored."
+}

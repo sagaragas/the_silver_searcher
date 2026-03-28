@@ -1,0 +1,21 @@
+{
+  "featureId": "misc-cli-count-stream-parity-group-coverage-fix",
+  "reviewedAt": "2026-03-05T19:09:58Z",
+  "commitId": "e15a9fbab5f477702e3df36e6ab34aa2c8f5a3c1",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix fully addresses the prior failure: cli-count-stream now includes the missing single-file and stdin/stream scenarios, run_matrix can pipe deterministic stdin_data for parity artifacts, and coverage for VAL-CLI-001..003 is now complete and auditable from cli-count-stream group artifacts.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "services",
+      "observation": "The mission repeatedly validates the cli-count-stream group with a direct run_matrix invocation, but .factory/services.yaml still has no named command entry for this path, which reduces consistency with other parity flows that do have service command aliases.",
+      "evidence": "Feature verificationSteps and handoff commands use `python3 scripts/parity/run_matrix.py --target rust --group cli-count-stream`; compare with /Users/ragas/code/missions/the_silver_searcher/.factory/services.yaml commands list (has parity_core_* aliases but no cli-count-stream alias)."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/misc-ops-hardening/scrutiny/reviews/misc-cli-count-stream-parity-group-coverage.json",
+  "summary": "Pass: compared against the original failed feature diff and prior review, this fix commit closes both blocking gaps by adding single-file and stream scenarios plus stdin piping support, making VAL-CLI-001..003 coverage complete within cli-count-stream artifacts."
+}

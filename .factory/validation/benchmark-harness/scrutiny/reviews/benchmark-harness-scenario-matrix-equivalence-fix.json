@@ -1,0 +1,16 @@
+{
+  "featureId": "benchmark-harness-scenario-matrix-equivalence-fix",
+  "reviewedAt": "2026-03-05T16:47:23Z",
+  "commitId": "5d86a5cdcb340a520761a9d8cd533979c2180a7a",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "confidence": "high",
+  "codeReview": {
+    "summary": "This fix resolves the prior VAL-BENCH-001 failures: scenario definitions now include canonical ag/rust-ag/rg/ugrep templates, harness smoke/measured paths enforce canonical required comparators with missing-template/missing-result blocking failures, and manifest validation now fails on missing canonical templates/cells or skipped/binary_not_found required cells.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/benchmark-harness/scrutiny/reviews/benchmark-harness-scenario-matrix-equivalence.json",
+  "summary": "Pass: the fix adequately addresses the original scrutiny failure by enforcing canonical per-scenario comparator completeness in scenario generation, harness execution, and manifest validation, with updated tests covering the previously missed partial-scenario loophole."
+}

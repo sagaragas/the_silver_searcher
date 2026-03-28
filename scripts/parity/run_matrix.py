@@ -1,0 +1,907 @@
+#!/usr/bin/env python3
+"""Parity-oracle runner: execute baseline ag and candidate command variants,
+capture stdout/stderr/exit-code, and emit machine-diff artifacts.
+
+For each scenario in the matrix, the runner:
+  1. Resolves the command template (pattern, corpus) from manifests.
+  2. Executes the command for the selected target(s).
+  3. Captures normalised stdout, stderr, and exit code.
+  4. Emits per-scenario diff artifacts comparing target vs baseline (ag).
+  5. Records manifest hashes, environment metadata, and a run summary.
+
+Usage examples:
+    python3 scripts/parity/run_matrix.py --target baseline --group smoke
+    python3 scripts/parity/run_matrix.py --target baseline --group all
+    python3 scripts/parity/run_matrix.py --target rg --scenario literal-simple
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import platform
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+MANIFESTS_DIR = REPO_ROOT / "manifests"
+SCENARIOS_PATH = MANIFESTS_DIR / "scenarios.json"
+QUERIES_PATH = MANIFESTS_DIR / "queries.json"
+CORPUS_PATH = MANIFESTS_DIR / "corpus.json"
+FIXTURES_PATH = MANIFESTS_DIR / "fixtures.json"
+
+ARTIFACTS_BASE = REPO_ROOT / "parity-artifacts"
+
+# Known scenario groups.  "smoke" is a small fast subset; "all" runs everything.
+# Groups can be defined either here (legacy) or via "groups" field in scenarios.json.
+SMOKE_SCENARIOS = [
+    "literal-simple",
+    "literal-nomatch",
+    "regex-simple",
+    "count-matches",
+    "files-with-matches",
+]
+
+# Edge-case scenario IDs (also tagged via "groups" field in scenarios.json).
+EDGE_CASE_PREFIX = "edge-"
+
+# Targets that can act as the "baseline" (source-of-truth).
+BASELINE_TARGETS = {"ag", "baseline"}
+
+# Every comparator that the manifest can define.
+ALL_COMPARATORS = {"ag", "rust-ag", "rg", "ugrep"}
+
+# Convenience aliases for target names.
+TARGET_ALIASES = {"baseline": "ag", "rust": "rust-ag"}
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _load_json(path: Path) -> dict[str, Any]:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _write_json(path: Path, obj: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=2, sort_keys=False, ensure_ascii=False)
+        f.write("\n")
+
+
+def _write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+
+
+def _update_latest_symlink(artifacts_base: Path, run_dir: Path) -> None:
+    """Create or replace a ``latest`` symlink inside *artifacts_base*.
+
+    When *run_dir* is a direct child of *artifacts_base* (the default case),
+    the symlink target is a **relative** name (e.g. ``20260305T120000Z``) so
+    the link works from within the artifacts directory.
+
+    When *run_dir* lives **outside** *artifacts_base* (custom ``--output-dir``),
+    the symlink target is computed as a **relative path from** the symlink's
+    parent directory to the actual run directory.  This keeps the symlink valid
+    regardless of where the caller ``readlink``s from while avoiding hard-coded
+    absolute paths when possible.
+    """
+    latest_link = artifacts_base / "latest"
+    if latest_link.is_symlink() or latest_link.exists():
+        latest_link.unlink()
+
+    # Resolve both paths to eliminate any ``..`` or symlink indirection before
+    # computing the relationship.
+    resolved_base = artifacts_base.resolve()
+    resolved_run = run_dir.resolve()
+
+    try:
+        # If run_dir is a child of artifacts_base, Path.relative_to succeeds
+        # and we get a clean relative name such as ``20260305T120000Z``.
+        rel = resolved_run.relative_to(resolved_base)
+        latest_link.symlink_to(rel)
+    except ValueError:
+        # run_dir is NOT inside artifacts_base → compute a relative path from
+        # the symlink's parent (artifacts_base) to the run directory.
+        rel = os.path.relpath(resolved_run, resolved_base)
+        latest_link.symlink_to(rel)
+
+
+def _normalise_output(text: str) -> str:
+    """Normalise captured output for stable diffing.
+
+    - Strip trailing whitespace on each line.
+    - Sort lines (ag output order is non-deterministic across threads).
+    - Collapse blank lines.
+    - Strip ANSI escape codes if any leak through.
+    """
+    # Strip ANSI escapes.
+    ansi_re = re.compile(r"\x1b\[[0-9;]*m")
+    text = ansi_re.sub("", text)
+
+    lines = [l.rstrip() for l in text.splitlines()]
+    lines = [l for l in lines if l]  # drop blank
+    lines.sort()
+    return "\n".join(lines) + ("\n" if lines else "")
+
+
+def _resolve_binary(name: str) -> str | None:
+    """Resolve a comparator name to an executable path."""
+    if name in ("ag", "baseline"):
+        # Use the locally-built ag binary.
+        local = REPO_ROOT / "ag"
+        if local.is_file() and os.access(local, os.X_OK):
+            return str(local)
+        return shutil.which("ag")
+    if name == "rust-ag":
+        # Try cargo target dir first (release then debug), then PATH.
+        for candidate in [
+            REPO_ROOT / "target" / "release" / "rust-ag",
+            REPO_ROOT / "target" / "debug" / "rust-ag",
+            REPO_ROOT / "rust-ag" / "target" / "release" / "rust-ag",
+            REPO_ROOT / "rust-ag" / "target" / "debug" / "rust-ag",
+        ]:
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return str(candidate)
+        return shutil.which("rust-ag")
+    return shutil.which(name)
+
+
+def _get_binary_version(binary_path: str) -> str:
+    """Get version string from a binary."""
+    try:
+        result = subprocess.run(
+            [binary_path, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        return (result.stdout or result.stderr).strip().split("\n")[0]
+    except Exception as e:
+        return f"unknown ({e})"
+
+
+def _build_env() -> dict[str, str]:
+    """Build a sanitised environment for subprocess execution."""
+    env = os.environ.copy()
+    # Force no colour / consistent locale.
+    env["LANG"] = "C"
+    env["LC_ALL"] = "C"
+    env["NO_COLOR"] = "1"
+    env["TERM"] = "dumb"
+    return env
+
+
+def _collect_environment_metadata(targets: list[str]) -> dict[str, Any]:
+    """Collect environment metadata for the run."""
+    meta: dict[str, Any] = {
+        "timestamp": _now_iso(),
+        "platform": {
+            "system": platform.system(),
+            "release": platform.release(),
+            "machine": platform.machine(),
+            "python": platform.python_version(),
+        },
+        "commit_sha": _git_sha(),
+        "tools": {},
+    }
+    for target in targets:
+        binary = _resolve_binary(target)
+        if binary:
+            meta["tools"][target] = {
+                "path": binary,
+                "version": _get_binary_version(binary),
+            }
+        else:
+            meta["tools"][target] = {"path": None, "version": "not found"}
+    return meta
+
+
+def _git_sha() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            timeout=10,
+        )
+        return result.stdout.strip()
+    except Exception:
+        return "unknown"
+
+
+# ---------------------------------------------------------------------------
+# Execution
+# ---------------------------------------------------------------------------
+
+
+def tokenize_command(cmd_str: str) -> list[str]:
+    """Split a command string into argv tokens.
+
+    This is a replacement for :func:`shlex.split` that preserves both:
+
+    * **Quoted arguments** – double- or single-quoted tokens are merged into a
+      single argv entry with surrounding quotes removed (e.g. paths with
+      spaces).
+    * **Literal backslashes** – unquoted backslash sequences (e.g. ``\\b`` word
+      boundaries in regex patterns) are kept verbatim instead of being
+      interpreted as escape characters.
+
+    The implementation uses ``shlex.split(posix=False)`` which keeps backslashes
+    intact but leaves surrounding quotes on quoted tokens.  A post-processing
+    step then strips exactly the outermost quote pair from each token.
+    """
+    tokens = shlex.split(cmd_str, posix=False)
+    result: list[str] = []
+    for tok in tokens:
+        if len(tok) >= 2 and (
+            (tok[0] == '"' and tok[-1] == '"')
+            or (tok[0] == "'" and tok[-1] == "'")
+        ):
+            result.append(tok[1:-1])
+        else:
+            result.append(tok)
+    return result
+
+
+def run_command(
+    cmd_template: str,
+    pattern: str,
+    corpus: str,
+    cwd: Path,
+    timeout: int = 60,
+    stdin_data: str | None = None,
+) -> dict[str, Any]:
+    """Execute a single command and capture output.
+
+    When *stdin_data* is provided the data is piped to the process's stdin
+    and the ``{corpus}`` placeholder is stripped from the expanded command so
+    that no corpus file positional argument is passed (stdin-driven search).
+    """
+    if stdin_data is not None:
+        # Strip corpus arg for stdin-driven scenarios.
+        cmd_str = cmd_template.replace("{pattern}", pattern).replace("{corpus}", "")
+        cmd_str = " ".join(cmd_str.split())
+    else:
+        cmd_str = cmd_template.replace("{pattern}", pattern).replace("{corpus}", corpus)
+    parts = tokenize_command(cmd_str)
+
+    # Resolve the binary name to an actual executable path.
+    binary_name = parts[0]
+    resolved = _resolve_binary(binary_name)
+    if resolved:
+        parts[0] = resolved
+
+    start = time.monotonic()
+    try:
+        result = subprocess.run(
+            parts,
+            input=stdin_data.encode("utf-8") if stdin_data is not None else None,
+            capture_output=True,
+            cwd=cwd,
+            env=_build_env(),
+            timeout=timeout,
+        )
+        elapsed = time.monotonic() - start
+        return {
+            "command": cmd_str,
+            "exit_code": result.returncode,
+            "stdout": result.stdout.decode("utf-8", errors="replace"),
+            "stderr": result.stderr.decode("utf-8", errors="replace"),
+            "elapsed_s": round(elapsed, 4),
+            "timed_out": False,
+        }
+    except subprocess.TimeoutExpired:
+        elapsed = time.monotonic() - start
+        return {
+            "command": cmd_str,
+            "exit_code": -1,
+            "stdout": "",
+            "stderr": f"TIMEOUT after {timeout}s",
+            "elapsed_s": round(elapsed, 4),
+            "timed_out": True,
+        }
+    except FileNotFoundError:
+        return {
+            "command": cmd_str,
+            "exit_code": -127,
+            "stdout": "",
+            "stderr": f"Binary not found for command: {parts[0]}",
+            "elapsed_s": 0,
+            "timed_out": False,
+        }
+
+
+def compute_diff(baseline_text: str, target_text: str) -> str:
+    """Compute a unified diff between baseline and target normalised outputs."""
+    import difflib
+
+    baseline_lines = baseline_text.splitlines(keepends=True)
+    target_lines = target_text.splitlines(keepends=True)
+    diff = difflib.unified_diff(
+        baseline_lines,
+        target_lines,
+        fromfile="baseline (ag)",
+        tofile="target",
+        lineterm="\n",
+    )
+    return "".join(diff)
+
+
+# ---------------------------------------------------------------------------
+# Edge-case fixture preflight
+# ---------------------------------------------------------------------------
+
+
+def _build_scenario_to_category_map() -> dict[str, str]:
+    """Derive edge-scenario → fixture-category mapping from the scenario manifest.
+
+    The mapping is extracted from each edge-case scenario's ``corpus`` field
+    which follows the pattern ``tests/edge-cases/<category>/…``.  Deriving
+    the mapping at runtime from the manifest eliminates silent drift between
+    a hardcoded lookup table and the actual scenario definitions.
+
+    Returns a dict mapping scenario ID → category name for every scenario
+    whose ID starts with ``edge-`` and whose corpus references a path under
+    ``tests/edge-cases/``.
+    """
+    edge_corpus_prefix = "tests/edge-cases/"
+    mapping: dict[str, str] = {}
+
+    if not SCENARIOS_PATH.exists():
+        return mapping
+
+    scenarios_manifest = _load_json(SCENARIOS_PATH)
+    for scenario in scenarios_manifest.get("scenarios", []):
+        sid = scenario.get("id", "")
+        corpus = scenario.get("corpus", "")
+        if sid.startswith(EDGE_CASE_PREFIX) and corpus.startswith(edge_corpus_prefix):
+            # Extract category: strip prefix, take first path component.
+            remainder = corpus[len(edge_corpus_prefix):]
+            category = remainder.split("/")[0] if remainder else ""
+            if category:
+                mapping[sid] = category
+
+    return mapping
+
+
+def _resolve_needed_edge_categories(
+    scenario_ids: list[str] | None,
+    group: str | None,
+) -> list[str] | None:
+    """Determine which edge-case fixture categories the run will need.
+
+    Returns a list of category names (e.g. ``["ignore-source", "large-file"]``)
+    when the run touches edge-case scenarios, or ``None`` when no edge-case
+    scenarios are selected (so preflight can be skipped entirely).
+
+    The scenario → category mapping is derived from the scenario manifest's
+    corpus paths rather than a hardcoded table, so new edge-case scenarios
+    are automatically included without requiring manual sync.
+    """
+    scenario_to_category = _build_scenario_to_category_map()
+
+    if scenario_ids:
+        # Explicit scenario list — pick only matching categories (deduplicated).
+        seen: set[str] = set()
+        cats: list[str] = []
+        for sid in scenario_ids:
+            cat = scenario_to_category.get(sid)
+            if cat and cat not in seen:
+                seen.add(cat)
+                cats.append(cat)
+        return cats if cats else None
+
+    if group == "edge-cases":
+        # Running the whole edge-cases group — need all categories.
+        return list(dict.fromkeys(scenario_to_category.values()))
+
+    if group == "all" or group is None:
+        # Running everything — need all edge categories.
+        return list(dict.fromkeys(scenario_to_category.values()))
+
+    # Other groups (e.g. "smoke") don't reference edge-case fixtures.
+    return None
+
+
+def _preflight_edge_fixtures(
+    targets: list[str],
+    scenario_ids: list[str] | None,
+    group: str | None,
+) -> None:
+    """Validate edge-case fixture readiness before execution.
+
+    Unlike the previous single-directory presence check, this function:
+
+    1. Determines which fixture categories the selected scenarios need.
+    2. Runs a lightweight structural preflight against required marker
+       files for each category (no checksums or content validation).
+    3. Auto-sets up any incomplete/missing categories via the fixture
+       builder — only the categories that actually need rebuilding are
+       regenerated, keeping the common case (everything present) fast.
+    4. After auto-setup, re-checks.  If categories are still incomplete
+       the run fails fast with a clear diagnostic.
+    """
+    edge_fixtures_dir = REPO_ROOT / "tests" / "edge-cases"
+    edge_setup_script = edge_fixtures_dir / "setup_fixtures.py"
+
+    if not edge_setup_script.is_file():
+        # No setup script means edge-case infrastructure isn't available.
+        return
+
+    needed = _resolve_needed_edge_categories(scenario_ids, group)
+    if not needed:
+        # No edge-case scenarios selected — nothing to preflight.
+        return
+
+    # Import preflight utilities from setup_fixtures.
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("setup_fixtures", edge_setup_script)
+    if spec is None or spec.loader is None:
+        # Fallback: run the script externally.
+        print("WARNING: Could not import setup_fixtures; running externally", file=sys.stderr)
+        subprocess.run(
+            [sys.executable, str(edge_setup_script)],
+            cwd=REPO_ROOT,
+            check=True,
+        )
+        return
+
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    # De-duplicate while preserving order.
+    seen: set[str] = set()
+    unique_needed: list[str] = []
+    for cat in needed:
+        if cat not in seen:
+            seen.add(cat)
+            unique_needed.append(cat)
+
+    incomplete = mod.preflight_check(unique_needed, fixtures_base=edge_fixtures_dir)
+    if not incomplete:
+        return  # All required categories pass structural preflight.
+
+    # Auto-setup the incomplete categories.
+    print(
+        f"Edge-case preflight: {len(incomplete)}/{len(unique_needed)} categories "
+        f"incomplete — auto-setting up: {', '.join(incomplete)}"
+    )
+    mod.setup_categories(incomplete)
+
+    # Re-check after setup.
+    still_incomplete = mod.preflight_check(unique_needed, fixtures_base=edge_fixtures_dir)
+    if still_incomplete:
+        print(
+            f"FATAL: Edge-case fixture preflight still failing after auto-setup.\n"
+            f"  Incomplete categories: {', '.join(still_incomplete)}\n"
+            f"  Run 'python3 tests/edge-cases/setup_fixtures.py --verify' for details.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+
+# ---------------------------------------------------------------------------
+# Main runner
+# ---------------------------------------------------------------------------
+
+
+def run_matrix(
+    targets: list[str],
+    scenario_ids: list[str] | None,
+    group: str | None,
+    run_dir: Path | None = None,
+    cmd_timeout: int = 60,
+) -> dict[str, Any]:
+    """Execute the parity matrix and emit artifacts.
+
+    Returns the run summary dict.
+    """
+    # Ensure edge-case fixtures are set up if they'll be needed.
+    _preflight_edge_fixtures(targets, scenario_ids, group)
+
+    # Load manifests.
+    scenarios_manifest = _load_json(SCENARIOS_PATH)
+    queries_manifest = _load_json(QUERIES_PATH)
+    corpus_manifest = _load_json(CORPUS_PATH)
+
+    # Also load fixture manifest if available.
+    fixtures_hash = ""
+    if FIXTURES_PATH.exists():
+        fixtures_manifest = _load_json(FIXTURES_PATH)
+        fixtures_hash = fixtures_manifest.get("manifest_hash", "")
+
+    # Build query lookup.
+    query_by_id = {q["id"]: q for q in queries_manifest["queries"]}
+
+    # Select scenarios.
+    all_scenarios = scenarios_manifest["scenarios"]
+    if scenario_ids:
+        selected = [s for s in all_scenarios if s["id"] in scenario_ids]
+        missing = set(scenario_ids) - {s["id"] for s in selected}
+        if missing:
+            print(f"WARNING: Unknown scenario IDs: {missing}", file=sys.stderr)
+    elif group == "smoke":
+        selected = [s for s in all_scenarios if s["id"] in SMOKE_SCENARIOS]
+    elif group == "edge-cases":
+        # Select scenarios tagged with "edge-cases" group or matching edge-case prefix.
+        selected = [
+            s for s in all_scenarios
+            if group in s.get("groups", []) or s["id"].startswith(EDGE_CASE_PREFIX)
+        ]
+    elif group == "all" or group is None:
+        selected = all_scenarios
+    else:
+        # Try to match by group tag in scenario metadata.
+        selected = [s for s in all_scenarios if group in s.get("groups", [])]
+        if not selected:
+            print(f"ERROR: Unknown group '{group}' — no scenarios matched", file=sys.stderr)
+            sys.exit(1)
+
+    if not selected:
+        print("ERROR: No scenarios selected", file=sys.stderr)
+        sys.exit(1)
+
+    # Resolve targets.
+    resolved_targets: list[str] = []
+    for t in targets:
+        resolved = TARGET_ALIASES.get(t, t)
+        if resolved in ALL_COMPARATORS:
+            resolved_targets.append(resolved)
+        else:
+            print(f"ERROR: Unknown target '{t}'", file=sys.stderr)
+            sys.exit(1)
+
+    # Fail fast: verify all needed binaries exist.
+    # Always need ag as baseline, plus each requested target.
+    needed = set(resolved_targets) | {"ag"}
+    for name in sorted(needed):
+        binary = _resolve_binary(name)
+        if not binary:
+            print(
+                f"FATAL: Comparator '{name}' not found. "
+                f"Cannot proceed without baseline/target.",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+
+    # Create run directory.
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    if run_dir is None:
+        run_dir = ARTIFACTS_BASE / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    # Maintain a 'latest' symlink that resolves for both default and custom
+    # output directories.
+    _update_latest_symlink(ARTIFACTS_BASE, run_dir)
+
+    # Collect environment metadata.
+    env_meta = _collect_environment_metadata(list(needed))
+    env_meta["manifest_hashes"] = {
+        "scenarios": scenarios_manifest.get("manifest_hash", ""),
+        "queries": queries_manifest.get("manifest_hash", ""),
+        "corpus": corpus_manifest.get("manifest_hash", ""),
+        "fixtures": fixtures_hash,
+    }
+    _write_json(run_dir / "environment.json", env_meta)
+
+    # Execute scenarios.
+    results: list[dict[str, Any]] = []
+    pass_count = 0
+    fail_count = 0
+    error_count = 0
+
+    for scenario in selected:
+        sid = scenario["id"]
+        query = query_by_id.get(scenario["query_id"])
+        if not query:
+            print(f"WARNING: Query {scenario['query_id']} not found, skipping {sid}", file=sys.stderr)
+            continue
+
+        # Check platform_skip conditions.
+        platform_skip = scenario.get("platform_skip")
+        if platform_skip:
+            skip_condition = platform_skip.get("condition", "")
+            should_skip = False
+            if skip_condition == "symlinks_unsupported":
+                should_skip = platform.system() == "Windows"
+            elif skip_condition == "one_device_unavailable":
+                # Check the fixture marker for the authoritative answer.
+                marker_path = REPO_ROOT / "tests" / "edge-cases" / "one-device" / "one-device-marker.json"
+                if marker_path.is_file():
+                    try:
+                        with open(marker_path, "r", encoding="utf-8") as _mf:
+                            _marker = json.load(_mf)
+                        should_skip = not _marker.get("cross_device_available", False)
+                    except (json.JSONDecodeError, OSError):
+                        should_skip = True
+                else:
+                    # No marker → fixture not set up; skip.
+                    should_skip = True
+            if should_skip:
+                skip_reason = platform_skip.get("reason", "Platform condition not met")
+                print(f"  SKIP: {sid} — {skip_reason}")
+                results.append({
+                    "scenario_id": sid,
+                    "query_id": scenario["query_id"],
+                    "pattern": query["pattern"],
+                    "corpus": scenario["corpus"],
+                    "baseline": None,
+                    "targets": {},
+                    "skipped": True,
+                    "skip_reason": skip_reason,
+                })
+                continue
+
+        pattern = query["pattern"]
+        corpus = scenario["corpus"]
+        # Retrieve optional stdin_data for stream-mode scenarios.
+        stdin_data: str | None = scenario.get("stdin_data")
+
+        scenario_dir = run_dir / "scenarios" / sid
+        scenario_dir.mkdir(parents=True, exist_ok=True)
+
+        # Always run baseline (ag).
+        baseline_template = scenario["commands"].get("ag")
+        if not baseline_template:
+            print(f"WARNING: No ag command for scenario {sid}", file=sys.stderr)
+            continue
+
+        baseline_result = run_command(
+            baseline_template, pattern, corpus, REPO_ROOT,
+            timeout=cmd_timeout, stdin_data=stdin_data,
+        )
+        baseline_norm = _normalise_output(baseline_result["stdout"])
+
+        # Store baseline output.
+        _write_text(scenario_dir / "baseline.stdout", baseline_result["stdout"])
+        _write_text(scenario_dir / "baseline.stderr", baseline_result["stderr"])
+        _write_text(scenario_dir / "baseline.norm", baseline_norm)
+        _write_json(scenario_dir / "baseline.meta.json", {
+            "command": baseline_result["command"],
+            "exit_code": baseline_result["exit_code"],
+            "elapsed_s": baseline_result["elapsed_s"],
+            "timed_out": baseline_result["timed_out"],
+            "stdout_sha256": _sha256_bytes(baseline_result["stdout"].encode("utf-8")),
+            "norm_sha256": _sha256_bytes(baseline_norm.encode("utf-8")),
+        })
+
+        # Run each non-ag target and diff against baseline.
+        scenario_result: dict[str, Any] = {
+            "scenario_id": sid,
+            "query_id": scenario["query_id"],
+            "pattern": pattern,
+            "corpus": corpus,
+            "baseline": {
+                "command": baseline_result["command"],
+                "exit_code": baseline_result["exit_code"],
+                "elapsed_s": baseline_result["elapsed_s"],
+                "timed_out": baseline_result["timed_out"],
+            },
+            "targets": {},
+        }
+        if stdin_data is not None:
+            scenario_result["stdin_data"] = stdin_data
+
+        for target in resolved_targets:
+            if target == "ag":
+                # Baseline already executed; record self-comparison.
+                scenario_result["targets"]["ag"] = {
+                    "command": baseline_result["command"],
+                    "exit_code": baseline_result["exit_code"],
+                    "elapsed_s": baseline_result["elapsed_s"],
+                    "timed_out": baseline_result["timed_out"],
+                    "parity": "pass",
+                    "diff_lines": 0,
+                }
+                pass_count += 1
+                continue
+
+            target_template = scenario["commands"].get(target)
+            if not target_template:
+                scenario_result["targets"][target] = {
+                    "command": None,
+                    "exit_code": None,
+                    "parity": "skip",
+                    "reason": f"No command template for {target} in scenario {sid}",
+                }
+                continue
+
+            target_result = run_command(
+                target_template, pattern, corpus, REPO_ROOT,
+                timeout=cmd_timeout, stdin_data=stdin_data,
+            )
+            target_norm = _normalise_output(target_result["stdout"])
+
+            # Store target output.
+            _write_text(scenario_dir / f"{target}.stdout", target_result["stdout"])
+            _write_text(scenario_dir / f"{target}.stderr", target_result["stderr"])
+            _write_text(scenario_dir / f"{target}.norm", target_norm)
+            _write_json(scenario_dir / f"{target}.meta.json", {
+                "command": target_result["command"],
+                "exit_code": target_result["exit_code"],
+                "elapsed_s": target_result["elapsed_s"],
+                "timed_out": target_result["timed_out"],
+                "stdout_sha256": _sha256_bytes(target_result["stdout"].encode("utf-8")),
+                "norm_sha256": _sha256_bytes(target_norm.encode("utf-8")),
+            })
+
+            # Compute stdout diff.
+            diff_text = compute_diff(baseline_norm, target_norm)
+            _write_text(scenario_dir / f"{target}.diff", diff_text)
+
+            # Compute stderr diff.
+            baseline_stderr_norm = _normalise_output(baseline_result["stderr"])
+            target_stderr_norm = _normalise_output(target_result["stderr"])
+            stderr_diff_text = compute_diff(baseline_stderr_norm, target_stderr_norm)
+            _write_text(scenario_dir / f"{target}.stderr.diff", stderr_diff_text)
+
+            diff_lines = len([l for l in diff_text.splitlines() if l.startswith(("+", "-")) and not l.startswith(("+++", "---"))])
+            stderr_diff_lines = len([l for l in stderr_diff_text.splitlines() if l.startswith(("+", "-")) and not l.startswith(("+++", "---"))])
+            exit_match = baseline_result["exit_code"] == target_result["exit_code"]
+            output_match = baseline_norm == target_norm
+            stderr_match = baseline_stderr_norm == target_stderr_norm
+
+            if target_result["exit_code"] == -127:
+                parity = "error"
+                error_count += 1
+            elif target_result["timed_out"]:
+                parity = "error"
+                error_count += 1
+            elif output_match and exit_match and stderr_match:
+                parity = "pass"
+                pass_count += 1
+            else:
+                parity = "fail"
+                fail_count += 1
+
+            scenario_result["targets"][target] = {
+                "command": target_result["command"],
+                "exit_code": target_result["exit_code"],
+                "elapsed_s": target_result["elapsed_s"],
+                "timed_out": target_result["timed_out"],
+                "parity": parity,
+                "exit_code_match": exit_match,
+                "output_match": output_match,
+                "stderr_match": stderr_match,
+                "diff_lines": diff_lines,
+                "stderr_diff_lines": stderr_diff_lines,
+            }
+
+        results.append(scenario_result)
+
+    # Write run summary.
+    summary = {
+        "schema_version": 2,
+        "run_id": run_id,
+        "timestamp": _now_iso(),
+        "commit_sha": _git_sha(),
+        "targets": resolved_targets,
+        "group": group or "all",
+        "scenario_count": len(results),
+        "manifest_hashes": env_meta["manifest_hashes"],
+        "totals": {
+            "pass": pass_count,
+            "fail": fail_count,
+            "error": error_count,
+        },
+        "scenarios": results,
+    }
+    _write_json(run_dir / "summary.json", summary)
+
+    # Print human-readable summary.
+    total = pass_count + fail_count + error_count
+    print(f"\nParity run complete: {run_id}")
+    print(f"  Artifacts: {run_dir}")
+    print(f"  Scenarios: {len(results)}")
+    print(f"  Comparisons: {total} (pass={pass_count}, fail={fail_count}, error={error_count})")
+    print(f"  Manifest hashes:")
+    for k, v in env_meta["manifest_hashes"].items():
+        print(f"    {k}: {v[:16]}…" if v else f"    {k}: (none)")
+
+    if fail_count > 0 or error_count > 0:
+        print(f"\n  FAILURES/ERRORS:")
+        for r in results:
+            for tname, tres in r.get("targets", {}).items():
+                if tres.get("parity") in ("fail", "error"):
+                    print(f"    {r['scenario_id']}/{tname}: {tres['parity']} "
+                          f"(exit_match={tres.get('exit_code_match')}, "
+                          f"output_match={tres.get('output_match')}, "
+                          f"stderr_match={tres.get('stderr_match')}, "
+                          f"diff_lines={tres.get('diff_lines')}, "
+                          f"stderr_diff_lines={tres.get('stderr_diff_lines')})")
+
+    return summary
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Parity-oracle runner for baseline ag vs candidate commands.",
+    )
+    parser.add_argument(
+        "--target",
+        type=str,
+        required=True,
+        help="Comparator target(s), comma-separated. E.g. 'baseline', 'rg', 'rust-ag,rg'.",
+    )
+    parser.add_argument(
+        "--group",
+        type=str,
+        default=None,
+        help="Scenario group to run: 'smoke', 'all'. Default is all.",
+    )
+    parser.add_argument(
+        "--scenario",
+        type=str,
+        default=None,
+        help="Specific scenario ID(s), comma-separated. Overrides --group.",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=60,
+        help="Per-command timeout in seconds (default: 60).",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Override output directory for run artifacts.",
+    )
+
+    args = parser.parse_args()
+
+    targets = [t.strip() for t in args.target.split(",") if t.strip()]
+    scenario_ids = (
+        [s.strip() for s in args.scenario.split(",") if s.strip()]
+        if args.scenario
+        else None
+    )
+    run_dir = Path(args.output_dir) if args.output_dir else None
+
+    summary = run_matrix(
+        targets, scenario_ids, args.group, run_dir, cmd_timeout=args.timeout
+    )
+
+    # Exit code: 0 if all pass, 1 if any fail, 2 if errors.
+    if summary["totals"]["error"] > 0:
+        sys.exit(2)
+    if summary["totals"]["fail"] > 0:
+        sys.exit(1)
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

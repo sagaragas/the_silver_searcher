@@ -1,0 +1,15 @@
+{
+  "featureId": "misc-cli-stream-manifest-integrity-fix",
+  "reviewedAt": "2026-03-05T21:42:08Z",
+  "commitId": "e85f737378754ec09b01f801287ed9e5695eca94",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Re-review of the original failing commit (3cff3aa6e321a90cc6bf108c6b36d8532ea6c43d) and fix commit (e85f737378754ec09b01f801287ed9e5695eca94) shows the blocker is resolved: cli-stream scenarios keep canonical comparator coverage and {corpus} placeholders in manifests, while execution paths now strip corpus positional args and pipe stdin_data for stdin-driven behavior.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/misc-performance-followup/scrutiny/reviews/misc-cli-stream-manifest-integrity-fix.json",
+  "summary": "Pass: the fix session adequately resolves the prior blocker by preserving manifest integrity requirements and restoring stdin-only execution semantics for stdin_data stream scenarios in both benchmark harness and parity runner paths."
+}

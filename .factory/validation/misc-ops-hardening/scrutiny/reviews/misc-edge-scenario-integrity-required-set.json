@@ -1,0 +1,33 @@
+{
+  "featureId": "misc-edge-scenario-integrity-required-set",
+  "reviewedAt": "2026-03-05T18:41:07Z",
+  "commitId": "d6026823c0ffbbc5832692a6f2eff3c3e976074c",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Implementation covers the required-set integrity gate in both validators and adds regression-focused tests; expected behavior is satisfied. One added test for build_scenario_manifest does not isolate the new gate and could pass for unrelated reasons.",
+    "issues": [
+      {
+        "file": "scripts/parity/test_required_edge_scenario_ids.py",
+        "line": 208,
+        "severity": "non_blocking",
+        "description": "test_verify_fails_when_edge_scenario_removed mutates SCENARIOS and only asserts verify_all() == False. verify_all() already returns False on scenario manifest hash mismatch (scripts/bench/build_scenario_manifest.py:785-793), so this test can pass even if the required-edge-ID gate logic regresses."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Transcript sequence appears to violate rewrite-worker's stated test-first procedure (red before implementation) even though handoff skillFeedback reports followedProcedure=true.",
+      "evidence": "worker-transcripts.jsonl (session f35b63d5-a8e6-4029-865e-33c255b94081) shows multiple Edit operations to validate_fixture_integrity.py/build_scenario_manifest.py before creating scripts/parity/test_required_edge_scenario_ids.py; assistant message explicitly says 'Now let me add proper tests' after implementation and manual checks."
+    },
+    {
+      "area": "knowledge",
+      "observation": "A known workflow pitfall (pytest side effects causing manifests/fixtures.json drift) surfaced in this run but is not documented in shared library notes.",
+      "evidence": "Handoff discoveredIssues notes manifests/fixtures.json drift after parity test execution and manual checkout restore; .factory/library/user-testing.md does not currently call out this repo-state side effect."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed commit d6026823c0ffbbc5832692a6f2eff3c3e976074c for misc-edge-scenario-integrity-required-set. Feature behavior is correctly implemented and evidence supports expected outcomes; review passes with one non-blocking test-isolation concern and two shared-state observations."
+}

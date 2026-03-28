@@ -1,0 +1,15 @@
+{
+  "featureId": "benchmark-harness-sampling-stats-claim-gates-claim-consistency-fix",
+  "reviewedAt": "2026-03-05T16:46:16Z",
+  "commitId": "50dfaeb",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Reviewed against the prior failed review and expected behavior: the fix now enforces manifest-hash equality across evidence runs and requires per-run-type threshold checks (local/nightly/manual) before allowing claims. Added tests cover mixed-manifest failure, partial-threshold failure, and artifact schema details. No blocking or non-blocking defects found in scope. Confidence: high.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/benchmark-harness/scrutiny/reviews/benchmark-harness-sampling-stats-claim-gates.json",
+  "summary": "PASS: transcript skeleton, handoff, prior failure review, skill guidance, and commit diff were reviewed. The two original blockers (missing manifest consistency check and missing per-run-type threshold enforcement) are addressed in commit 50dfaeb with targeted regression tests. Confidence: high."
+}

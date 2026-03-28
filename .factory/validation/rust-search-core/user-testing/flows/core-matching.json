@@ -1,0 +1,108 @@
+{
+  "milestone": "rust-search-core",
+  "groupId": "core-matching",
+  "assignedAssertions": [
+    "VAL-CORE-005",
+    "VAL-CORE-006",
+    "VAL-CORE-010",
+    "VAL-CORE-012",
+    "VAL-CORE-013"
+  ],
+  "results": [
+    {
+      "id": "VAL-CORE-005",
+      "status": "pass",
+      "reason": "Parity tests passed for smart-case and explicit -i/-s behavior, and direct CLI transcript showed identical output and exit codes.",
+      "evidence": [
+        {
+          "command": "cargo test -p rust-ag --test parity_core_matching val_core_005 --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --nocapture",
+          "exitCode": 0,
+          "observation": "4 tests passed (smart-case lowercase/uppercase plus explicit -i and -s parity checks)."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/ag --nocolor --workers=1 --parallel --noaffinity -i Hello . (cwd: tests/edge-cases/case-sensitivity) and /Users/ragas/code/missions/the_silver_searcher/target/debug/rust-ag with same args",
+          "exitCode": 0,
+          "observation": "Both returned exit=0 and identical 5 matching lines in mixed.txt."
+        }
+      ]
+    },
+    {
+      "id": "VAL-CORE-006",
+      "status": "pass",
+      "reason": "Parity tests passed for default multiline, --nomultiline, and flag-precedence permutations; direct transcript matched on no-match behavior under --nomultiline.",
+      "evidence": [
+        {
+          "command": "cargo test -p rust-ag --test parity_core_matching val_core_006 --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --nocapture",
+          "exitCode": 0,
+          "observation": "6 tests passed covering multiline default behavior, --nomultiline behavior, and last-flag-wins precedence combinations."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/ag --nocolor --workers=1 --parallel --noaffinity --nomultiline one\\nline . (cwd: tests/edge-cases/multiline) and /Users/ragas/code/missions/the_silver_searcher/target/debug/rust-ag with same args",
+          "exitCode": 0,
+          "observation": "Both commands reported exit=1 with empty stdout for the cross-line pattern under --nomultiline."
+        }
+      ]
+    },
+    {
+      "id": "VAL-CORE-010",
+      "status": "pass",
+      "reason": "Case-flag precedence matrix passed parity tests, and direct conflicting-flag run produced baseline-compatible result.",
+      "evidence": [
+        {
+          "command": "cargo test -p rust-ag --test parity_core_matching val_core_010 --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --nocapture",
+          "exitCode": 0,
+          "observation": "5 tests passed across -s/-i order permutations and smart-case override checks."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/ag --nocolor --workers=1 --parallel --noaffinity -s -i -s hello . (cwd: tests/edge-cases/case-sensitivity) and /Users/ragas/code/missions/the_silver_searcher/target/debug/rust-ag with same args",
+          "exitCode": 0,
+          "observation": "Both returned exit=0 and only matched mixed.txt:2:hello world (case-sensitive last-flag-wins)."
+        }
+      ]
+    },
+    {
+      "id": "VAL-CORE-012",
+      "status": "pass",
+      "reason": "Literal and word-boundary combinations passed parity tests and direct literal+word-boundary transcript matched exactly.",
+      "evidence": [
+        {
+          "command": "cargo test -p rust-ag --test parity_core_matching val_core_012 --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --nocapture",
+          "exitCode": 0,
+          "observation": "4 tests passed for -w, -Q, and -Q -w combinations including negative boundary case."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/ag --nocolor --workers=1 --parallel --noaffinity -Q -w foo . (cwd: tests/edge-cases/word-boundary) and /Users/ragas/code/missions/the_silver_searcher/target/debug/rust-ag with same args",
+          "exitCode": 0,
+          "observation": "Both returned exit=0 with identical four matches in words.txt."
+        }
+      ]
+    },
+    {
+      "id": "VAL-CORE-013",
+      "status": "pass",
+      "reason": "Zero-length regex parity tests completed successfully (timeout-safe harness), and direct zero-length pattern transcript completed safely with baseline-compatible match set.",
+      "evidence": [
+        {
+          "command": "cargo test -p rust-ag --test parity_core_matching val_core_013 --manifest-path \"/Users/ragas/code/missions/the_silver_searcher/Cargo.toml\" -- --nocapture",
+          "exitCode": 0,
+          "observation": "4 tests passed for x?, .*, ^$, and a control non-zero-length pattern on the zero-length fixture."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/ag --nocolor --workers=1 --parallel --noaffinity x? . (cwd: tests/edge-cases/zero-length-regex) and /Users/ragas/code/missions/the_silver_searcher/target/debug/rust-ag with same args",
+          "exitCode": 0,
+          "observation": "Both returned exit=0 and completed safely with the same matched lines; file output order differed but match set was equivalent."
+        }
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "Execute",
+    "cargo test",
+    "python3",
+    "ag",
+    "rust-ag"
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Validated 5 assigned assertions (VAL-CORE-005/006/010/012/013): all passed via parity tests and supporting direct CLI transcripts."
+}

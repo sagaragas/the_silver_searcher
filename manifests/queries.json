@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "description": "Query / pattern manifest for benchmark scenarios",
+  "manifest_hash": "eae091869faf4b710242d5490b484f9ee239e35b83849f296b3f9bbe2d44a275",
+  "query_count": 13,
+  "queries": [
+    {
+      "id": "q-literal-simple",
+      "type": "literal",
+      "pattern": "foo",
+      "description": "Simple literal match"
+    },
+    {
+      "id": "q-literal-word",
+      "type": "literal",
+      "pattern": "search",
+      "description": "Literal word commonly found in source"
+    },
+    {
+      "id": "q-regex-simple",
+      "type": "regex",
+      "pattern": "err(or)?",
+      "description": "Simple alternation regex"
+    },
+    {
+      "id": "q-regex-class",
+      "type": "regex",
+      "pattern": "[A-Z][a-z]+_[a-z]+",
+      "description": "Character-class word pattern"
+    },
+    {
+      "id": "q-regex-multiline",
+      "type": "regex",
+      "pattern": "if.*\\n.*return",
+      "description": "Multiline pattern spanning two lines"
+    },
+    {
+      "id": "q-literal-nocase",
+      "type": "literal",
+      "pattern": "TODO",
+      "description": "Case-insensitive literal match"
+    },
+    {
+      "id": "q-literal-rare",
+      "type": "literal",
+      "pattern": "pthread_setaffinity_np",
+      "description": "Rare literal found in limited files"
+    },
+    {
+      "id": "q-regex-complex",
+      "type": "regex",
+      "pattern": "\\b[A-Z]{2,}_[A-Z]{2,}\\b",
+      "description": "All-caps underscore identifiers"
+    },
+    {
+      "id": "q-nomatch",
+      "type": "literal",
+      "pattern": "ZZZZNOTFOUNDZZZ",
+      "description": "Pattern with zero matches (measures traversal overhead)"
+    },
+    {
+      "id": "q-edge-needle",
+      "type": "literal",
+      "pattern": "NEEDLE",
+      "description": "Literal used in edge-case fixtures"
+    },
+    {
+      "id": "q-edge-zero-len",
+      "type": "regex",
+      "pattern": "",
+      "description": "Zero-length regex for edge-case safety testing"
+    },
+    {
+      "id": "q-exit-nomatch",
+      "type": "literal",
+      "pattern": "XYZZY_NEVER_FOUND_12345",
+      "description": "Literal that produces zero matches for exit-code testing"
+    },
+    {
+      "id": "q-stream-hello",
+      "type": "literal",
+      "pattern": "hello",
+      "description": "Literal for deterministic stdin/stream scenario fixture"
+    }
+  ]
+}

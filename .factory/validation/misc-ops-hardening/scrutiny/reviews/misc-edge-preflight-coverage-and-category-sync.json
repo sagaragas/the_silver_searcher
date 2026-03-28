@@ -1,0 +1,21 @@
+{
+  "featureId": "misc-edge-preflight-coverage-and-category-sync",
+  "reviewedAt": "2026-03-05T18:41:32.826281Z",
+  "commitId": "9a5be32a37510fe4eea9bae63fa491f2df627796",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Implementation matches the feature goals: run_matrix now derives edge scenario→category mapping from scenario metadata, _resolve_needed_edge_categories deduplicates correctly, direct tests cover complete/incomplete/fail-fast _preflight_edge_fixtures() paths, and validate_fixture_integrity adds explicit scenario-category sync checks.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "rewrite-worker SKILL.md step 5 says to run full required validators from .factory/services.yaml, but this feature transcript used scoped parity validators instead and still reported followedProcedure=true. The skill language appears broader than actual accepted practice for scoped tooling features.",
+      "evidence": ".factory/skills/rewrite-worker/SKILL.md (Work Procedure step 5) vs transcript skeleton for session d21e8284-a96c-4619-b053-b3dab860a603 (commands run: pytest scripts/parity/test_edge_preflight.py, pytest scripts/parity/, validate_fixture_integrity, fixture/scenario manifest verify)."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, transcript skeleton, and commit 9a5be32a37510fe4eea9bae63fa491f2df627796. Feature is complete and correct for preflight edge-path coverage and scenario-category drift hardening; no blocking or non-blocking code defects were found."
+}

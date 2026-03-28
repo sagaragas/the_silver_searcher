@@ -1,0 +1,39 @@
+{
+  "featureId": "baseline-parity-oracle-runner",
+  "reviewedAt": "2026-03-05T09:10:15Z",
+  "commitId": "45832a8c531bc489336e99d28f52b9bfa2e27001",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature largely implements the requested parity-oracle flow (run matrix execution, artifact emission, metadata recording, and fail-fast missing-binary handling), but there is a blocking command-construction bug that can execute incorrect argv for valid command templates/patterns.",
+    "issues": [
+      {
+        "file": "scripts/parity/run_matrix.py",
+        "line": 209,
+        "severity": "blocking",
+        "description": "Commands are tokenized with plain `str.split()` after placeholder substitution (`cmd_str = ...; parts = cmd_str.split()`). This breaks quoted arguments and patterns/corpus paths containing spaces, causing incorrect command execution and invalid parity artifacts for legitimate manifest/query inputs. Use shell-safe tokenization (e.g., `shlex.split`) or structured argv templates."
+      },
+      {
+        "file": "scripts/parity/run_matrix.py",
+        "line": 355,
+        "severity": "non_blocking",
+        "description": "`latest` symlink always targets `run_dir.name`, which is only correct when output is under `parity-artifacts/`. With `--output-dir` outside that base, the symlink points to the wrong location."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The `rewrite-worker` skill procedure is Rust- and test-first-centric, but this feature was Python tooling work and transcript flow created implementation files before any explicit failing test step. The skill likely needs a branch for non-Rust tooling features so `followedProcedure` is measured against realistic steps.",
+      "evidence": ".factory/skills/rewrite-worker/SKILL.md (steps 3-4 require failing tests then Rust changes) vs worker transcript skeleton for session `2196e71d-8fed-457e-88a6-c41a397882ee` showing `Create scripts/parity/run_matrix.py` and `Create scripts/parity/validate_outputs.py` before later execution/validation commands."
+    },
+    {
+      "area": "services",
+      "observation": "Mission-critical parity commands for this milestone are not represented in `.factory/services.yaml`, reducing reproducibility of the intended validation flow.",
+      "evidence": "Feature verification steps in mission `features.json` include `python3 scripts/parity/run_matrix.py --target baseline --group smoke` and `python3 scripts/parity/validate_outputs.py --run latest`, but `.factory/services.yaml` has no parity run/validate command entries."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, commit diff, and transcript skeleton for `baseline-parity-oracle-runner`. Implementation is close to scope-complete, but a blocking argv parsing defect in `run_matrix.py` means valid quoted/space-containing commands are mis-executed, so this review is marked fail."
+}

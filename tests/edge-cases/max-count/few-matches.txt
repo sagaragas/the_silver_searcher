@@ -1,0 +1,5 @@
+NEEDLE first
+no match here
+NEEDLE second
+still no match
+NEEDLE third

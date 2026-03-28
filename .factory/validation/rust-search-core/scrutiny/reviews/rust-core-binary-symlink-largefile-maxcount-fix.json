@@ -1,0 +1,15 @@
+{
+  "featureId": "rust-core-binary-symlink-largefile-maxcount-fix",
+  "reviewedAt": "2026-03-05T12:29:24Z",
+  "commitId": "50567bcd183d6e7e50562518ce92711893454d1c",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix resolves the prior blocker: `--max-count=0`/`-m0` is now treated as truly unlimited via `usize::MAX`, and parity coverage now includes the high-match `--nomultiline -m0 -v` path that previously diverged at 10,000 matches while preserving capped behavior for `--max-count>0`.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/rust-search-core/scrutiny/reviews/rust-core-binary-symlink-largefile-maxcount-fix.json",
+  "summary": "Reviewed worker session b1a7dd92-b6c4-4ca1-aa4f-ca061df37551, handoff, transcript skeleton, and commit 50567bc diff. `rust-ag/src/opts.rs` now maps max-count 0 to `usize::MAX`; edge-case parity tests add 12,050-line all-match coverage for `-m0` with and without `-v` in multiline and nomultiline modes; fixture generation/integrity markers include the new file. Prior blocking `--nomultiline -m0 -v` parity failure is addressed and this re-run passes review."
+}

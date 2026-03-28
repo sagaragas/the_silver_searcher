@@ -1,0 +1,44 @@
+{
+  "milestone": "misc-ops-hardening",
+  "round": 2,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "PATH=\".venv-ag-tests/bin:$PATH\" make test && cargo test --workspace -- --test-threads=5",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "cargo check --workspace",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [
+    {
+      "target": "services.yaml",
+      "description": "Added `parity_cli_count_stream_rust` command alias for `python3 scripts/parity/run_matrix.py --target rust --group cli-count-stream` to keep recurring validation flows consistent.",
+      "sourceFeature": "misc-cli-count-stream-parity-group-coverage-fix"
+    }
+  ],
+  "suggestedGuidanceUpdates": [],
+  "rejectedObservations": [
+    {
+      "observation": "Update `.factory/library/architecture.md` to restate schema-version gate for stderr diff artifacts.",
+      "reason": "already-documented"
+    }
+  ],
+  "previousRound": ".factory/validation/misc-ops-hardening/scrutiny/synthesis.round1.json"
+}

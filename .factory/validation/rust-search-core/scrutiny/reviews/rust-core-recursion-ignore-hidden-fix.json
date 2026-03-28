@@ -1,0 +1,21 @@
+{
+  "featureId": "rust-core-recursion-ignore-hidden-fix",
+  "reviewedAt": "2026-03-05T11:54:52Z",
+  "commitId": "809af6fe945f509dc863b3304a1567e18f450acf",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix commit directly addresses both prior blocking defects: ignore state is now popped on recursion unwind, and recursion flag precedence uses explicit last-flag-wins semantics for -n/-r. The new fixture, parity tests, and scenario entries cover the previously failing paths and align with the feature's expected behavior.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "services",
+      "observation": "A recurring rust parity command used by workers is still not captured in services.yaml.",
+      "evidence": "Fix handoff verification includes `python3 scripts/parity/run_matrix.py --target rust-ag --group core-ignore-recursion`, but `.factory/services.yaml` only defines baseline parity commands (`parity_baseline_smoke`, `parity_edge_cases_baseline`) and no rust-targeted parity command."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/rust-search-core/scrutiny/reviews/rust-core-recursion-ignore-hidden.json",
+  "summary": "Pass. Reviewing both diffs confirms the original failures in `rust-ag/src/walk.rs` are corrected by adding ignore-stack unwind (`pop_directory`) and by switching recursion control to explicit last-wins mode (`recurse_mode`) wired from CLI parsing. Regression coverage was expanded with targeted fixture/tests/scenarios, and no new blocking defects were identified for this feature scope."
+}

@@ -1,0 +1,118 @@
+{
+  "milestone": "rust-cli-parity",
+  "groupId": "cli-count-stream",
+  "assignedAssertions": [
+    "VAL-CLI-001",
+    "VAL-CLI-002",
+    "VAL-CLI-003"
+  ],
+  "credentials": {
+    "account": "cli-validator-1@example.test",
+    "namespace": "cli-count-stream-ns"
+  },
+  "testedAt": "2026-03-05T14:48:29+00:00",
+  "results": [
+    {
+      "id": "VAL-CLI-001",
+      "status": "fail",
+      "reason": "Multi-file --count formatting diverges from baseline: rust-ag prefixes filenames while baseline ag outputs count-only lines in this flow.",
+      "evidence": [
+        {
+          "command": "cargo test -p rust-ag --test parity_cli_count_filename_stream --manifest-path /Users/ragas/code/missions/the_silver_searcher/Cargo.toml -- --nocapture",
+          "exitCode": 0,
+          "observation": "Targeted suite passed (28/28), including VAL-CLI-001-named tests."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/ag -c hello /var/folders/9s/gdy76tpx1mg5nl7p8r1xj_vc0000gn/T/cli-count-stream-ns-wfs3efdi",
+          "exitCode": 0,
+          "observation": "baseline stdout: 3\\n2\\n2\\n (count-only lines)"
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/target/debug/rust-ag -c hello /var/folders/9s/gdy76tpx1mg5nl7p8r1xj_vc0000gn/T/cli-count-stream-ns-wfs3efdi",
+          "exitCode": 0,
+          "observation": "rust stdout: <file-path>:2 / <file-path>:3 / <file-path>:2 (filename:count format); differs from baseline formatting."
+        },
+        {
+          "command": "stdin=\"hello hello\\nworld\\nhello\\n\" | ag -c hello and rust-ag -c hello",
+          "exitCode": 0,
+          "observation": "Stream subcase matched: both produced 2\\n1\\n with exit 0."
+        }
+      ]
+    },
+    {
+      "id": "VAL-CLI-002",
+      "status": "fail",
+      "reason": "Multi-file filename-prefix semantics diverge from baseline: rust-ag emits filename prefixes where baseline output is prefix-free in this captured flow.",
+      "evidence": [
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/ag hello /var/folders/9s/gdy76tpx1mg5nl7p8r1xj_vc0000gn/T/cli-count-stream-ns-wfs3efdi",
+          "exitCode": 0,
+          "observation": "baseline stdout lines were prefix-free (content-only)."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/target/debug/rust-ag hello /var/folders/9s/gdy76tpx1mg5nl7p8r1xj_vc0000gn/T/cli-count-stream-ns-wfs3efdi",
+          "exitCode": 0,
+          "observation": "rust stdout lines used <filename>:<content> prefixes for each match."
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/ag hello /var/folders/9s/gdy76tpx1mg5nl7p8r1xj_vc0000gn/T/cli-count-stream-ns-wfs3efdi/file1.txt and rust-ag same command",
+          "exitCode": 0,
+          "observation": "Single-file subcase matched (both produced content-only lines)."
+        }
+      ]
+    },
+    {
+      "id": "VAL-CLI-003",
+      "status": "fail",
+      "reason": "--nofilename multi-file output differs from baseline ordering/grouping (extra blank separators and different file block order), though stream numbering subcases matched.",
+      "evidence": [
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/ag --nofilename hello /var/folders/9s/gdy76tpx1mg5nl7p8r1xj_vc0000gn/T/cli-count-stream-ns-wfs3efdi",
+          "exitCode": 0,
+          "observation": "baseline stdout: hello hello hello\\nhello world\\nhello there\\nhello foo\\nhello bar\\n"
+        },
+        {
+          "command": "/Users/ragas/code/missions/the_silver_searcher/target/debug/rust-ag --nofilename hello /var/folders/9s/gdy76tpx1mg5nl7p8r1xj_vc0000gn/T/cli-count-stream-ns-wfs3efdi",
+          "exitCode": 0,
+          "observation": "rust stdout inserted blank separators and emitted a different block order than baseline."
+        },
+        {
+          "command": "stdin=\"hello world\\nhello there\\ngoodbye\\n\" | ag hello / ag --numbers hello and rust-ag equivalents",
+          "exitCode": 0,
+          "observation": "Stream line-numbering subcases matched baseline: default produced content-only lines; --numbers produced 1: and 2: prefixes."
+        }
+      ]
+    }
+  ],
+  "toolsUsed": [
+    "cargo test",
+    "python3",
+    "ag",
+    "rust-ag",
+    "scripts/parity/run_matrix.py"
+  ],
+  "frictions": [
+    {
+      "description": "Suggested matrix command group name did not exist.",
+      "resolved": false,
+      "resolution": "Attempted command exactly as provided; proceeded with direct CLI baseline-vs-rust transcripts for assigned assertions.",
+      "affectedAssertions": [
+        "VAL-CLI-001",
+        "VAL-CLI-002",
+        "VAL-CLI-003"
+      ]
+    },
+    {
+      "description": "Targeted rust test suite passed while direct baseline-vs-rust CLI transcripts showed assertion-level divergences.",
+      "resolved": false,
+      "resolution": "Recorded both artifacts as evidence without modifying code or tests.",
+      "affectedAssertions": [
+        "VAL-CLI-001",
+        "VAL-CLI-002",
+        "VAL-CLI-003"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 3 assertions. All 3 failed in direct CLI parity transcripts (multi-file count/filename/nofilename formatting divergences), while stream numbering/count subcases largely matched baseline."
+}

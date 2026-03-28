@@ -1,0 +1,33 @@
+{
+  "featureId": "baseline-edge-case-fixtures-one-device-largefile-fix",
+  "reviewedAt": "2026-03-05T09:48:40Z",
+  "commitId": "644542e6dda9e272e69f8c1d8e260b60d9ef2910",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix commit addresses the original failure: it adds concrete one-device fixtures/scenarios and strengthens large-file integrity checks so missing or mismatched required assets are now explicitly detected by fixture verification/integrity validation.",
+    "issues": [
+      {
+        "file": "scripts/parity/run_matrix.py",
+        "line": 337,
+        "severity": "non_blocking",
+        "description": "Edge-case auto-setup still gates only on `tests/edge-cases/ignore-source` existence, so a partially present fixture tree can proceed unless callers run the dedicated fixture validators first. This does not reintroduce the prior blocking failure because this fix now makes the validators fail loudly for missing large-file/one-device assets."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "services",
+      "observation": "The edge-case verification commands repeatedly used in this feature (`tests/edge-cases/setup_fixtures.py --verify`, `scripts/parity/validate_fixture_integrity.py`, and edge-cases matrix run) are not represented in `.factory/services.yaml`, so reviewers/workers rely on ad-hoc command discovery.",
+      "evidence": "Worker transcript skeleton for session `1ebd0fd0-f081-4b45-a0bf-11ed6a1c7a28` shows manual invocation of these commands; `.factory/services.yaml` only includes `parity_baseline_smoke` and `parity_validate_latest` parity commands."
+    },
+    {
+      "area": "conventions",
+      "observation": "Fixture directories initialized with nested `.git/` repos can cause staging pitfalls that are not documented in AGENTS/library conventions.",
+      "evidence": "Transcript skeleton shows `git add tests/edge-cases/one-device/` failing with `does not have a commit checked out`, followed by remediation around nested `.git`; `.gitignore` contains `tests/edge-cases/*/.git/` but AGENTS.md/.factory/library do not document this workflow caveat."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/baseline-and-fixtures/scrutiny/reviews/baseline-edge-case-fixtures.json",
+  "summary": "Pass: the fix adequately resolves the prior blocking gaps by adding one-device fixture/scenario coverage and enforcing loud integrity failures for missing/corrupt large-file and one-device assets. I also noted one non-blocking setup robustness caveat and two shared-state documentation gaps."
+}

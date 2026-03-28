@@ -1,0 +1,55 @@
+{
+  "milestone": "baseline-and-fixtures",
+  "round": 3,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "PATH=\".venv-ag-tests/bin:$PATH\" make test && if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo test --workspace -- --test-threads=5; else echo \"No Rust workspace yet; skipping Rust tests\"; fi",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo check --workspace; else echo \"No Rust workspace yet; skipping typecheck\"; fi",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "if [ -f Cargo.toml ] || [ -f rust-ag/Cargo.toml ]; then cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings; else echo \"No Rust workspace yet; skipping Rust lint\"; fi",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add explicit single-source-of-truth guidance for edge scenario/category mapping and synchronization expectations between `manifests/scenarios.json` and `scripts/parity/run_matrix.py` preflight helpers.",
+      "evidence": "Review for baseline-edge-case-autosetup-preflight-fix flagged hardcoded `_SCENARIO_TO_CATEGORY` mapping drift risk in `run_matrix.py:362` with no shared guidance describing required sync behavior.",
+      "isSystemic": true
+    },
+    {
+      "target": "rewrite-worker skill",
+      "suggestion": "Clarify procedure and reporting expectations for non-Rust tooling features (Python/script/manifests) and require explicit transcript evidence when claiming test-first compliance in skill feedback.",
+      "evidence": "Current review evidence shows rewrite-worker instructions remain Rust-centric for implementation wording, and one completed feature reported followedProcedure=true even though transcript ordering showed implementation edits before test creation.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Document command-template escaping/backslash conventions for parity manifests and regex placeholders.",
+      "reason": "already-recommended-in-round2"
+    },
+    {
+      "observation": "rewrite-worker Rust-centric wording for tooling features.",
+      "reason": "already-recommended-in-round2; kept only incremental recommendation about compliance evidence"
+    }
+  ],
+  "previousRound": ".factory/validation/baseline-and-fixtures/scrutiny/synthesis.round2.json"
+}

@@ -1,0 +1,28 @@
+{
+  "featureId": "rust-core-case-multiline-word-boundary",
+  "reviewedAt": "2026-03-05T11:15:56Z",
+  "commitId": "d11313c",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "Implementation is strong on smart-case, case-flag precedence, multiline matching mechanics, word-boundary/literal handling, and zero-length progression safety, but it misses baseline-compatible precedence for conflicting multiline toggles.",
+    "issues": [
+      {
+        "file": "rust-ag/src/search.rs",
+        "line": 62,
+        "severity": "blocking",
+        "description": "Multiline mode resolution hard-codes `--nomultiline` precedence (`if opts.multiline && !opts.no_multiline`). Since option parsing only sets booleans true for both flags (`--nomultiline` and `--multiline` in rust-ag/src/opts.rs), `--nomultiline --multiline` still executes nomultiline mode. Baseline `ag` follows last-flag-wins for this conflict, so this is a parity break within scoped multiline controls."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The rewrite-worker skill lacks an explicit upfront check for PCRE_MULTILINE vs PCRE_DOTALL behavior when implementing multiline parity.",
+      "evidence": "handoff.skillFeedback.suggestedChanges explicitly requests this addition, and the transcript skeleton shows an extended exploratory sequence to discover this baseline nuance before implementation stabilized."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review failed due to a blocking multiline flag-precedence parity mismatch (`--nomultiline --multiline`). Other scoped behavior appears well implemented and well tested."
+}
