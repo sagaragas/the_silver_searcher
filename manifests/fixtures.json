@@ -4,8 +4,8 @@
   "fixture_dirs": [
     "tests"
   ],
-  "manifest_hash": "9f25974294396aee4ffedbc30c05596f1ae274d810fb430e5f40cfd0d10ae40a",
-  "file_count": 103,
+  "manifest_hash": "a2064d831d475f3789f1d1376419c074189203eea7452ced73397bc3b2786a2b",
+  "file_count": 104,
   "files": [
     {
       "path": "tests/adjacent_matches.t",
@@ -31,6 +31,11 @@
       "path": "tests/case_sensitivity.t",
       "size": 604,
       "sha256": "c8ca5af5176ab33b3ada3da03b7b0bdbf02998c48bc16ddd9cba82749d2f84ee"
+    },
+    {
+      "path": "tests/cli-count-stream-fixture.txt",
+      "size": 50,
+      "sha256": "126fcead9c63efad92b4318f42070a40326f8554fa9d0660aa36b4281b404af9"
     },
     {
       "path": "tests/color.t",

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Query / pattern manifest for benchmark scenarios",
+  "description": "Query / pattern manifest for rewrite parity scenarios",
   "manifest_hash": "eae091869faf4b710242d5490b484f9ee239e35b83849f296b3f9bbe2d44a275",
   "query_count": 13,
   "queries": [

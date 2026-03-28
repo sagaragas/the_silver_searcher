@@ -111,6 +111,7 @@ def _update_latest_symlink(artifacts_base: Path, run_dir: Path) -> None:
     regardless of where the caller ``readlink``s from while avoiding hard-coded
     absolute paths when possible.
     """
+    artifacts_base.mkdir(parents=True, exist_ok=True)
     latest_link = artifacts_base / "latest"
     if latest_link.is_symlink() or latest_link.exists():
         latest_link.unlink()
@@ -231,7 +232,10 @@ def _git_sha() -> str:
             cwd=REPO_ROOT,
             timeout=10,
         )
-        return result.stdout.strip()
+        sha = result.stdout.strip()
+        if result.returncode == 0 and sha:
+            return sha
+        return "unknown"
     except Exception:
         return "unknown"
 

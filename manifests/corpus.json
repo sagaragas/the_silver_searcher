@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Corpus manifest for benchmark scenarios",
+  "description": "Corpus manifest for rewrite parity scenarios",
   "corpus_dirs": [
     "tests",
     "src"

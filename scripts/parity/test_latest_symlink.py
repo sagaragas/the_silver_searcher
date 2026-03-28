@@ -124,6 +124,19 @@ class TestLatestSymlinkResolution(unittest.TestCase):
         self._call_update_latest(self.artifacts_base, dir2)
         self.assertEqual((self.artifacts_base / "latest").resolve(), dir2.resolve())
 
+    def test_missing_artifacts_base_is_created(self):
+        """The helper creates parity-artifacts before writing latest."""
+        missing_base = self.tmpdir / "missing" / "parity-artifacts"
+        custom_dir = self.tmpdir / "custom-out"
+        custom_dir.mkdir()
+
+        self._call_update_latest(missing_base, custom_dir)
+
+        latest = missing_base / "latest"
+        self.assertTrue(missing_base.is_dir(), "artifacts base should be created")
+        self.assertTrue(latest.is_symlink(), "latest symlink should exist")
+        self.assertEqual(latest.resolve(), custom_dir.resolve())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Build deterministic benchmark scenario manifest with command matrix.
+"""Build deterministic scenario manifests for parity and comparison runs.
 
-Defines a canonical set of benchmark scenarios, each with equivalent CLI
+Defines a canonical set of search scenarios, each with equivalent CLI
 commands for all comparators (ag, rust-ag, rg, ugrep).  Emits:
   - manifests/scenarios.json   – scenario + command matrix
   - manifests/corpus.json      – corpus file inventory with hashes
@@ -196,7 +196,7 @@ def _scenario(
     if comparators is None:
         comparators = COMPARATORS
 
-    # Default flag sets per comparator to normalise output for benchmarking.
+    # Default flag sets per comparator to normalise output for comparison runs.
     # ag: --nocolor --workers=1 --parallel --noaffinity
     # rust-ag: same as ag (placeholder; will use same flags)
     # rg: --no-heading --color=never
@@ -776,7 +776,7 @@ def build_corpus_manifest() -> dict[str, Any]:
         h.update(f"{e['path']}\0{e['size']}\0{e['sha256']}\n".encode())
     return {
         "schema_version": 1,
-        "description": "Corpus manifest for benchmark scenarios",
+        "description": "Corpus manifest for rewrite parity scenarios",
         "corpus_dirs": CORPUS_DIRS,
         "manifest_hash": h.hexdigest(),
         "file_count": len(entries),
@@ -787,7 +787,7 @@ def build_corpus_manifest() -> dict[str, Any]:
 def build_queries_manifest() -> dict[str, Any]:
     return {
         "schema_version": 1,
-        "description": "Query / pattern manifest for benchmark scenarios",
+        "description": "Query / pattern manifest for rewrite parity scenarios",
         "manifest_hash": _content_hash(QUERIES),
         "query_count": len(QUERIES),
         "queries": QUERIES,
@@ -799,7 +799,7 @@ def build_scenarios_manifest(
 ) -> dict[str, Any]:
     return {
         "schema_version": 1,
-        "description": "Benchmark scenario-command matrix for all comparators",
+        "description": "Scenario-command matrix for rewrite parity runs",
         "comparators": COMPARATORS,
         "corpus_manifest_hash": corpus_hash,
         "query_manifest_hash": query_hash,
@@ -910,7 +910,7 @@ def verify_all() -> bool:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Build or verify benchmark scenario / corpus / query manifests."
+        description="Build or verify scenario / corpus / query manifests used by parity tooling."
     )
     parser.add_argument(
         "--verify",

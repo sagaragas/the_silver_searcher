@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Benchmark scenario-command matrix for all comparators",
+  "description": "Scenario-command matrix for rewrite parity runs",
   "comparators": [
     "ag",
     "rust-ag",
